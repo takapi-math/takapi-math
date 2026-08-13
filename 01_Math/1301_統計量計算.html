@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>10対のデータ 統計計算 & データ変形シミュレーター</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for Scatter Plot Visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- MathJax for rendering LaTeX -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen pb-12">
+
+    <!-- Header -->
+    <header class="bg-indigo-700 text-white py-6 px-4 shadow-lg mb-8">
+        <div class="max-w-7xl mx-auto">
+            <h1 class="text-2xl md:text-3xl font-bold">2変数データの統計計算 & 線形変換シミュレーター</h1>
+            <p class="text-indigo-100 text-sm md:text-base mt-2">
+                10対の $x, y$ データから偏差・分散・標準偏差・共分散・相関係数を自動計算し、$x, y$ の定数倍や加減算による変化をグラフで視覚的に学べるツールです。
+            </p>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 space-y-8">
+
+        <!-- Section 1: Data Input & Calculation Table -->
+        <section class="bg-white rounded-xl shadow-md p-6 border border-slate-200">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                        <span class="w-3 h-6 bg-indigo-600 rounded-full inline-block"></span>
+                        1. 10対のデータと計算過程の表
+                    </h2>
+                    <p class="text-sm text-slate-500 mt-1">
+                        デフォルト値は <strong>$\bar{x} = 15$, $\bar{y} = 20$</strong> に設定されています。表内の数字は自由に変更可能です。
+                    </p>
+                </div>
+                <div class="flex gap-2">
+                    <button id="btn-reset" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm">
+                        初期値（平均15, 20）に戻す
+                    </button>
+                    <button id="btn-random" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm">
+                        ランダム生成（平均整列）
+                    </button>
+                </div>
+            </div>
+
+            <!-- Table Container -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs md:text-sm text-center border-collapse">
+                    <thead>
+                        <tr class="bg-indigo-50 text-indigo-900 border-b border-indigo-100">
+                            <th class="p-1.5 font-semibold border-r border-indigo-100">No.</th>
+                            <th class="p-1.5 font-semibold border-r border-indigo-100 bg-indigo-100/50">$x$</th>
+                            <th class="p-1.5 font-semibold border-r border-indigo-100 bg-indigo-100/50">$y$</th>
+                            <th class="p-1.5 font-semibold border-r border-indigo-100">$x - \bar{x}$</th>
+                            <th class="p-1.5 font-semibold border-r border-indigo-100">$y - \bar{y}$</th>
+                            <th class="p-1.5 font-semibold border-r border-indigo-100">$(x - \bar{x})^2$</th>
+                            <th class="p-1.5 font-semibold border-r border-indigo-100">$(y - \bar{y})^2$</th>
+                            <th class="p-1.5 font-semibold">$(x - \bar{x})(y - \bar{y})$</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <!-- Dynamic Rows -->
+                    </tbody>
+                    <tfoot class="border-t-2 border-slate-300 font-semibold bg-slate-50">
+                        <tr class="border-b border-slate-200">
+                            <td class="py-1.5 px-2 border-r border-slate-200 text-slate-600">合計 ($\sum$)</td>
+                            <td id="sum-x" class="py-1.5 px-2 border-r border-slate-200 font-bold text-indigo-700"></td>
+                            <td id="sum-y" class="py-1.5 px-2 border-r border-slate-200 font-bold text-indigo-700"></td>
+                            <td id="sum-dx" class="py-1.5 px-2 border-r border-slate-200 text-slate-500">0</td>
+                            <td id="sum-dy" class="py-1.5 px-2 border-r border-slate-200 text-slate-500">0</td>
+                            <td id="sum-dx2" class="py-1.5 px-2 border-r border-slate-200 text-emerald-700"></td>
+                            <td id="sum-dy2" class="py-1.5 px-2 border-r border-slate-200 text-emerald-700"></td>
+                            <td id="sum-dxy" class="py-1.5 px-2 text-emerald-700"></td>
+                        </tr>
+                        <!-- Highlighted Average Row -->
+                        <tr class="bg-amber-100/60 border-2 border-amber-400/80 shadow-sm">
+                            <td class="py-2 px-2 border-r border-amber-200 text-amber-950 font-black text-sm md:text-base">
+                                平均 ($\bar{x}, \bar{y}$)
+                            </td>
+                            <td id="avg-x" class="py-2 px-2 border-r border-amber-200 font-black text-base md:text-lg text-indigo-900 bg-amber-200/40"></td>
+                            <td id="avg-y" class="py-2 px-2 border-r border-amber-200 font-black text-base md:text-lg text-indigo-900 bg-amber-200/40"></td>
+                            <td class="py-2 px-2 border-r border-amber-200 text-slate-400">-</td>
+                            <td class="py-2 px-2 border-r border-amber-200 text-slate-400">-</td>
+                            <td id="mean-dx2" class="py-2 px-2 border-r border-amber-200 font-black text-base md:text-lg text-amber-950 bg-amber-200/30"></td>
+                            <td id="mean-dy2" class="py-2 px-2 border-r border-amber-200 font-black text-base md:text-lg text-amber-950 bg-amber-200/30"></td>
+                            <td id="mean-dxy" class="py-2 px-2 font-black text-base md:text-lg text-amber-950 bg-amber-200/30"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </section>
+
+        <!-- Section 2: Calculated Statistics Summary Cards -->
+        <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- X Stats -->
+            <div class="bg-white p-5 rounded-xl shadow-md border border-slate-200 flex flex-col justify-between">
+                <div>
+                    <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider">変数 $x$ の統計量</span>
+                    <div class="mt-3 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-slate-600">平均 ($\bar{x}$):</span>
+                            <span id="stat-mean-x" class="text-lg font-bold text-slate-800"></span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-slate-600">分散 ($s_x^2$):</span>
+                            <span id="stat-var-x" class="text-lg font-bold text-slate-800"></span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-slate-600">標準偏差 ($s_x$):</span>
+                            <span id="stat-std-x" class="text-lg font-bold text-indigo-600"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Y Stats -->
+            <div class="bg-white p-5 rounded-xl shadow-md border border-slate-200 flex flex-col justify-between">
+                <div>
+                    <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider">変数 $y$ の統計量</span>
+                    <div class="mt-3 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-slate-600">平均 ($\bar{y}$):</span>
+                            <span id="stat-mean-y" class="text-lg font-bold text-slate-800"></span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-slate-600">分散 ($s_y^2$):</span>
+                            <span id="stat-var-y" class="text-lg font-bold text-slate-800"></span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-slate-600">標準偏差 ($s_y$):</span>
+                            <span id="stat-std-y" class="text-lg font-bold text-indigo-600"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Covariance -->
+            <div class="bg-white p-5 rounded-xl shadow-md border border-slate-200 flex flex-col justify-between">
+                <div>
+                    <span class="text-xs font-bold text-emerald-600 uppercase tracking-wider">2変数の関係（共分散）</span>
+                    <div class="mt-3 space-y-2">
+                        <div class="flex justify-between items-start">
+                            <span class="text-sm text-slate-600">共分散 ($s_{xy}$):</span>
+                            <span id="stat-cov" class="text-xl font-bold text-emerald-700"></span>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-2">
+                            $\frac{1}{N} \sum (x - \bar{x})(y - \bar{y})$
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Correlation Coefficient -->
+            <div class="bg-white p-5 rounded-xl shadow-md border border-indigo-200 bg-indigo-50/30 flex flex-col justify-between">
+                <div>
+                    <span class="text-xs font-bold text-indigo-700 uppercase tracking-wider">相関係数</span>
+                    <div class="mt-3 space-y-2">
+                        <div class="flex justify-between items-start">
+                            <span class="text-sm text-slate-700 font-semibold">相関係数 ($r_{xy}$):</span>
+                            <span id="stat-corr" class="text-2xl font-black text-indigo-700"></span>
+                        </div>
+                        <p class="text-xs text-slate-600 mt-1">
+                            $r_{xy} = \frac{s_{xy}}{s_x \cdot s_y}$
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Linear Transformation Simulator & Visualization -->
+        <section class="bg-white rounded-xl shadow-md p-6 border border-slate-200">
+            <div class="mb-6">
+                <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                    <span class="w-3 h-6 bg-emerald-600 rounded-full inline-block"></span>
+                    2. データの数倍・加減算（一次変換）による変化 & 可視化グラフ
+                </h2>
+                <p class="text-sm text-slate-600 mt-1">
+                    データ $x, y$ に対して定数倍・平行移動を行ったデータ $x' = a x + b$, $y' = c y + d$ を作成したとき、散布図や各統計量がどう変化するか実験できます。
+                </p>
+            </div>
+
+            <!-- Parameter Controls Inline Style -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-200 mb-6">
+                <!-- X Transform Controls Inline -->
+                <div class="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-800 bg-white p-3 rounded-md border border-slate-200 shadow-sm">
+                    <span class="text-indigo-800 font-bold">$x$ の変換: $x' =$</span>
+                    <input type="number" id="input-a" value="2" step="0.5" class="w-16 px-2 py-1 border border-indigo-300 rounded text-center font-bold text-indigo-700 bg-indigo-50/50 focus:ring-2 focus:ring-indigo-400 outline-none">
+                    <span>$\cdot x +$</span>
+                    <input type="number" id="input-b" value="5" step="1" class="w-16 px-2 py-1 border border-indigo-300 rounded text-center font-bold text-indigo-700 bg-indigo-50/50 focus:ring-2 focus:ring-indigo-400 outline-none">
+                </div>
+
+                <!-- Y Transform Controls Inline -->
+                <div class="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-800 bg-white p-3 rounded-md border border-slate-200 shadow-sm">
+                    <span class="text-emerald-800 font-bold">$y$ の変換: $y' =$</span>
+                    <input type="number" id="input-c" value="1.5" step="0.5" class="w-16 px-2 py-1 border border-emerald-300 rounded text-center font-bold text-emerald-700 bg-emerald-50/50 focus:ring-2 focus:ring-emerald-400 outline-none">
+                    <span>$\cdot y +$</span>
+                    <input type="number" id="input-d" value="-10" step="1" class="w-16 px-2 py-1 border border-emerald-300 rounded text-center font-bold text-emerald-700 bg-emerald-50/50 focus:ring-2 focus:ring-emerald-400 outline-none">
+                </div>
+            </div>
+
+            <!-- Comparison Table (Moved Above Graph) -->
+            <div class="overflow-x-auto mb-8">
+                <table class="w-full text-sm text-left border-collapse border border-slate-200">
+                    <thead class="bg-slate-100 text-slate-700">
+                        <tr>
+                            <th class="p-3 border border-slate-200">統計量</th>
+                            <th class="p-3 border border-slate-200">元の値</th>
+                            <th class="p-3 border border-slate-200 bg-emerald-50 text-emerald-900 font-bold">変換後の値 ($x', y'$)</th>
+                            <th class="p-3 border border-slate-200">変化のルール・計算式</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200">
+                        <tr>
+                            <td class="p-3 font-semibold border border-slate-200">$x$ の平均 $\bar{x}$</td>
+                            <td id="orig-mean-x" class="p-3 border border-slate-200"></td>
+                            <td id="trans-mean-x" class="p-3 border border-slate-200 font-bold text-emerald-700 bg-emerald-50/30"></td>
+                            <td class="p-3 border border-slate-200 text-xs text-slate-600">
+                                $\bar{x}' = a \cdot \bar{x} + b$ （倍率も足し引きもそのまま中心が平行移動・拡大する）
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="p-3 font-semibold border border-slate-200">$x$ の分散 $s_x^2$</td>
+                            <td id="orig-var-x" class="p-3 border border-slate-200"></td>
+                            <td id="trans-var-x" class="p-3 border border-slate-200 font-bold text-emerald-700 bg-emerald-50/30"></td>
+                            <td class="p-3 border border-slate-200 text-xs text-slate-600">
+                                $s_{x'}^2 = a^2 \cdot s_x^2$ （加減算は無関係。広がりが $a$ 倍伸びると面積（分散）は <strong>$a^2$ 倍</strong>になる）
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="p-3 font-semibold border border-slate-200">$x$ の標準偏差 $s_x$</td>
+                            <td id="orig-std-x" class="p-3 border border-slate-200"></td>
+                            <td id="trans-std-x" class="p-3 border border-slate-200 font-bold text-emerald-700 bg-emerald-50/30"></td>
+                            <td class="p-3 border border-slate-200 text-xs text-slate-600">
+                                $s_{x'} = |a| \cdot s_x$ （加減算は無関係。広がり（幅）は <strong>$|a|$ 倍</strong>になる）
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="p-3 font-semibold border border-slate-200">共分散 $s_{xy}$</td>
+                            <td id="orig-cov" class="p-3 border border-slate-200"></td>
+                            <td id="trans-cov" class="p-3 border border-slate-200 font-bold text-emerald-700 bg-emerald-50/30"></td>
+                            <td class="p-3 border border-slate-200 text-xs text-slate-600">
+                                $s_{x'y'} = a \cdot c \cdot s_{xy}$ （両方の倍率の積 $a \cdot c$ が掛かる。平行移動は影響なし）
+                            </td>
+                        </tr>
+                        <tr class="bg-indigo-50/20">
+                            <td class="p-3 font-semibold border border-slate-200 text-indigo-900">相関係数 $r_{xy}$</td>
+                            <td id="orig-corr" class="p-3 border border-slate-200"></td>
+                            <td id="trans-corr" class="p-3 border border-slate-200 font-black text-indigo-700 bg-indigo-50/50"></td>
+                            <td class="p-3 border border-slate-200 text-xs text-slate-600">
+                                $r_{x'y'} = \frac{a \cdot c}{|a| \cdot |c|} \cdot r_{xy}$ （$a, c$ が同符号なら<strong>変化なし</strong>。片方が負なら<strong>傾きの正負が反転</strong>）
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Scatter Plot Visualization Area (Moved Below Comparison Table) -->
+            <div class="bg-slate-900 rounded-xl p-4 md:p-6 text-white shadow-inner">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 border-b border-slate-700 pb-3">
+                    <div>
+                        <h3 class="font-bold text-lg text-emerald-400 flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v16H4z"></path></svg>
+                            データの散布図（一次変換前後の比較）
+                        </h3>
+                        <p class="text-xs text-slate-400">
+                            青点：元のデータ $(x, y)$ ／ 緑点：変換後のデータ $(x', y')$ ／ 大きな点：平均の中心
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-4 text-xs">
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-indigo-500 inline-block"></span> 元のデータ</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-400 inline-block"></span> 変換後データ</span>
+                    </div>
+                </div>
+                <div class="relative w-full h-80 md:h-96">
+                    <canvas id="scatterChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // デフォルトデータ10対（合計: x=150→平均15, y=200→平均20）
+        const defaultData = [
+            { x: 10, y: 15 },
+            { x: 12, y: 18 },
+            { x: 13, y: 16 },
+            { x: 14, y: 22 },
+            { x: 15, y: 19 },
+            { x: 16, y: 21 },
+            { x: 17, y: 24 },
+            { x: 17, y: 20 },
+            { x: 18, y: 23 },
+            { x: 18, y: 22 }
+        ];
+
+        let currentData = JSON.parse(JSON.stringify(defaultData));
+        let scatterChart = null;
+
+        function initTable() {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+            currentData.forEach((d, idx) => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-slate-100 hover:bg-slate-50 transition';
+                tr.innerHTML = `
+                    <td class="py-1 px-2 border-r border-slate-100 text-slate-400 font-mono text-xs">${idx + 1}</td>
+                    <td class="py-1 px-2 border-r border-slate-100 bg-indigo-50/20">
+                        <input type="number" data-idx="${idx}" data-key="x" value="${d.x}" 
+                            class="data-input w-16 text-center py-0.5 border border-slate-200 rounded focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none font-semibold text-slate-800 text-xs md:text-sm">
+                    </td>
+                    <td class="py-1 px-2 border-r border-slate-100 bg-indigo-50/20">
+                        <input type="number" data-idx="${idx}" data-key="y" value="${d.y}" 
+                            class="data-input w-16 text-center py-0.5 border border-slate-200 rounded focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none font-semibold text-slate-800 text-xs md:text-sm">
+                    </td>
+                    <td class="py-1 px-2 border-r border-slate-100 text-slate-600 font-mono text-xs md:text-sm" id="dx-${idx}"></td>
+                    <td class="py-1 px-2 border-r border-slate-100 text-slate-600 font-mono text-xs md:text-sm" id="dy-${idx}"></td>
+                    <td class="py-1 px-2 border-r border-slate-100 text-slate-700 font-mono text-xs md:text-sm" id="dx2-${idx}"></td>
+                    <td class="py-1 px-2 border-r border-slate-100 text-slate-700 font-mono text-xs md:text-sm" id="dy2-${idx}"></td>
+                    <td class="py-1 px-2 text-slate-700 font-mono text-xs md:text-sm" id="dxy-${idx}"></td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Add event listeners to input fields
+            document.querySelectorAll('.data-input').forEach(input => {
+                input.addEventListener('input', (e) => {
+                    const idx = parseInt(e.target.dataset.idx);
+                    const key = e.target.dataset.key;
+                    const val = parseFloat(e.target.value) || 0;
+                    currentData[idx][key] = val;
+                    calculateAndRender();
+                });
+            });
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('scatterChart').getContext('2d');
+            scatterChart = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [
+                        {
+                            label: '元のデータ (x, y)',
+                            data: [],
+                            backgroundColor: '#6366f1',
+                            borderColor: '#818cf8',
+                            borderWidth: 1,
+                            pointRadius: 6,
+                            pointHoverRadius: 8
+                        },
+                        {
+                            label: '元の平均 (x̄, ȳ)',
+                            data: [],
+                            backgroundColor: '#312e81',
+                            borderColor: '#ffffff',
+                            borderWidth: 2,
+                            pointStyle: 'crossRot',
+                            pointRadius: 10,
+                            pointHoverRadius: 12
+                        },
+                        {
+                            label: '変換後のデータ (x\', y\')',
+                            data: [],
+                            backgroundColor: '#10b981',
+                            borderColor: '#34d399',
+                            borderWidth: 1,
+                            pointRadius: 6,
+                            pointHoverRadius: 8
+                        },
+                        {
+                            label: '変換後の平均 (x̄\', ȳ\')',
+                            data: [],
+                            backgroundColor: '#064e3b',
+                            borderColor: '#ffffff',
+                            borderWidth: 2,
+                            pointStyle: 'crossRot',
+                            pointRadius: 10,
+                            pointHoverRadius: 12
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: '#94a3b8' },
+                            title: { display: true, text: 'X 軸', color: '#cbd5e1' }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: '#94a3b8' },
+                            title: { display: true, text: 'Y 軸', color: '#cbd5e1' }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#f1f5f9', font: { size: 12 } }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: (${context.parsed.x.toFixed(2)}, ${context.parsed.y.toFixed(2)})`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function calculateAndRender() {
+            const N = currentData.length;
+
+            // 1. Calculate Sums & Means
+            const sumX = currentData.reduce((acc, d) => acc + d.x, 0);
+            const sumY = currentData.reduce((acc, d) => acc + d.y, 0);
+            const meanX = sumX / N;
+            const meanY = sumY / N;
+
+            let sumDx2 = 0;
+            let sumDy2 = 0;
+            let sumDxy = 0;
+
+            // 2. Calculate Row Deviations
+            currentData.forEach((d, idx) => {
+                const dx = d.x - meanX;
+                const dy = d.y - meanY;
+                const dx2 = dx * dx;
+                const dy2 = dy * dy;
+                const dxy = dx * dy;
+
+                sumDx2 += dx2;
+                sumDy2 += dy2;
+                sumDxy += dxy;
+
+                document.getElementById(`dx-${idx}`).textContent = dx.toFixed(2);
+                document.getElementById(`dy-${idx}`).textContent = dy.toFixed(2);
+                document.getElementById(`dx2-${idx}`).textContent = dx2.toFixed(2);
+                document.getElementById(`dy2-${idx}`).textContent = dy2.toFixed(2);
+                document.getElementById(`dxy-${idx}`).textContent = dxy.toFixed(2);
+            });
+
+            // 3. Populate Footer Totals & Averages
+            document.getElementById('sum-x').textContent = sumX.toFixed(2);
+            document.getElementById('sum-y').textContent = sumY.toFixed(2);
+            document.getElementById('sum-dx2').textContent = sumDx2.toFixed(2);
+            document.getElementById('sum-dy2').textContent = sumDy2.toFixed(2);
+            document.getElementById('sum-dxy').textContent = sumDxy.toFixed(2);
+
+            document.getElementById('avg-x').textContent = meanX.toFixed(2);
+            document.getElementById('avg-y').textContent = meanY.toFixed(2);
+            
+            const meanDx2 = sumDx2 / N; // Variance X
+            const meanDy2 = sumDy2 / N; // Variance Y
+            const meanDxy = sumDxy / N; // Covariance XY
+
+            document.getElementById('mean-dx2').textContent = meanDx2.toFixed(2);
+            document.getElementById('mean-dy2').textContent = meanDy2.toFixed(2);
+            document.getElementById('mean-dxy').textContent = meanDxy.toFixed(2);
+
+            // 4. Base Statistics
+            const varX = meanDx2;
+            const stdX = Math.sqrt(varX);
+            const varY = meanDy2;
+            const stdY = Math.sqrt(varY);
+            const cov = meanDxy;
+            const corr = (stdX > 0 && stdY > 0) ? (cov / (stdX * stdY)) : 0;
+
+            // Update Section 2 Cards
+            document.getElementById('stat-mean-x').textContent = meanX.toFixed(2);
+            document.getElementById('stat-var-x').textContent = varX.toFixed(2);
+            document.getElementById('stat-std-x').textContent = stdX.toFixed(2);
+
+            document.getElementById('stat-mean-y').textContent = meanY.toFixed(2);
+            document.getElementById('stat-var-y').textContent = varY.toFixed(2);
+            document.getElementById('stat-std-y').textContent = stdY.toFixed(2);
+
+            document.getElementById('stat-cov').textContent = cov.toFixed(2);
+            document.getElementById('stat-corr').textContent = corr.toFixed(4);
+
+            // 5. Linear Transformation Calculation ($x' = ax + b, y' = cy + d$)
+            const a = parseFloat(document.getElementById('input-a').value) || 0;
+            const b = parseFloat(document.getElementById('input-b').value) || 0;
+            const c = parseFloat(document.getElementById('input-c').value) || 0;
+            const d = parseFloat(document.getElementById('input-d').value) || 0;
+
+            // Transformed base stats
+            const transMeanX = a * meanX + b;
+            const transVarX = a * a * varX;
+            const transStdX = Math.abs(a) * stdX;
+
+            const transMeanY = c * meanY + d;
+            const transCov = a * c * cov;
+            const transCorr = (transStdX > 0 && (Math.abs(c) * stdY) > 0) ? (transCov / (transStdX * (Math.abs(c) * stdY))) : 0;
+
+            // Update Comparison Table
+            document.getElementById('orig-mean-x').textContent = meanX.toFixed(2);
+            document.getElementById('trans-mean-x').textContent = transMeanX.toFixed(2);
+
+            document.getElementById('orig-var-x').textContent = varX.toFixed(2);
+            document.getElementById('trans-var-x').textContent = transVarX.toFixed(2);
+
+            document.getElementById('orig-std-x').textContent = stdX.toFixed(2);
+            document.getElementById('trans-std-x').textContent = transStdX.toFixed(2);
+
+            document.getElementById('orig-cov').textContent = cov.toFixed(2);
+            document.getElementById('trans-cov').textContent = transCov.toFixed(2);
+
+            document.getElementById('orig-corr').textContent = corr.toFixed(4);
+            document.getElementById('trans-corr').textContent = transCorr.toFixed(4);
+
+            // 6. Update Chart Datasets
+            if (scatterChart) {
+                const origPoints = currentData.map(pt => ({ x: pt.x, y: pt.y }));
+                const transPoints = currentData.map(pt => ({ x: a * pt.x + b, y: c * pt.y + d }));
+
+                scatterChart.data.datasets[0].data = origPoints;
+                scatterChart.data.datasets[1].data = [{ x: meanX, y: meanY }];
+                scatterChart.data.datasets[2].data = transPoints;
+                scatterChart.data.datasets[3].data = [{ x: transMeanX, y: transMeanY }];
+                
+                scatterChart.update();
+            }
+
+            // Re-render MathJax if available
+            if (window.MathJax && MathJax.typesetPromise) {
+                MathJax.typesetPromise();
+            }
+        }
+
+        // Event Listeners for Reset & Random Generation (Maintaining Average = 15, 20)
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            currentData = JSON.parse(JSON.stringify(defaultData));
+            initTable();
+            calculateAndRender();
+        });
+
+        document.getElementById('btn-random').addEventListener('click', () => {
+            // Generate random values with Mean(x)=15, Mean(y)=20
+            let rawX = Array.from({length: 10}, () => Math.floor(Math.random() * 20) + 5);
+            let rawY = Array.from({length: 10}, () => Math.floor(Math.random() * 20) + 10);
+            
+            let sumX = rawX.reduce((a, b) => a + b, 0);
+            let sumY = rawY.reduce((a, b) => a + b, 0);
+
+            // Adjust last elements to match target sum (150 and 200)
+            let diffX = 150 - sumX;
+            let diffY = 200 - sumY;
+            
+            rawX[9] += diffX;
+            rawY[9] += diffY;
+
+            currentData = rawX.map((xVal, i) => ({ x: xVal, y: rawY[i] }));
+            initTable();
+            calculateAndRender();
+        });
+
+        // Event Listeners for Linear Transformation Parameters
+        ['input-a', 'input-b', 'input-c', 'input-d'].forEach(id => {
+            document.getElementById(id).addEventListener('input', calculateAndRender);
+        });
+
+        // Initialize on Load
+        window.addEventListener('DOMContentLoaded', () => {
+            initTable();
+            initChart();
+            calculateAndRender();
+        });
+    </script>
+</body>
+</html>
