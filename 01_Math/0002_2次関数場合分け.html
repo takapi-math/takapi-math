@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2次関数の最大・最小 視覚化ツール</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- KaTeX for rendered math formulas -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+        }
+        /* Custom styling for sleek range slider */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #4f46e5;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(79, 70, 229, 0.4);
+            transition: transform 0.1s ease;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-slate-800/80 backdrop-blur border-b border-slate-700/60 sticky top-0 z-30 py-3 px-4 sm:px-6">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-indigo-600/30 border border-indigo-500/40 rounded-lg text-indigo-400">
+                    <i class="fa-solid me-1 fa-chart-line text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg sm:text-xl text-white flex items-center gap-2">
+                        2次関数の最大・最小 視覚化ツール
+                    </h1>
+                    <p class="text-xs text-slate-400">
+                        対象関数: <span id="header-math" class="text-indigo-300 font-semibold">y = x^2 - 2x + 3</span> (定式化: <span id="header-math-transformed" class="text-amber-300">y = (x-1)^2 + 2</span>)
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-slate-400 bg-slate-900/60 px-3 py-1.5 rounded-lg border border-slate-700/50">
+                <i class="fa-solid fa-circle-info text-indigo-400"></i>
+                <span>定義域: <strong class="text-indigo-300 font-mono">k ≦ x ≦ k + 4</strong> (区間の幅は常に 4)</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left Panel: Interactive Graphic Canvas (lg:col-span-7) -->
+        <div class="lg:col-span-7 flex flex-col gap-4">
+            <!-- Canvas Container -->
+            <div class="relative bg-slate-800/90 border border-slate-700/80 rounded-2xl shadow-xl overflow-hidden flex flex-col">
+                <div class="flex items-center justify-between px-4 py-3 bg-slate-800 border-b border-slate-700/60 text-xs">
+                    <span class="font-medium text-slate-300 flex items-center gap-2">
+                        <i class="fa-solid fa-display text-indigo-400"></i> グラフ描画エリア
+                    </span>
+                    <div class="flex items-center gap-3">
+                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> 最小値</span>
+                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span> 最大値</span>
+                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-amber-400 inline-block"></span> 中央 (x=k+2)</span>
+                    </div>
+                </div>
+                
+                <div class="relative w-full aspect-[4/3] bg-slate-950 flex items-center justify-center p-2">
+                    <canvas id="graphCanvas" class="w-full h-full block rounded-lg cursor-crosshair"></canvas>
+                    
+                    <!-- Overlay Info Badge on Canvas -->
+                    <div class="absolute top-4 left-4 bg-slate-900/80 backdrop-blur-md border border-slate-700/80 rounded-xl p-3 text-xs space-y-1 text-slate-200 shadow-lg">
+                        <div class="text-indigo-300 font-bold flex items-center gap-1.5">
+                            <i class="fa-solid fa-sliders"></i> 現在のパラメータ
+                        </div>
+                        <div>k = <span id="badge-k" class="font-mono font-bold text-amber-400 text-sm">0.00</span></div>
+                        <div>定義域: <span id="badge-domain" class="font-mono font-bold text-slate-100">0.00 ≦ x ≦ 4.00</span></div>
+                        <div>区間の中央: <span id="badge-mid" class="font-mono font-bold text-amber-300">x = 2.00</span></div>
+                    </div>
+                </div>
+
+                <!-- Control Bar under Canvas -->
+                <div class="p-4 bg-slate-800/60 border-t border-slate-700/60 flex flex-col gap-3">
+                    <div class="flex items-center justify-between gap-4">
+                        <label for="kSlider" class="text-sm font-semibold text-slate-200 whitespace-nowrap flex items-center gap-2">
+                            <span>k の値:</span>
+                            <span id="kValDisplay" class="font-mono text-xl text-indigo-400 font-bold bg-indigo-950/80 px-2.5 py-0.5 rounded border border-indigo-700/50">-1.00</span>
+                        </label>
+                        <div class="flex items-center gap-2">
+                            <button id="btnPlay" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shadow">
+                                <i class="fa-solid fa-play" id="playIcon"></i> <span id="playText">自動再生</span>
+                            </button>
+                            <button id="btnReset" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all">
+                                <i class="fa-solid fa-rotate-left"></i> リセット
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Range Slider -->
+                    <div class="space-y-1">
+                        <input type="range" id="kSlider" min="-5.0" max="3.0" step="0.05" value="-1.0" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                        <div class="flex justify-between text-[10px] text-slate-400 font-mono px-1">
+                            <span>k = -5.0</span>
+                            <span>k = -3.0 (右端=軸)</span>
+                            <span>k = -1.0 (中央=軸)</span>
+                            <span>k = 1.0 (左端=軸)</span>
+                            <span>k = 3.0</span>
+                        </div>
+                    </div>
+
+                    <!-- Quick Preset Jump Buttons -->
+                    <div class="pt-2 border-t border-slate-700/50">
+                        <div class="text-xs text-slate-400 mb-1.5 font-medium flex items-center gap-1">
+                            <i class="fa-solid fa-bookmark text-indigo-400"></i> 重要な境目値 (タップで選択):
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-5 gap-1.5 text-xs">
+                            <button class="preset-btn bg-slate-700/70 hover:bg-indigo-600/60 border border-slate-600/50 rounded-lg p-1.5 text-center transition-all" data-k="-4.0">
+                                <div class="font-mono text-slate-200">k = -4.0</div>
+                                <div class="text-[10px] text-slate-400">軸は右外</div>
+                            </button>
+                            <button class="preset-btn bg-slate-700/70 hover:bg-indigo-600/60 border border-slate-600/50 rounded-lg p-1.5 text-center transition-all" data-k="-3.0">
+                                <div class="font-mono text-emerald-400 font-bold">k = -3.0</div>
+                                <div class="text-[10px] text-emerald-300">右端が軸 (x=1)</div>
+                            </button>
+                            <button class="preset-btn bg-slate-700/70 hover:bg-indigo-600/60 border border-slate-600/50 rounded-lg p-1.5 text-center transition-all" data-k="-1.0">
+                                <div class="font-mono text-rose-400 font-bold">k = -1.0</div>
+                                <div class="text-[10px] text-rose-300">中央が軸 (x=1)</div>
+                            </button>
+                            <button class="preset-btn bg-slate-700/70 hover:bg-indigo-600/60 border border-slate-600/50 rounded-lg p-1.5 text-center transition-all" data-k="1.0">
+                                <div class="font-mono text-emerald-400 font-bold">k = 1.0</div>
+                                <div class="text-[10px] text-emerald-300">左端が軸 (x=1)</div>
+                            </button>
+                            <button class="preset-btn bg-slate-700/70 hover:bg-indigo-600/60 border border-slate-600/50 rounded-lg p-1.5 text-center transition-all" data-k="2.0">
+                                <div class="font-mono text-slate-200">k = 2.0</div>
+                                <div class="text-[10px] text-slate-400">軸は左外</div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Mathematical Explanation & Analysis (lg:col-span-5) -->
+        <div class="lg:col-span-5 flex flex-col gap-4">
+            
+            <!-- Realtime Value Cards -->
+            <div class="grid grid-cols-2 gap-3">
+                <!-- Minimum Card -->
+                <div class="bg-slate-800/90 border border-emerald-500/40 rounded-2xl p-4 shadow-lg flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-down"></i> 最小値 (Min)
+                        </span>
+                        <span id="min-location-tag" class="text-[10px] px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/50 font-medium">
+                            頂点
+                        </span>
+                    </div>
+                    <div class="mt-1">
+                        <div class="text-2xl font-bold font-mono text-emerald-300" id="minValueDisplay">y = 2.00</div>
+                        <div class="text-xs text-slate-400 mt-1" id="minXDisplay">x = 1.00 のとき</div>
+                    </div>
+                </div>
+
+                <!-- Maximum Card -->
+                <div class="bg-slate-800/90 border border-rose-500/40 rounded-2xl p-4 shadow-lg flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-semibold text-rose-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-up"></i> 最大値 (Max)
+                        </span>
+                        <span id="max-location-tag" class="text-[10px] px-2 py-0.5 rounded bg-rose-950/80 text-rose-300 border border-rose-800/50 font-medium">
+                            左端 & 右端
+                        </span>
+                    </div>
+                    <div class="mt-1">
+                        <div class="text-2xl font-bold font-mono text-rose-300" id="maxValueDisplay">y = 6.00</div>
+                        <div class="text-xs text-slate-400 mt-1" id="maxXDisplay">x = -1, 3 のとき</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Logic Explanations -->
+            <div class="bg-slate-800/90 border border-slate-700/80 rounded-2xl p-5 shadow-xl flex-1 flex flex-col gap-4">
+                <h2 class="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-700/60 pb-3">
+                    <i class="fa-solid fa-brain text-indigo-400"></i> 最大・最小の判定ロジック解説
+                </h2>
+
+                <!-- Minimum Logic Explanation -->
+                <div class="bg-slate-900/70 border border-slate-700/50 rounded-xl p-3.5 space-y-1.5">
+                    <div class="flex items-center gap-2 text-xs font-semibold text-emerald-400">
+                        <i class="fa-solid fa-scale-balanced"></i> 【最小値の決め手】 軸 (x = 1) と 区間 の位置関係
+                    </div>
+                    <p id="minLogicText" class="text-xs text-slate-300 leading-relaxed font-sans">
+                        <!-- Dynamic text generated by JS -->
+                    </p>
+                </div>
+
+                <!-- Maximum Logic Explanation -->
+                <div class="bg-slate-900/70 border border-slate-700/50 rounded-xl p-3.5 space-y-1.5">
+                    <div class="flex items-center gap-2 text-xs font-semibold text-rose-400">
+                        <i class="fa-solid fa-arrows-left-right-to-line"></i> 【最大値の決め手】 区間の中央 (x = k + 2) と 軸 (x = 1) の比較
+                    </div>
+                    <p id="maxLogicText" class="text-xs text-slate-300 leading-relaxed font-sans">
+                        <!-- Dynamic text generated by JS -->
+                    </p>
+                </div>
+
+                <!-- Case Classifications List -->
+                <div class="space-y-2 mt-1">
+                    <div class="text-xs font-bold text-slate-300 flex items-center justify-between">
+                        <span>全 5 パターンの場合分け</span>
+                        <span class="text-[10px] text-slate-400 font-normal">現在の状態を自動ハイライト</span>
+                    </div>
+
+                    <div class="space-y-1.5 text-xs" id="caseCardsContainer">
+                        <!-- Case 1 -->
+                        <div id="case-card-1" class="case-card p-2.5 rounded-lg border border-slate-700/60 bg-slate-900/40 transition-all flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="case-badge w-5 h-5 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center text-[10px] font-bold">1</span>
+                                <div>
+                                    <span class="font-mono font-semibold text-slate-200">k &lt; -3</span>
+                                    <span class="text-slate-400 text-[11px] ml-1">(軸が区間の右外)</span>
+                                </div>
+                            </div>
+                            <div class="text-[11px] text-slate-400 font-mono">Min: 右端 | Max: 左端</div>
+                        </div>
+
+                        <!-- Case 2 -->
+                        <div id="case-card-2" class="case-card p-2.5 rounded-lg border border-slate-700/60 bg-slate-900/40 transition-all flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="case-badge w-5 h-5 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center text-[10px] font-bold">2</span>
+                                <div>
+                                    <span class="font-mono font-semibold text-slate-200">-3 ≦ k &lt; -1</span>
+                                    <span class="text-slate-400 text-[11px] ml-1">(軸は内・中央より右)</span>
+                                </div>
+                            </div>
+                            <div class="text-[11px] text-slate-400 font-mono">Min: 頂点 | Max: 左端</div>
+                        </div>
+
+                        <!-- Case 3 -->
+                        <div id="case-card-3" class="case-card p-2.5 rounded-lg border border-slate-700/60 bg-slate-900/40 transition-all flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="case-badge w-5 h-5 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center text-[10px] font-bold">3</span>
+                                <div>
+                                    <span class="font-mono font-semibold text-amber-300">k = -1</span>
+                                    <span class="text-slate-400 text-[11px] ml-1">(軸が区間の中央)</span>
+                                </div>
+                            </div>
+                            <div class="text-[11px] text-slate-400 font-mono">Min: 頂点 | Max: 両端</div>
+                        </div>
+
+                        <!-- Case 4 -->
+                        <div id="case-card-4" class="case-card p-2.5 rounded-lg border border-slate-700/60 bg-slate-900/40 transition-all flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="case-badge w-5 h-5 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center text-[10px] font-bold">4</span>
+                                <div>
+                                    <span class="font-mono font-semibold text-slate-200">-1 &lt; k ≦ 1</span>
+                                    <span class="text-slate-400 text-[11px] ml-1">(軸は内・中央より左)</span>
+                                </div>
+                            </div>
+                            <div class="text-[11px] text-slate-400 font-mono">Min: 頂点 | Max: 右端</div>
+                        </div>
+
+                        <!-- Case 5 -->
+                        <div id="case-card-5" class="case-card p-2.5 rounded-lg border border-slate-700/60 bg-slate-900/40 transition-all flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="case-badge w-5 h-5 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center text-[10px] font-bold">5</span>
+                                <div>
+                                    <span class="font-mono font-semibold text-slate-200">k &gt; 1</span>
+                                    <span class="text-slate-400 text-[11px] ml-1">(軸が区間の左外)</span>
+                                </div>
+                            </div>
+                            <div class="text-[11px] text-slate-400 font-mono">Min: 左端 | Max: 右端</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        /**
+         * Mathematical Quadratic Function & Visualization Controller
+         * Function: f(x) = x^2 - 2x + 3 = (x - 1)^2 + 2
+         * Domain: k <= x <= k + 4
+         */
+
+        // Function definition
+        function f(x) {
+            return x * x - 2 * x + 3;
+        }
+
+        // Global State Variables
+        let k = -1.0;
+        let isPlaying = false;
+        let playInterval = null;
+
+        // DOM elements
+        const canvas = document.getElementById('graphCanvas');
+        const ctx = canvas.getContext('2d');
+        const kSlider = document.getElementById('kSlider');
+        const kValDisplay = document.getElementById('kValDisplay');
+        const badgeK = document.getElementById('badge-k');
+        const badgeDomain = document.getElementById('badge-domain');
+        const badgeMid = document.getElementById('badge-mid');
+
+        const minValueDisplay = document.getElementById('minValueDisplay');
+        const minXDisplay = document.getElementById('minXDisplay');
+        const maxValueDisplay = document.getElementById('maxValueDisplay');
+        const maxXDisplay = document.getElementById('maxXDisplay');
+
+        const minLocationTag = document.getElementById('min-location-tag');
+        const maxLocationTag = document.getElementById('max-location-tag');
+
+        const minLogicText = document.getElementById('minLogicText');
+        const maxLogicText = document.getElementById('maxLogicText');
+
+        const btnPlay = document.getElementById('btnPlay');
+        const playIcon = document.getElementById('playIcon');
+        const playText = document.getElementById('playText');
+        const btnReset = document.getElementById('btnReset');
+
+        // Coordinate transformation settings
+        // Graph view bounds: x in [-6, 8], y in [-2, 32]
+        const viewXMin = -6;
+        const viewXMax = 8;
+        const viewYMin = -2;
+        const viewYMax = 32;
+
+        function getCanvasSize() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            return { width: rect.width, height: rect.height };
+        }
+
+        function resizeCanvas() {
+            const { width, height } = getCanvasSize();
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            ctx.scale(dpr, dpr);
+            drawGraph();
+        }
+
+        // Convert Math X to Screen Canvas X
+        function toScreenX(x, width) {
+            return ((x - viewXMin) / (viewXMax - viewXMin)) * width;
+        }
+
+        // Convert Math Y to Screen Canvas Y (inverted Y axis)
+        function toScreenY(y, height) {
+            return height - ((y - viewYMin) / (viewYMax - viewYMin)) * height;
+        }
+
+        // Render main visualization
+        function drawGraph() {
+            const { width, height } = getCanvasSize();
+            ctx.clearRect(0, 0, width, height);
+
+            // 1. Draw Grid Lines
+            ctx.strokeStyle = '#1e293b'; // slate-800
+            ctx.lineWidth = 1;
+
+            // Vertical grid lines
+            for (let x = Math.ceil(viewXMin); x <= viewXMax; x++) {
+                const sx = toScreenX(x, width);
+                ctx.beginPath();
+                ctx.moveTo(sx, 0);
+                ctx.lineTo(sx, height);
+                ctx.stroke();
+            }
+
+            // Horizontal grid lines
+            for (let y = 0; y <= viewYMax; y += 5) {
+                const sy = toScreenY(y, height);
+                ctx.beginPath();
+                ctx.moveTo(0, sy);
+                ctx.lineTo(width, sy);
+                ctx.stroke();
+            }
+
+            // 2. Main Axes (X and Y axis)
+            ctx.strokeStyle = '#64748b'; // slate-500
+            ctx.lineWidth = 1.5;
+
+            // X Axis (y = 0)
+            const sy0 = toScreenY(0, height);
+            ctx.beginPath();
+            ctx.moveTo(0, sy0);
+            ctx.lineTo(width, sy0);
+            ctx.stroke();
+
+            // Y Axis (x = 0)
+            const sx0 = toScreenX(0, width);
+            ctx.beginPath();
+            ctx.moveTo(sx0, 0);
+            ctx.lineTo(sx0, height);
+            ctx.stroke();
+
+            // Axis Tick Labels
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '10px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            for (let x = Math.ceil(viewXMin); x <= viewXMax; x += 2) {
+                if (x === 0) continue;
+                const sx = toScreenX(x, width);
+                ctx.fillText(x.toString(), sx, sy0 + 14);
+            }
+            ctx.textAlign = 'right';
+            for (let y = 5; y <= viewYMax; y += 5) {
+                const sy = toScreenY(y, height);
+                ctx.fillText(y.toString(), sx0 - 6, sy + 3);
+            }
+
+            // 3. Highlight Domain Band [k, k+4]
+            const xLeft = k;
+            const xRight = k + 4;
+            const sxLeft = toScreenX(xLeft, width);
+            const sxRight = toScreenX(xRight, width);
+
+            ctx.fillStyle = 'rgba(79, 70, 229, 0.08)'; // Indigo domain shade
+            ctx.fillRect(sxLeft, 0, sxRight - sxLeft, height);
+
+            // Domain Boundary Lines (x = k and x = k+4)
+            ctx.strokeStyle = '#6366f1'; // Indigo-500
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 4]);
+
+            // x = k
+            ctx.beginPath();
+            ctx.moveTo(sxLeft, 0);
+            ctx.lineTo(sxLeft, height);
+            ctx.stroke();
+
+            // x = k+4
+            ctx.beginPath();
+            ctx.moveTo(sxRight, 0);
+            ctx.lineTo(sxRight, height);
+            ctx.stroke();
+
+            ctx.setLineDash([]); // Reset dashed lines
+
+            // 4. Draw Secondary Center Line x = k+2
+            const xMid = k + 2;
+            const sxMid = toScreenX(xMid, width);
+            ctx.strokeStyle = '#f59e0b'; // Amber-500
+            ctx.lineWidth = 1.2;
+            ctx.setLineDash([2, 3]);
+            ctx.beginPath();
+            ctx.moveTo(sxMid, 0);
+            ctx.lineTo(sxMid, height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 5. Draw Axis of Symmetry x = 1
+            const sxAxis = toScreenX(1, width);
+            ctx.strokeStyle = '#38bdf8'; // Sky-400
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 4]);
+            ctx.beginPath();
+            ctx.moveTo(sxAxis, 0);
+            ctx.lineTo(sxAxis, height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Label for Axis of Symmetry x = 1
+            ctx.fillStyle = '#38bdf8';
+            ctx.font = 'bold 11px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('軸 x = 1', sxAxis, 20);
+
+            // Label for Domain Center x = k+2
+            ctx.fillStyle = '#f59e0b';
+            ctx.font = '10px Inter, sans-serif';
+            ctx.fillText('中央 x = k+2', sxMid, height - 12);
+
+            // 6. Draw Full Parabola y = x^2 - 2x + 3 (Dotted/Thin Gray)
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            let started = false;
+            for (let px = 0; px <= width; px += 2) {
+                const mathX = viewXMin + (px / width) * (viewXMax - viewXMin);
+                const mathY = f(mathX);
+                const py = toScreenY(mathY, height);
+                if (!started) {
+                    ctx.moveTo(px, py);
+                    started = true;
+                } else {
+                    ctx.lineTo(px, py);
+                }
+            }
+            ctx.stroke();
+
+            // 7. Draw Active Parabola Arc in Interval [k, k+4] (Bold Glow Line)
+            ctx.strokeStyle = '#a855f7'; // Purple glow
+            ctx.lineWidth = 4.5;
+            ctx.beginPath();
+            started = false;
+
+            const stepCount = 100;
+            for (let i = 0; i <= stepCount; i++) {
+                const mathX = xLeft + (i / stepCount) * (xRight - xLeft);
+                const mathY = f(mathX);
+                const px = toScreenX(mathX, width);
+                const py = toScreenY(mathY, height);
+                if (!started) {
+                    ctx.moveTo(px, py);
+                    started = true;
+                } else {
+                    ctx.lineTo(px, py);
+                }
+            }
+            ctx.stroke();
+
+            // 8. Determine and Draw Min / Max Points
+            const { minPoint, maxPoint, isMaxBoth } = calculateMinMax(k);
+
+            // Function to draw labeled points
+            function drawPoint(pt, color, labelText, yVal) {
+                const px = toScreenX(pt.x, width);
+                const py = toScreenY(pt.y, height);
+
+                // Dashed guides to axes
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 1;
+                ctx.setLineDash([3, 3]);
+                
+                // Guide to X axis
+                ctx.beginPath();
+                ctx.moveTo(px, py);
+                ctx.lineTo(px, sy0);
+                ctx.stroke();
+
+                // Guide to Y axis
+                ctx.beginPath();
+                ctx.moveTo(px, py);
+                ctx.lineTo(sx0, py);
+                ctx.stroke();
+
+                ctx.setLineDash([]);
+
+                // Outer Glowing Ring
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(px, py, 7, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#0f172a';
+                ctx.beginPath();
+                ctx.arc(px, py, 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Text tag on graph
+                ctx.fillStyle = color;
+                ctx.font = 'bold 11px Inter, sans-serif';
+                ctx.textAlign = pt.x >= 1 ? 'left' : 'right';
+                const offsetX = pt.x >= 1 ? 10 : -10;
+                ctx.fillText(`${labelText} (${pt.x.toFixed(1)}, ${pt.y.toFixed(1)})`, px + offsetX, py - 6);
+            }
+
+            // Draw Minimum Point
+            drawPoint(minPoint, '#10b981', '最小', minPoint.y);
+
+            // Draw Maximum Point(s)
+            if (isMaxBoth) {
+                drawPoint({ x: k, y: f(k) }, '#f43f5e', '最大(左)', f(k));
+                drawPoint({ x: k + 4, y: f(k + 4) }, '#f43f5e', '最大(右)', f(k + 4));
+            } else {
+                drawPoint(maxPoint, '#f43f5e', '最大', maxPoint.y);
+            }
+
+            // Vertex Point (1, 2)
+            const vX = toScreenX(1, width);
+            const vY = toScreenY(2, height);
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath();
+            ctx.arc(vX, vY, 4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function calculateMinMax(kVal) {
+            const leftX = kVal;
+            const rightX = kVal + 4;
+            const midX = kVal + 2;
+
+            let minPoint = { x: 0, y: 0 };
+            let maxPoint = { x: 0, y: 0 };
+            let isMaxBoth = false;
+
+            // Minimum Calculation:
+            // Axis x = 1
+            if (rightX < 1) {
+                // 1) Axis is to the right of interval
+                minPoint = { x: rightX, y: f(rightX) };
+            } else if (leftX <= 1 && 1 <= rightX) {
+                // 2) Axis is inside interval -> Vertex is Minimum
+                minPoint = { x: 1, y: 2 };
+            } else {
+                // 3) Axis is to the left of interval
+                minPoint = { x: leftX, y: f(leftX) };
+            }
+
+            // Maximum Calculation:
+            // Compare Domain Center (midX = k+2) with Axis (1)
+            const eps = 0.0001;
+            if (Math.abs(midX - 1) < eps) {
+                // Midpoint coincides with axis (k = -1)
+                isMaxBoth = true;
+                maxPoint = { x: leftX, y: f(leftX) };
+            } else if (midX < 1) {
+                // Midpoint is left of axis (k < -1) -> Left end is further from axis
+                maxPoint = { x: leftX, y: f(leftX) };
+            } else {
+                // Midpoint is right of axis (k > -1) -> Right end is further from axis
+                maxPoint = { x: rightX, y: f(rightX) };
+            }
+
+            return { minPoint, maxPoint, isMaxBoth };
+        }
+
+        function updateUI() {
+            // Update Slider and badges
+            kValDisplay.innerText = k.toFixed(2);
+            badgeK.innerText = k.toFixed(2);
+            badgeDomain.innerText = `${k.toFixed(2)} ≦ x ≦ ${(k + 4).toFixed(2)}`;
+            badgeMid.innerText = `x = ${(k + 2).toFixed(2)}`;
+
+            const { minPoint, maxPoint, isMaxBoth } = calculateMinMax(k);
+
+            // Update Min Card
+            minValueDisplay.innerText = `y = ${minPoint.y.toFixed(2)}`;
+            minXDisplay.innerText = `x = ${minPoint.x.toFixed(2)} のとき`;
+
+            if (k < -3) {
+                minLocationTag.innerText = '右端 (x = k+4)';
+                minLogicText.innerHTML = `軸 <span class="text-sky-300 font-mono">x = 1</span> が区間の<strong>右外</strong> (<span class="text-amber-300 font-mono">1 &gt; k+4</span>) にあるため、関数は区間内で単調減少します。したがって<strong class="text-emerald-400">右端 x = k+4 = ${(k+4).toFixed(2)}</strong> で最小となります。`;
+            } else if (k <= 1) {
+                minLocationTag.innerText = '頂点 (x = 1)';
+                minLogicText.innerHTML = `軸 <span class="text-sky-300 font-mono">x = 1</span> が区間内 (<span class="text-amber-300 font-mono">${k.toFixed(2)} ≦ 1 ≦ ${(k+4).toFixed(2)}</span>) に含まれるため、放物線の谷底である<strong class="text-emerald-400">頂点 x = 1</strong> で最小値 <span class="text-emerald-300 font-bold font-mono">2</span> を取ります。`;
+            } else {
+                minLocationTag.innerText = '左端 (x = k)';
+                minLogicText.innerHTML = `軸 <span class="text-sky-300 font-mono">x = 1</span> が区間の<strong>左外</strong> (<span class="text-amber-300 font-mono">1 &lt; k</span>) にあるため、関数は区間内で単調増加します。したがって<strong class="text-emerald-400">左端 x = k = ${k.toFixed(2)}</strong> で最小となります。`;
+            }
+
+            // Update Max Card
+            if (isMaxBoth) {
+                maxValueDisplay.innerText = `y = ${maxPoint.y.toFixed(2)}`;
+                maxXDisplay.innerText = `x = ${k.toFixed(2)}, ${(k+4).toFixed(2)} の両端`;
+                maxLocationTag.innerText = '両端 (x = k, k+4)';
+                maxLogicText.innerHTML = `区間の中央 <span class="text-amber-300 font-mono">x = k+2 = 1</span> が軸 <span class="text-sky-300 font-mono">x = 1</span> と完全に一致しています。左右の端が軸から等距離 (距離2) にあるため、<strong class="text-rose-400">両端 (x = -1, 3) で同時に最大値 6</strong> を取ります。`;
+            } else {
+                maxValueDisplay.innerText = `y = ${maxPoint.y.toFixed(2)}`;
+                maxXDisplay.innerText = `x = ${maxPoint.x.toFixed(2)} のとき`;
+
+                if (k < -1) {
+                    maxLocationTag.innerText = '左端 (x = k)';
+                    maxLogicText.innerHTML = `区間の中央 <span class="text-amber-300 font-mono">x = k+2 = ${(k+2).toFixed(2)}</span> が 軸 <span class="text-sky-300 font-mono">x = 1</span> より<strong>左</strong>に位置しています。軸からより遠い<strong class="text-rose-400">左端 x = k = ${k.toFixed(2)}</strong> の方が高くなるため、ここで最大となります。`;
+                } else {
+                    maxLocationTag.innerText = '右端 (x = k+4)';
+                    maxLogicText.innerHTML = `区間の中央 <span class="text-amber-300 font-mono">x = k+2 = ${(k+2).toFixed(2)}</span> が 軸 <span class="text-sky-300 font-mono">x = 1</span> より<strong>右</strong>に位置しています。軸からより遠い<strong class="text-rose-400">右端 x = k+4 = ${(k+4).toFixed(2)}</strong> の方が高くなるため、ここで最大となります。`;
+                }
+            }
+
+            // Highlight Active Case Card (1 to 5)
+            let activeCaseIndex = 1;
+            const eps = 0.0001;
+
+            if (k < -3) activeCaseIndex = 1;
+            else if (k >= -3 && k < -1 - eps) activeCaseIndex = 2;
+            else if (Math.abs(k - (-1)) <= eps) activeCaseIndex = 3;
+            else if (k > -1 + eps && k <= 1) activeCaseIndex = 4;
+            else activeCaseIndex = 5;
+
+            for (let i = 1; i <= 5; i++) {
+                const card = document.getElementById(`case-card-${i}`);
+                if (i === activeCaseIndex) {
+                    card.className = 'case-card p-2.5 rounded-lg border-2 border-indigo-500 bg-indigo-950/60 shadow-lg transition-all flex items-center justify-between scale-[1.02]';
+                } else {
+                    card.className = 'case-card p-2.5 rounded-lg border border-slate-700/60 bg-slate-900/40 opacity-60 transition-all flex items-center justify-between';
+                }
+            }
+
+            // Re-render Graph
+            drawGraph();
+        }
+
+        // Event Listeners
+        kSlider.addEventListener('input', (e) => {
+            k = parseFloat(e.target.value);
+            updateUI();
+        });
+
+        // Preset buttons
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const targetK = parseFloat(btn.getAttribute('data-k'));
+                k = targetK;
+                kSlider.value = k;
+                if (isPlaying) stopPlay();
+                updateUI();
+            });
+        });
+
+        // Play / Pause Animation
+        function startPlay() {
+            isPlaying = true;
+            playIcon.className = 'fa-solid fa-pause';
+            playText.innerText = '一時停止';
+            let speed = 0.02;
+
+            playInterval = setInterval(() => {
+                k += speed;
+                if (k > 3.0) {
+                    k = -5.0;
+                }
+                kSlider.value = k;
+                updateUI();
+            }, 30);
+        }
+
+        function stopPlay() {
+            isPlaying = false;
+            playIcon.className = 'fa-solid fa-play';
+            playText.innerText = '自動再生';
+            if (playInterval) clearInterval(playInterval);
+        }
+
+        btnPlay.addEventListener('click', () => {
+            if (isPlaying) {
+                stopPlay();
+            } else {
+                startPlay();
+            }
+        });
+
+        btnReset.addEventListener('click', () => {
+            if (isPlaying) stopPlay();
+            k = -1.0;
+            kSlider.value = k;
+            updateUI();
+        });
+
+        // Window resize event handling
+        window.addEventListener('resize', resizeCanvas);
+
+        // KaTeX Math Rendering Init
+        window.addEventListener('DOMContentLoaded', () => {
+            if (window.katex) {
+                katex.render("y = x^2 - 2x + 3", document.getElementById('header-math'), { throwOnError: false });
+                katex.render("y = (x-1)^2 + 2", document.getElementById('header-math-transformed'), { throwOnError: false });
+            }
+            resizeCanvas();
+            updateUI();
+        });
+    </script>
+</body>
+</html>

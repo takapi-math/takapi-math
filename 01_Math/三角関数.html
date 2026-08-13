@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三角関数のグラフとパラメータの視覚的理解</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome CDN for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- KaTeX CDN for beautiful math formula rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        /* Custom range slider styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: #334155;
+            border-radius: 4px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #38bdf8;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -6px;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+            transition: transform 0.1s ease, background-color 0.1s ease;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+            background: #7dd3fc;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+    <!-- ヘッダー -->
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-sky-500/10 border border-sky-500/30 rounded-xl text-sky-400">
+                    <i class="fa-solid fa-wave-square text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg text-slate-100 flex items-center gap-2">
+                        三角関数のグラフとパラメータ
+                        <span class="text-xs font-normal px-2 py-0.5 bg-sky-500/20 text-sky-300 border border-sky-500/30 rounded-full">インタラクティブ教材</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">パラメータ $A, k, \alpha, B$ によるグラフの変形・伸縮・平行移動をリアルタイム実験</p>
+                </div>
+            </div>
+
+            <!-- 関数選択タブ -->
+            <div class="flex bg-slate-800/80 p-1 rounded-xl border border-slate-700/60">
+                <button id="btn-sin" onclick="setFunction('sin')" class="px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 bg-sky-500 text-white shadow-md">
+                    $\sin$ (正弦)
+                </button>
+                <button id="btn-cos" onclick="setFunction('cos')" class="px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 text-slate-400 hover:text-white">
+                    $\cos$ (余弦)
+                </button>
+                <button id="btn-tan" onclick="setFunction('tan')" class="px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 text-slate-400 hover:text-white">
+                    $\tan$ (正接)
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="max-w-7xl mx-auto w-full p-4 md:p-6 flex-grow grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- 左〜中央: キャンバス & 設定エリア (8/12) -->
+        <div class="lg:col-span-7 xl:col-span-8 flex flex-col gap-4">
+            
+            <!-- 数式表示カード -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-xl">
+                <div class="flex items-center gap-3">
+                    <span class="text-xs text-slate-400 uppercase tracking-wider font-semibold">現在の関数式:</span>
+                    <div id="latex-formula" class="text-lg md:text-xl font-mono text-sky-300 bg-slate-950 px-4 py-2 rounded-xl border border-slate-800">
+                        <!-- KaTeXで動的描画 -->
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button onclick="resetParams()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg border border-slate-700 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-rotate-left"></i> リセット
+                    </button>
+                </div>
+            </div>
+
+            <!-- Canvas コンテナ -->
+            <div class="relative bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex-grow flex flex-col min-h-[380px] md:min-h-[460px]">
+                <canvas id="graphCanvas" class="w-full h-full flex-grow block cursor-crosshair"></canvas>
+                
+                <!-- キャンバス上の凡例・ガイド表示切替 -->
+                <div class="absolute bottom-3 left-3 right-3 flex flex-wrap justify-between items-center gap-2 pointer-events-none">
+                    <div class="flex items-center gap-3 bg-slate-900/90 backdrop-blur border border-slate-800 px-3 py-1.5 rounded-xl text-xs text-slate-300 pointer-events-auto">
+                        <span class="flex items-center gap-1.5">
+                            <span class="w-3 h-0.5 bg-sky-400 rounded-full inline-block"></span> 変換後 $y$
+                        </span>
+                        <span class="flex items-center gap-1.5">
+                            <span class="w-3 h-0.5 bg-slate-500 border-b border-dashed border-slate-400 inline-block"></span> 標準形
+                        </span>
+                    </div>
+
+                    <div class="flex items-center gap-2 bg-slate-900/90 backdrop-blur border border-slate-800 p-1 rounded-xl text-xs text-slate-300 pointer-events-auto">
+                        <label class="flex items-center gap-1.5 px-2 py-0.5 cursor-pointer hover:text-white">
+                            <input type="checkbox" id="chk-base-graph" checked onchange="draw()" class="rounded accent-sky-500">
+                            標準グラフを表示
+                        </label>
+                        <label class="flex items-center gap-1.5 px-2 py-0.5 cursor-pointer hover:text-white">
+                            <input type="checkbox" id="chk-guides" checked onchange="draw()" class="rounded accent-sky-500">
+                            ガイド補助線 (振幅・周期)
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- プリセットボタン -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2.5">
+                    <i class="fa-solid fa-wand-magic-sparkles text-amber-400 mr-1"></i> 定番の変形パターン（プリセット）
+                </span>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    <button onclick="applyPreset(2, 1, 0, 0)" class="p-2 bg-slate-800/80 hover:bg-slate-700 border border-slate-700/80 rounded-xl text-slate-200 text-left transition">
+                        <div class="font-bold text-sky-400">y方向に2倍</div>
+                        <div class="text-[10px] text-slate-400">$A = 2$（振幅2倍）</div>
+                    </button>
+                    <button onclick="applyPreset(1, 2, 0, 0)" class="p-2 bg-slate-800/80 hover:bg-slate-700 border border-slate-700/80 rounded-xl text-slate-200 text-left transition">
+                        <div class="font-bold text-emerald-400">周期が半分</div>
+                        <div class="text-[10px] text-slate-400">$k = 2$（x方向1/2縮小）</div>
+                    </button>
+                    <button onclick="applyPreset(1, 1, Math.PI/2, 0)" class="p-2 bg-slate-800/80 hover:bg-slate-700 border border-slate-700/80 rounded-xl text-slate-200 text-left transition">
+                        <div class="font-bold text-purple-400">右に $\pi/2$ 移動</div>
+                        <div class="text-[10px] text-slate-400">$\alpha = \pi/2$（位相遅れ）</div>
+                    </button>
+                    <button onclick="applyPreset(1, 1, 0, 1.5)" class="p-2 bg-slate-800/80 hover:bg-slate-700 border border-slate-700/80 rounded-xl text-slate-200 text-left transition">
+                        <div class="font-bold text-amber-400">上に $+1.5$ 移動</div>
+                        <div class="text-[10px] text-slate-400">$B = 1.5$（y軸平行移動）</div>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 右側: パラメータコントロールパネル (4/12) -->
+        <div class="lg:col-span-5 xl:col-span-4 flex flex-col gap-4">
+            
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-5">
+                <h2 class="text-sm font-bold text-slate-200 border-b border-slate-800 pb-3 flex items-center justify-between">
+                    <span><i class="fa-sliders text-sky-400 mr-2"></i>パラメータ調整</span>
+                    <span class="text-xs font-normal text-slate-400">スライダーで変化</span>
+                </h2>
+
+                <!-- パラメータ A -->
+                <div class="flex flex-col gap-1.5">
+                    <div class="flex justify-between items-center text-sm">
+                        <label for="param-A" class="font-semibold text-slate-200 flex items-center gap-1.5">
+                            <span class="w-3 h-3 rounded-full bg-sky-400 inline-block"></span>
+                            振幅・倍率 ($A$)
+                        </label>
+                        <span id="val-A" class="font-mono text-sky-400 font-bold bg-slate-950 px-2.5 py-0.5 rounded border border-slate-800 text-xs">1.0</span>
+                    </div>
+                    <input type="range" id="param-A" min="-3.0" max="3.0" step="0.1" value="1.0" oninput="updateParams()">
+                    <p class="text-[11px] text-slate-400">縦方向（y軸）の拡大・縮小・上下反転。振幅 $|A|$</p>
+                </div>
+
+                <!-- パラメータ k -->
+                <div class="flex flex-col gap-1.5">
+                    <div class="flex justify-between items-center text-sm">
+                        <label for="param-k" class="font-semibold text-slate-200 flex items-center gap-1.5">
+                            <span class="w-3 h-3 rounded-full bg-emerald-400 inline-block"></span>
+                            波数・周期係数 ($k$)
+                        </label>
+                        <span id="val-k" class="font-mono text-emerald-400 font-bold bg-slate-950 px-2.5 py-0.5 rounded border border-slate-800 text-xs">1.0</span>
+                    </div>
+                    <input type="range" id="param-k" min="-3.0" max="3.0" step="0.1" value="1.0" oninput="updateParams()">
+                    <p class="text-[11px] text-slate-400">横方向（x軸）の伸縮。周期 $T = \frac{2\pi}{|k|}$ （$\tan$は$\frac{\pi}{|k|}$）</p>
+                </div>
+
+                <!-- パラメータ alpha (平行移動 x) -->
+                <div class="flex flex-col gap-1.5">
+                    <div class="flex justify-between items-center text-sm">
+                        <label for="param-alpha" class="font-semibold text-slate-200 flex items-center gap-1.5">
+                            <span class="w-3 h-3 rounded-full bg-purple-400 inline-block"></span>
+                            x軸平行移動 ($\alpha$)
+                        </label>
+                        <span id="val-alpha" class="font-mono text-purple-400 font-bold bg-slate-950 px-2.5 py-0.5 rounded border border-slate-800 text-xs">0.00</span>
+                    </div>
+                    <input type="range" id="param-alpha" min="-6.283" max="6.283" step="0.13089" value="0" oninput="updateParams()">
+                    <p class="text-[11px] text-slate-400">x軸方向への平行移動（正で右へ、負で左へ移動）</p>
+                </div>
+
+                <!-- パラメータ B (平行移動 y) -->
+                <div class="flex flex-col gap-1.5">
+                    <div class="flex justify-between items-center text-sm">
+                        <label for="param-B" class="font-semibold text-slate-200 flex items-center gap-1.5">
+                            <span class="w-3 h-3 rounded-full bg-amber-400 inline-block"></span>
+                            y軸平行移動 ($B$)
+                        </label>
+                        <span id="val-B" class="font-mono text-amber-400 font-bold bg-slate-950 px-2.5 py-0.5 rounded border border-slate-800 text-xs">0.0</span>
+                    </div>
+                    <input type="range" id="param-B" min="-3.0" max="3.0" step="0.1" value="0.0" oninput="updateParams()">
+                    <p class="text-[11px] text-slate-400">y軸方向への上下移動（振動の中心線 $y = B$）</p>
+                </div>
+
+            </div>
+
+            <!-- 解析・周期情報カード -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
+                    <i class="fa-solid fa-calculator text-sky-400 mr-1.5"></i> グラフの解析データ
+                </h3>
+                
+                <div class="space-y-2 text-xs">
+                    <div class="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
+                        <span class="text-slate-400">現在の周期 ($T$):</span>
+                        <span id="info-period" class="font-mono font-bold text-emerald-300">$2\pi \approx 6.28$</span>
+                    </div>
+                    <div id="info-amplitude-box" class="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
+                        <span class="text-slate-400">振幅 ($|A|$):</span>
+                        <span id="info-amplitude" class="font-mono font-bold text-sky-300">1.0</span>
+                    </div>
+                    <div class="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
+                        <span class="text-slate-400">中心線 (y軸シフト):</span>
+                        <span id="info-centerline" class="font-mono font-bold text-amber-300">$y = 0.0$</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- 下部：パラメータの役割の解説カード -->
+    <footer class="max-w-7xl mx-auto w-full p-4 md:p-6 border-t border-slate-800/80 mt-4">
+        <h3 class="text-sm font-bold text-slate-300 mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-graduation-cap text-sky-400"></i> 各パラメータの意味と変形のルール
+        </h3>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+            
+            <!-- A カード -->
+            <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-xl flex flex-col gap-2">
+                <div class="flex items-center gap-2 text-sky-400 font-bold text-sm">
+                    <span class="px-2 py-0.5 bg-sky-500/20 border border-sky-500/30 rounded">A</span>
+                    <span>振幅 (Amplitude)</span>
+                </div>
+                <p class="text-slate-300 leading-relaxed">
+                    y軸方向（上下）への拡大・縮小を表します。
+                </p>
+                <ul class="text-slate-400 space-y-1 list-disc list-inside text-[11px]">
+                    <li>$|A| > 1$: 上下に引き伸ばされる</li>
+                    <li>$0 < |A| < 1$: 上下に押しつぶされる</li>
+                    <li>$A < 0$: x軸に関して上下が反転</li>
+                </ul>
+            </div>
+
+            <!-- k カード -->
+            <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-xl flex flex-col gap-2">
+                <div class="flex items-center gap-2 text-emerald-400 font-bold text-sm">
+                    <span class="px-2 py-0.5 bg-emerald-500/20 border border-emerald-500/30 rounded">k</span>
+                    <span>周期係数 (Frequency)</span>
+                </div>
+                <p class="text-slate-300 leading-relaxed">
+                    x軸方向（左右）への伸縮を表し、周期が変化します。
+                </p>
+                <ul class="text-slate-400 space-y-1 list-disc list-inside text-[11px]">
+                    <li>$\sin, \cos$ の周期: $T = \frac{2\pi}{|k|}$</li>
+                    <li>$\tan$ の周期: $T = \frac{\pi}{|k|}$</li>
+                    <li>$k > 1$: 波の密度が上がり、周期が短くなる</li>
+                </ul>
+            </div>
+
+            <!-- alpha カード -->
+            <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-xl flex flex-col gap-2">
+                <div class="flex items-center gap-2 text-purple-400 font-bold text-sm">
+                    <span class="px-2 py-0.5 bg-purple-500/20 border border-purple-500/30 rounded">$\alpha$</span>
+                    <span>x軸平行移動 (Phase Shift)</span>
+                </div>
+                <p class="text-slate-300 leading-relaxed">
+                    グラフ全体をx軸方向にどれだけ動かすかを表します。
+                </p>
+                <ul class="text-slate-400 space-y-1 list-disc list-inside text-[11px]">
+                    <li>$\alpha > 0$: **右方向**へ $\alpha$ 移動</li>
+                    <li>$\alpha < 0$: **左方向**へ $|\alpha|$ 移動</li>
+                    <li>式が $k(x - \alpha)$ とマイナスになっている点に注意！</li>
+                </ul>
+            </div>
+
+            <!-- B カード -->
+            <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-xl flex flex-col gap-2">
+                <div class="flex items-center gap-2 text-amber-400 font-bold text-sm">
+                    <span class="px-2 py-0.5 bg-amber-500/20 border border-amber-500/30 rounded">B</span>
+                    <span>y軸平行移動 (Vertical Shift)</span>
+                </div>
+                <p class="text-slate-300 leading-relaxed">
+                    グラフ全体をy軸方向に上下移動させます。
+                </p>
+                <ul class="text-slate-400 space-y-1 list-disc list-inside text-[11px]">
+                    <li>$B > 0$: 上方向へ $B$ 移動</li>
+                    <li>$B < 0$: 下方向へ $|B|$ 移動</li>
+                    <li>波の振動の中心軸が $y = B$ になります</li>
+                </ul>
+            </div>
+
+        </div>
+    </footer>
+
+    <script>
+        // アプリケーションの状態管理
+        let currentFunc = 'sin'; // 'sin', 'cos', 'tan'
+        let paramA = 1.0;
+        let paramK = 1.0;
+        let paramAlpha = 0.0;
+        let paramB = 0.0;
+
+        // Canvas要素とコンテキスト
+        const canvas = document.getElementById('graphCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // 描画設定（座標系のスケール）
+        let width = 0;
+        let height = 0;
+        let originX = 0;
+        let originY = 0;
+        let scaleX = 60; // 1単位（ラジアン 1.0）あたりのピクセル数
+        let scaleY = 60; // y方向 1.0 あたりのピクセル数
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+
+            width = canvas.width;
+            height = canvas.height;
+
+            originX = width / 2;
+            originY = height / 2;
+
+            // 画面幅に応じて最適なスケールを設定
+            const minDim = Math.min(width, height);
+            scaleX = (width / (4 * Math.PI)) * 0.85; // 横軸が約 -2π 〜 +2π 収まる程度
+            scaleY = (height / 8) * 0.85;
+
+            draw();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        function setFunction(func) {
+            currentFunc = func;
+            
+            // タブボタンのスタイル切替
+            ['sin', 'cos', 'tan'].forEach(f => {
+                const btn = document.getElementById(`btn-${f}`);
+                if (f === func) {
+                    btn.className = "px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 bg-sky-500 text-white shadow-md";
+                } else {
+                    btn.className = "px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 text-slate-400 hover:text-white";
+                }
+            });
+
+            // tanの場合は振幅の概念が変わるためUI注釈を調整
+            const ampBox = document.getElementById('info-amplitude-box');
+            if (func === 'tan') {
+                ampBox.style.opacity = '0.5';
+            } else {
+                ampBox.style.opacity = '1.0';
+            }
+
+            updateFormulaDisplay();
+            draw();
+        }
+
+        function updateParams() {
+            paramA = parseFloat(document.getElementById('param-A').value);
+            paramK = parseFloat(document.getElementById('param-k').value);
+            paramAlpha = parseFloat(document.getElementById('param-alpha').value);
+            paramB = parseFloat(document.getElementById('param-B').value);
+
+            // ラベルの表示更新
+            document.getElementById('val-A').innerText = paramA.toFixed(1);
+            document.getElementById('val-k').innerText = paramK.toFixed(1);
+            
+            // alphaの表示を π 記号付きで綺麗にする
+            document.getElementById('val-alpha').innerText = formatPiValue(paramAlpha);
+            document.getElementById('val-B').innerText = paramB.toFixed(1);
+
+            updateFormulaDisplay();
+            updateAnalysisData();
+            draw();
+        }
+
+        function resetParams() {
+            document.getElementById('param-A').value = 1.0;
+            document.getElementById('param-k').value = 1.0;
+            document.getElementById('param-alpha').value = 0.0;
+            document.getElementById('param-B').value = 0.0;
+            updateParams();
+        }
+
+        function applyPreset(a, k, alpha, b) {
+            document.getElementById('param-A').value = a;
+            document.getElementById('param-k').value = k;
+            document.getElementById('param-alpha').value = alpha;
+            document.getElementById('param-B').value = b;
+            updateParams();
+        }
+
+        // ラジアン値を π 表示に変換するヘルパー関数
+        function formatPiValue(val) {
+            if (Math.abs(val) < 0.01) return "0.00";
+            const ratio = val / Math.PI;
+            if (Math.abs(ratio - 1) < 0.05) return "π";
+            if (Math.abs(ratio + 1) < 0.05) return "-π";
+            if (Math.abs(ratio - 0.5) < 0.05) return "π/2";
+            if (Math.abs(ratio + 0.5) < 0.05) return "-π/2";
+            if (Math.abs(ratio - 1.5) < 0.05) return "3π/2";
+            if (Math.abs(ratio + 1.5) < 0.05) return "-3π/2";
+            if (Math.abs(ratio - 2) < 0.05) return "2π";
+            if (Math.abs(ratio + 2) < 0.05) return "-2π";
+            return `${val > 0 ? '+' : ''}${val.toFixed(2)}`;
+        }
+
+        function updateFormulaDisplay() {
+            const container = document.getElementById('latex-formula');
+            if (!window.katex) return;
+
+            let funcName = `\\${currentFunc}`;
+            
+            // A の表記調整
+            let aStr = "";
+            if (paramA === -1) aStr = "-";
+            else if (paramA !== 1) aStr = paramA.toFixed(1);
+
+            // k の表記調整
+            let kStr = "";
+            if (paramK === -1) kStr = "-";
+            else if (paramK !== 1) kStr = paramK.toFixed(1);
+
+            // alpha の表記調整
+            let alphaStr = "";
+            if (Math.abs(paramAlpha) > 0.01) {
+                const formattedAlpha = formatPiValue(paramAlpha);
+                if (paramAlpha > 0) {
+                    alphaStr = ` - ${formattedAlpha.replace('+', '')}`;
+                } else {
+                    alphaStr = ` + ${formattedAlpha.replace('-', '')}`;
+                }
+            }
+
+            // B の表記調整
+            let bStr = "";
+            if (Math.abs(paramB) > 0.01) {
+                bStr = paramB > 0 ? ` + ${paramB.toFixed(1)}` : ` - ${Math.abs(paramB).toFixed(1)}`;
+            }
+
+            // 中身の構成 (k(x - alpha))
+            let innerStr = "";
+            if (alphaStr !== "") {
+                if (kStr === "" || kStr === "-") {
+                    innerStr = `${kStr}(x${alphaStr})`;
+                } else {
+                    innerStr = `${kStr}(x${alphaStr})`;
+                }
+            } else {
+                innerStr = `${kStr}x`;
+            }
+
+            let latex = `y = ${aStr}${funcName}\\left(${innerStr}\\right)${bStr}`;
+
+            try {
+                katex.render(latex, container, { throwOnError: false });
+            } catch (e) {
+                container.innerText = latex;
+            }
+        }
+
+        function updateAnalysisData() {
+            const periodElem = document.getElementById('info-period');
+            const ampElem = document.getElementById('info-amplitude');
+            const centerElem = document.getElementById('info-centerline');
+
+            if (paramK === 0) {
+                periodElem.innerText = "なし (一定値)";
+            } else {
+                const basePeriod = (currentFunc === 'tan') ? Math.PI : 2 * Math.PI;
+                const period = basePeriod / Math.abs(paramK);
+                const periodInPi = (period / Math.PI).toFixed(2);
+                periodElem.innerHTML = `$${periodInPi}\\pi \\approx ${period.toFixed(2)}$`;
+                if (window.katex) {
+                    katex.render(`${periodInPi}\\pi \\approx ${period.toFixed(2)}`, periodElem);
+                }
+            }
+
+            if (currentFunc === 'tan') {
+                ampElem.innerText = "なし (無限大)";
+            } else {
+                ampElem.innerText = Math.abs(paramA).toFixed(1);
+            }
+
+            centerElem.innerText = `y = ${paramB.toFixed(1)}`;
+        }
+
+        function draw() {
+            if (!ctx) return;
+
+            // キャンバスクリア
+            ctx.clearRect(0, 0, width, height);
+
+            const showBase = document.getElementById('chk-base-graph').checked;
+            const showGuides = document.getElementById('chk-guides').checked;
+
+            // 1. グリッド線と軸の描画
+            drawGrid();
+
+            // 2. ガイド補助線描画（振幅範囲、y=Bの中心線など）
+            if (showGuides) {
+                drawGuides();
+            }
+
+            // 3. 標準形のグラフ描画 (点線)
+            if (showBase) {
+                drawFunction((x) => Math[currentFunc](x), '#64748b', [6, 6], 1.5);
+            }
+
+            // 4. 変換後のメイングラフ描画
+            const transformFunc = (x) => {
+                if (paramK === 0) return paramB;
+                const inner = paramK * (x - paramAlpha);
+                return paramA * Math[currentFunc](inner) + paramB;
+            };
+
+            drawFunction(transformFunc, '#38bdf8', [], 3.0);
+
+            // 5. tan の場合の漸近線描画
+            if (currentFunc === 'tan' && paramK !== 0) {
+                drawAsymptotes();
+            }
+        }
+
+        function drawGrid() {
+            ctx.lineWidth = 1;
+
+            // x軸の補助グリッド（π/2 単位）
+            const piStep = Math.PI / 2;
+            const minX = -Math.ceil((originX / scaleX) / piStep) * piStep;
+            const maxX = Math.ceil(((width - originX) / scaleX) / piStep) * piStep;
+
+            ctx.font = '12px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+
+            for (let xRad = minX; xRad <= maxX; xRad += piStep) {
+                const canvasX = originX + xRad * scaleX;
+
+                // 垂直グリッド線
+                ctx.strokeStyle = '#1e293b';
+                ctx.beginPath();
+                ctx.moveTo(canvasX, 0);
+                ctx.lineTo(canvasX, height);
+                ctx.stroke();
+
+                // 目盛りラベル (π/2, π, 3π/2 ...)
+                if (Math.abs(xRad) > 0.01) {
+                    ctx.fillStyle = '#94a3b8';
+                    let label = "";
+                    const ratio = xRad / Math.PI;
+                    if (Math.abs(ratio - 0.5) < 0.01) label = "π/2";
+                    else if (Math.abs(ratio + 0.5) < 0.01) label = "-π/2";
+                    else if (Math.abs(ratio - 1) < 0.01) label = "π";
+                    else if (Math.abs(ratio + 1) < 0.01) label = "-π";
+                    else if (Math.abs(ratio - 1.5) < 0.01) label = "3π/2";
+                    else if (Math.abs(ratio + 1.5) < 0.01) label = "-3π/2";
+                    else if (Math.abs(ratio - 2) < 0.01) label = "2π";
+                    else if (Math.abs(ratio + 2) < 0.01) label = "-2π";
+                    else label = `${ratio.toFixed(1)}π`;
+
+                    ctx.fillText(label, canvasX, originY + 6);
+                }
+            }
+
+            // y軸の補助グリッド（1単位）
+            const minY = -Math.ceil((height - originY) / scaleY);
+            const maxY = Math.ceil((originY) / scaleY);
+
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+
+            for (let yVal = minY; yVal <= maxY; yVal += 1) {
+                const canvasY = originY - yVal * scaleY;
+
+                ctx.strokeStyle = '#1e293b';
+                ctx.beginPath();
+                ctx.moveTo(0, canvasY);
+                ctx.lineTo(width, canvasY);
+                ctx.stroke();
+
+                if (yVal !== 0) {
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.fillText(yVal.toString(), originX - 8, canvasY);
+                }
+            }
+
+            // X軸 & Y軸（強調太線）
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 2;
+
+            // X軸
+            ctx.beginPath();
+            ctx.moveTo(0, originY);
+            ctx.lineTo(width, originY);
+            ctx.stroke();
+
+            // Y軸
+            ctx.beginPath();
+            ctx.moveTo(originX, 0);
+            ctx.lineTo(originX, height);
+            ctx.stroke();
+
+            // 原点 '0'
+            ctx.fillStyle = '#cbd5e1';
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'top';
+            ctx.fillText('0', originX - 6, originY + 6);
+        }
+
+        function drawGuides() {
+            // y = B (中心軸)
+            const centerY = originY - paramB * scaleY;
+            ctx.strokeStyle = '#f59e0b'; // amber
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(0, centerY);
+            ctx.lineTo(width, centerY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // sin, cos の場合、振幅の上下限線を表示 (y = B + |A|, y = B - |A|)
+            if (currentFunc !== 'tan' && Math.abs(paramA) > 0.01) {
+                const topY = originY - (paramB + Math.abs(paramA)) * scaleY;
+                const bottomY = originY - (paramB - Math.abs(paramA)) * scaleY;
+
+                ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)'; // sky blue transparent
+                ctx.setLineDash([2, 4]);
+
+                ctx.beginPath();
+                ctx.moveTo(0, topY);
+                ctx.lineTo(width, topY);
+                ctx.moveTo(0, bottomY);
+                ctx.lineTo(width, bottomY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+
+        function drawFunction(fn, color, lineDash = [], lineWidth = 2) {
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = lineWidth;
+            ctx.setLineDash(lineDash);
+            ctx.beginPath();
+
+            let isDrawing = false;
+            const stepPixels = 1.5; // 細かさ
+
+            for (let px = 0; px <= width; px += stepPixels) {
+                const xRad = (px - originX) / scaleX;
+                const yVal = fn(xRad);
+
+                // 発散対策（tan の漸近線付近など）
+                if (isNaN(yVal) || !isFinite(yVal) || Math.abs(yVal) > 50) {
+                    isDrawing = false;
+                    continue;
+                }
+
+                const py = originY - yVal * scaleY;
+
+                // 画面範囲から大きく外れた場合の連続描画カット
+                if (py < -1000 || py > height + 1000) {
+                    isDrawing = false;
+                    continue;
+                }
+
+                if (!isDrawing) {
+                    ctx.moveTo(px, py);
+                    isDrawing = true;
+                } else {
+                    ctx.lineTo(px, py);
+                }
+            }
+
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawAsymptotes() {
+            if (paramK === 0) return;
+
+            // tan(k(x - alpha)) の不連続点 (k(x - alpha) = π/2 + n*π)
+            // => x = alpha + (π/2 + n*π)/k
+            ctx.save();
+            ctx.strokeStyle = '#ef4444'; // 赤色
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([5, 5]);
+
+            const k = paramK;
+            const alpha = paramAlpha;
+
+            const minX = (0 - originX) / scaleX;
+            const maxX = (width - originX) / scaleX;
+
+            // n の範囲を計算
+            const startN = Math.floor((k * (minX - alpha) - Math.PI / 2) / Math.PI) - 2;
+            const endN = Math.ceil((k * (maxX - alpha) - Math.PI / 2) / Math.PI) + 2;
+
+            for (let n = startN; n <= endN; n++) {
+                const asymptoteX = alpha + (Math.PI / 2 + n * Math.PI) / k;
+                const canvasX = originX + asymptoteX * scaleX;
+
+                if (canvasX >= 0 && canvasX <= width) {
+                    ctx.beginPath();
+                    ctx.moveTo(canvasX, 0);
+                    ctx.lineTo(canvasX, height);
+                    ctx.stroke();
+                }
+            }
+
+            ctx.restore();
+        }
+
+        window.onload = function() {
+            resizeCanvas();
+            updateParams();
+        };
+    </script>
+
+</body>
+</html>

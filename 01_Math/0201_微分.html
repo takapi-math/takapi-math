@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微分の定義を視覚的に理解する - f(x) = x²</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- KaTeX for LaTeX Math rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans JP', 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        canvas {
+            touch-action: none;
+        }
+        .math-expr {
+            font-size: 1.1em;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-indigo-600 text-white shadow-lg py-6 px-4 sm:px-8">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-bold tracking-tight">微分の定義 視覚化ラボ</h1>
+                <p class="text-indigo-100 text-sm mt-1">割線の傾きから接線の傾きへ：$f(x) = x^2$ で見る極限の世界</p>
+            </div>
+            <div class="bg-indigo-700/60 backdrop-blur border border-indigo-500/40 rounded-xl px-4 py-2 text-center sm:text-right">
+                <span class="text-xs text-indigo-200 block uppercase tracking-wider font-semibold">微分の定義式</span>
+                <span id="header-formula" class="text-lg font-semibold"></span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- Left Column: Canvas Graph & Interactive Controls (8 cols) -->
+        <section class="lg:col-span-7 xl:col-span-8 flex flex-col gap-6">
+            <!-- Canvas Container -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative flex flex-col">
+                <div class="p-4 border-b border-slate-100 bg-slate-50/80 flex justify-between items-center flex-wrap gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-indigo-500 inline-block"></span>
+                        <h2 class="font-bold text-slate-700 text-base sm:text-lg">グラフ可視化 ($y = x^2$)</h2>
+                    </div>
+                    <div class="flex gap-4 text-xs sm:text-sm font-medium">
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-blue-500"></span> 割線 (2点を通る)</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-rose-500"></span> 接線 (極限 $h\to 0$)</span>
+                    </div>
+                </div>
+
+                <!-- Canvas -->
+                <div class="relative w-full aspect-[4/3] bg-slate-900 cursor-crosshair overflow-hidden" id="canvas-wrapper">
+                    <canvas id="graphCanvas" class="w-full h-full block"></canvas>
+                    <div class="absolute bottom-3 right-3 bg-slate-800/80 backdrop-blur text-slate-300 text-xs px-3 py-1.5 rounded-lg border border-slate-700 pointer-events-none">
+                        ドラッグでグラフ移動 / ホイールで拡大縮小
+                    </div>
+                </div>
+
+                <!-- Control Panel -->
+                <div class="p-5 bg-white border-t border-slate-100 flex flex-col gap-5">
+                    <!-- Sliders Grid -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <!-- x Slider -->
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80">
+                            <div class="flex justify-between items-center mb-2">
+                                <label for="slider-x" class="font-semibold text-slate-700 text-sm flex items-center gap-2">
+                                    <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs">x</span>
+                                    基準点 $x$ の位置:
+                                </label>
+                                <span id="val-x" class="font-mono font-bold text-indigo-600 text-base">1.00</span>
+                            </div>
+                            <input type="range" id="slider-x" min="-2.5" max="2.5" step="0.05" value="1.00" 
+                                   class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                            <div class="flex justify-between text-xs text-slate-400 mt-1">
+                                <span>-2.5</span>
+                                <span>0</span>
+                                <span>2.5</span>
+                            </div>
+                        </div>
+
+                        <!-- h Slider -->
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80">
+                            <div class="flex justify-between items-center mb-2">
+                                <label for="slider-h" class="font-semibold text-slate-700 text-sm flex items-center gap-2">
+                                    <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">h</span>
+                                    変化量 $h$ ($x$ の増加量):
+                                </label>
+                                <span id="val-h" class="font-mono font-bold text-emerald-600 text-base">1.50</span>
+                            </div>
+                            <input type="range" id="slider-h" min="0.001" max="2.5" step="0.001" value="1.500" 
+                                   class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600">
+                            <div class="flex justify-between text-xs text-slate-400 mt-1">
+                                <span>0 (接線)</span>
+                                <span>1.25</span>
+                                <span>2.50</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
+                        <div class="flex gap-2">
+                            <button id="btn-animate" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium rounded-xl text-sm transition-all shadow-sm flex items-center gap-2">
+                                <svg id="play-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <span>$h \to 0$ にアプローチ</span>
+                            </button>
+                            <button id="btn-reset" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl text-sm transition-all border border-slate-200">
+                                リセット
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs text-slate-500">
+                            <input type="checkbox" id="chk-tangent" checked class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300">
+                            <label for="chk-tangent" class="cursor-pointer select-none">理想の接線を表示</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Column: Mathematical Explanations & Step-by-Step Live Data (4 cols) -->
+        <section class="lg:col-span-5 xl:col-span-4 flex flex-col gap-6">
+            
+            <!-- Live Math Calculations Card -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col gap-4">
+                <h3 class="font-bold text-slate-800 text-lg flex items-center gap-2">
+                    <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                    リアルタイム数値計算
+                </h3>
+
+                <!-- Coordinates P & Q -->
+                <div class="grid grid-cols-2 gap-3 text-xs sm:text-sm">
+                    <div class="bg-indigo-50/60 p-3 rounded-xl border border-indigo-100">
+                        <span class="font-bold text-indigo-700 block mb-1">点 P (基準点)</span>
+                        <div class="font-mono text-slate-700">x = <span id="math-px">1.00</span></div>
+                        <div class="font-mono text-slate-700">f(x) = <span id="math-py">1.00</span></div>
+                    </div>
+                    <div class="bg-emerald-50/60 p-3 rounded-xl border border-emerald-100">
+                        <span class="font-bold text-emerald-700 block mb-1">点 Q (x + h)</span>
+                        <div class="font-mono text-slate-700">x+h = <span id="math-qx">2.50</span></div>
+                        <div class="font-mono text-slate-700">f(x+h) = <span id="math-qy">6.25</span></div>
+                    </div>
+                </div>
+
+                <!-- Difference Ratios -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col gap-3">
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-slate-600">x の変化量 ($\Delta x = h$):</span>
+                        <span id="math-dx" class="font-mono font-bold text-slate-800">1.500</span>
+                    </div>
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-slate-600">y の変化量 ($\Delta y$):</span>
+                        <span id="math-dy" class="font-mono font-bold text-slate-800">5.250</span>
+                    </div>
+                    <hr class="border-slate-200">
+                    <div>
+                        <div class="flex justify-between items-center text-sm font-semibold mb-1">
+                            <span class="text-blue-600">割線の傾き (平均変化率):</span>
+                            <span id="math-secant-slope" class="font-mono text-base font-bold text-blue-600">3.500</span>
+                        </div>
+                        <div id="latex-secant-calc" class="text-xs text-slate-500 overflow-x-auto py-1"></div>
+                    </div>
+                    <hr class="border-slate-200">
+                    <div>
+                        <div class="flex justify-between items-center text-sm font-semibold mb-1">
+                            <span class="text-rose-600">接線の傾き (微分係数 $f'(x)$):</span>
+                            <span id="math-tangent-slope" class="font-mono text-base font-bold text-rose-600">2.000</span>
+                        </div>
+                        <div id="latex-tangent-calc" class="text-xs text-slate-500 overflow-x-auto py-1"></div>
+                    </div>
+                </div>
+
+                <!-- Limit Gap Indicator -->
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-amber-800 text-xs flex items-center justify-between">
+                    <span>傾きの誤差 ($|割線 - 接線|$):</span>
+                    <span id="math-error" class="font-mono font-bold text-sm">1.500</span>
+                </div>
+            </div>
+
+            <!-- Step-by-Step Explanation Card -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col gap-4">
+                <h3 class="font-bold text-slate-800 text-lg flex items-center gap-2">
+                    <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                    微分のステップ解説
+                </h3>
+
+                <ol class="space-y-4 text-xs sm:text-sm text-slate-600">
+                    <li class="flex gap-3">
+                        <span class="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-xs">1</span>
+                        <div>
+                            <strong class="text-slate-800 block mb-0.5">平均変化率 (割線)</strong>
+                            2点 $P, Q$ を結ぶ直線の傾きです。
+                            $$\frac{f(x+h) - f(x)}{h}$$
+                        </div>
+                    </li>
+                    <li class="flex gap-3">
+                        <span class="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-xs">2</span>
+                        <div>
+                            <strong class="text-slate-800 block mb-0.5">$f(x) = x^2$ の場合の計算</strong>
+                            $$\frac{(x+h)^2 - x^2}{h} = \frac{2xh + h^2}{h} = 2x + h$$
+                            傾きは $2x + h$ と表せます。
+                        </div>
+                    </li>
+                    <li class="flex gap-3">
+                        <span class="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-xs">3</span>
+                        <div>
+                            <strong class="text-slate-800 block mb-0.5">極限をとる ($h \to 0$)</strong>
+                            $h$ を限りなく 0 に近づけると、残った $h$ が消えて **$2x$** だけが残ります。これが点 $P$ における**接線の傾き（微分係数）**です！
+                        </div>
+                    </li>
+                </ol>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto px-4">
+            微分の直観的理解インタラクティブツール &copy; 2026
+        </div>
+    </footer>
+
+    <script>
+        // State Management
+        const state = {
+            x: 1.0,
+            h: 1.5,
+            showTangent: true,
+            isAnimating: false,
+            animationFrameId: null,
+            // Viewport & Pan/Zoom State
+            scale: 60, // pixels per unit
+            offsetX: 0, // canvas center offset
+            offsetY: 0,
+            isDragging: false,
+            dragStartX: 0,
+            dragStartY: 0
+        };
+
+        // DOM Elements
+        const canvas = document.getElementById('graphCanvas');
+        const ctx = canvas.getContext('2d');
+        const wrapper = document.getElementById('canvas-wrapper');
+
+        const sliderX = document.getElementById('slider-x');
+        const sliderH = document.getElementById('slider-h');
+        const valX = document.getElementById('val-x');
+        const valH = document.getElementById('val-h');
+        
+        const btnAnimate = document.getElementById('btn-animate');
+        const btnReset = document.getElementById('btn-reset');
+        const chkTangent = document.getElementById('chk-tangent');
+
+        // Math Display Elements
+        const mathPx = document.getElementById('math-px');
+        const mathPy = document.getElementById('math-py');
+        const mathQx = document.getElementById('math-qx');
+        const mathQy = document.getElementById('math-qy');
+        const mathDx = document.getElementById('math-dx');
+        const mathDy = document.getElementById('math-dy');
+        const mathSecantSlope = document.getElementById('math-secant-slope');
+        const mathTangentSlope = document.getElementById('math-tangent-slope');
+        const mathError = document.getElementById('math-error');
+
+        // Function f(x) = x^2
+        function f(x) {
+            return x * x;
+        }
+
+        // Render LaTeX equations dynamically
+        function initLaTeX() {
+            katex.render("f'(x) = \\lim_{h \\to 0} \\frac{f(x+h) - f(x)}{h}", document.getElementById('header-formula'), {
+                throwOnError: false
+            });
+            updateLaTeXEquations();
+        }
+
+        function updateLaTeXEquations() {
+            const x = state.x;
+            const h = state.h;
+            const secantSlope = (2 * x + h);
+            const tangentSlope = 2 * x;
+
+            const secantExpr = `\\frac{(${x >= 0 ? x.toFixed(2) : '('+x.toFixed(2)+')'} + ${h.toFixed(3)})^2 - (${x.toFixed(2)})^2}{${h.toFixed(3)}} = 2(${x.toFixed(2)}) + ${h.toFixed(3)} = ${secantSlope.toFixed(3)}`;
+            katex.render(secantExpr, document.getElementById('latex-secant-calc'), { throwOnError: false });
+
+            const tangentExpr = `f'(${x.toFixed(2)}) = 2 \\times (${x.toFixed(2)}) = ${tangentSlope.toFixed(3)}`;
+            katex.render(tangentExpr, document.getElementById('latex-tangent-calc'), { throwOnError: false });
+
+            // Re-render math in step-by-step panel
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false}
+                ],
+                throwOnError: false
+            });
+        }
+
+        // Resize Canvas to fit container
+        function resizeCanvas() {
+            const rect = wrapper.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            draw();
+        }
+
+        // Mathematical to Screen Coordinate Conversions
+        function toScreenX(x) {
+            const width = wrapper.clientWidth;
+            return width / 2 + state.offsetX + x * state.scale;
+        }
+
+        function toScreenY(y) {
+            const height = wrapper.clientHeight;
+            return height / 2 + state.offsetY + 120 - y * state.scale; // Offset origin slightly down for parabola view
+        }
+
+        function toMathX(px) {
+            const width = wrapper.clientWidth;
+            return (px - width / 2 - state.offsetX) / state.scale;
+        }
+
+        // Main Drawing Function
+        function draw() {
+            const width = wrapper.clientWidth;
+            const height = wrapper.clientHeight;
+
+            // Clear Background
+            ctx.clearRect(0, 0, width, height);
+            ctx.fillStyle = '#0f172a'; // slate-900
+            ctx.fillRect(0, 0, width, height);
+
+            // Draw Grid Lines
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = '#1e293b'; // slate-800
+            
+            const minMathX = toMathX(0);
+            const maxMathX = toMathX(width);
+            
+            const step = 1;
+            const startX = Math.floor(minMathX / step) * step;
+            for (let gx = startX; gx <= maxMathX; gx += step) {
+                const sx = toScreenX(gx);
+                ctx.beginPath();
+                ctx.moveTo(sx, 0);
+                ctx.lineTo(sx, height);
+                ctx.stroke();
+            }
+
+            const startY = -10;
+            const endY = 20;
+            for (let gy = startY; gy <= endY; gy += step) {
+                const sy = toScreenY(gy);
+                ctx.beginPath();
+                ctx.moveTo(0, sy);
+                ctx.lineTo(width, sy);
+                ctx.stroke();
+            }
+
+            // Draw Coordinate Axes
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#475569'; // slate-600
+            
+            // X-Axis
+            const originY = toScreenY(0);
+            ctx.beginPath();
+            ctx.moveTo(0, originY);
+            ctx.lineTo(width, originY);
+            ctx.stroke();
+
+            // Y-Axis
+            const originX = toScreenX(0);
+            ctx.beginPath();
+            ctx.moveTo(originX, 0);
+            ctx.lineTo(originX, height);
+            ctx.stroke();
+
+            // Axis Labels & Numbers
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '11px Inter, sans-serif';
+            ctx.fillText('x', width - 15, originY - 8);
+            ctx.fillText('y', originX + 8, 15);
+
+            // Draw Parabola f(x) = x^2
+            ctx.beginPath();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#818cf8'; // indigo-400
+
+            let first = true;
+            for (let px = 0; px <= width; px += 2) {
+                const mx = toMathX(px);
+                const my = f(mx);
+                const sy = toScreenY(my);
+
+                if (first) {
+                    ctx.moveTo(px, sy);
+                    first = false;
+                } else {
+                    ctx.lineTo(px, sy);
+                }
+            }
+            ctx.stroke();
+
+            // Values for Points P and Q
+            const xP = state.x;
+            const yP = f(xP);
+            const xQ = state.x + state.h;
+            const yQ = f(xQ);
+
+            const sxP = toScreenX(xP);
+            const syP = toScreenY(yP);
+            const sxQ = toScreenX(xQ);
+            const syQ = toScreenY(yQ);
+
+            // Draw Delta Triangle (Δx and Δy)
+            const sxTriangleCorner = sxQ;
+            const syTriangleCorner = syP;
+
+            ctx.fillStyle = 'rgba(99, 102, 241, 0.15)'; // indigo fill
+            ctx.beginPath();
+            ctx.moveTo(sxP, syP);
+            ctx.lineTo(sxTriangleCorner, syTriangleCorner);
+            ctx.lineTo(sxQ, syQ);
+            ctx.closePath();
+            ctx.fill();
+
+            // Δx line (horizontal)
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.strokeStyle = '#10b981'; // emerald-500
+            ctx.beginPath();
+            ctx.moveTo(sxP, syP);
+            ctx.lineTo(sxTriangleCorner, syTriangleCorner);
+            ctx.stroke();
+
+            // Δy line (vertical)
+            ctx.strokeStyle = '#3b82f6'; // blue-500
+            ctx.beginPath();
+            ctx.moveTo(sxTriangleCorner, syTriangleCorner);
+            ctx.lineTo(sxQ, syQ);
+            ctx.stroke();
+            ctx.setLineDash([]); // reset dash
+
+            // Draw Secant Line (直線の延長)
+            const secantSlope = (yQ - yP) / state.h;
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#3b82f6'; // blue-500
+
+            const xStartSecant = minMathX;
+            const yStartSecant = yP + secantSlope * (xStartSecant - xP);
+            const xEndSecant = maxMathX;
+            const yEndSecant = yP + secantSlope * (xEndSecant - xP);
+
+            ctx.beginPath();
+            ctx.moveTo(toScreenX(xStartSecant), toScreenY(yStartSecant));
+            ctx.lineTo(toScreenX(xEndSecant), toScreenY(yEndSecant));
+            ctx.stroke();
+
+            // Draw Tangent Line (Ideal, if enabled)
+            if (state.showTangent) {
+                const tangentSlope = 2 * xP;
+                const yStartTan = yP + tangentSlope * (xStartSecant - xP);
+                const yEndTan = yP + tangentSlope * (xEndSecant - xP);
+
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#f43f5e'; // rose-500
+                ctx.setLineDash([6, 6]);
+                ctx.beginPath();
+                ctx.moveTo(toScreenX(xStartSecant), toScreenY(yStartTan));
+                ctx.lineTo(toScreenX(xEndSecant), toScreenY(yEndTan));
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // Draw Projection Lines to X-axis
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = '#64748b'; // slate-500
+            ctx.setLineDash([3, 3]);
+            
+            // P to X-axis
+            ctx.beginPath();
+            ctx.moveTo(sxP, syP);
+            ctx.lineTo(sxP, originY);
+            ctx.stroke();
+
+            // Q to X-axis
+            ctx.beginPath();
+            ctx.moveTo(sxQ, syQ);
+            ctx.lineTo(sxQ, originY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Draw Points P and Q
+            // Point P
+            ctx.fillStyle = '#6366f1'; // indigo-500
+            ctx.beginPath();
+            ctx.arc(sxP, syP, 7, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Point Q
+            ctx.fillStyle = '#10b981'; // emerald-500
+            ctx.beginPath();
+            ctx.arc(sxQ, syQ, 7, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Draw Point Labels
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 13px Inter, sans-serif';
+            ctx.fillText('P (x, f(x))', sxP - 30, syP - 12);
+            
+            if (state.h > 0.15) {
+                ctx.fillText('Q (x+h, f(x+h))', sxQ + 10, syQ - 12);
+            }
+
+            // Draw Δx Label
+            if (state.h > 0.2) {
+                ctx.fillStyle = '#34d399'; // emerald-400
+                ctx.font = 'bold 12px Inter, sans-serif';
+                ctx.fillText('h (Δx)', (sxP + sxTriangleCorner) / 2 - 15, syP + 18);
+            }
+        }
+
+        // Update UI Text & Math Values
+        function updateUI() {
+            valX.textContent = state.x.toFixed(2);
+            valH.textContent = state.h.toFixed(3);
+
+            const x = state.x;
+            const h = state.h;
+            const yP = f(x);
+            const yQ = f(x + h);
+            const dy = yQ - yP;
+            const secantSlope = dy / h;
+            const tangentSlope = 2 * x;
+            const error = Math.abs(secantSlope - tangentSlope);
+
+            mathPx.textContent = x.toFixed(2);
+            mathPy.textContent = yP.toFixed(2);
+            mathQx.textContent = (x + h).toFixed(2);
+            mathQy.textContent = yQ.toFixed(2);
+            mathDx.textContent = h.toFixed(3);
+            mathDy.textContent = dy.toFixed(3);
+
+            mathSecantSlope.textContent = secantSlope.toFixed(3);
+            mathTangentSlope.textContent = tangentSlope.toFixed(3);
+            mathError.textContent = error.toFixed(4);
+
+            updateLaTeXEquations();
+            draw();
+        }
+
+        // Animation Logic: Smooth approach h -> 0
+        function animateApproach() {
+            if (!state.isAnimating) return;
+
+            // Decay factor for h
+            state.h *= 0.94;
+
+            if (state.h <= 0.002) {
+                state.h = 0.001;
+                state.isAnimating = false;
+                togglePlayButtonState(false);
+            }
+
+            sliderH.value = state.h;
+            updateUI();
+
+            if (state.isAnimating) {
+                state.animationFrameId = requestAnimationFrame(animateApproach);
+            }
+        }
+
+        function togglePlayButtonState(playing) {
+            btnAnimate.querySelector('span').textContent = playing ? '停止' : '$h \\to 0$ にアプローチ';
+            if (playing) {
+                btnAnimate.classList.replace('bg-indigo-600', 'bg-rose-600');
+                btnAnimate.classList.replace('hover:bg-indigo-700', 'hover:bg-rose-700');
+            } else {
+                btnAnimate.classList.replace('bg-rose-600', 'bg-indigo-600');
+                btnAnimate.classList.replace('hover:bg-rose-700', 'hover:bg-indigo-700');
+            }
+        }
+
+        // Event Listeners
+        sliderX.addEventListener('input', (e) => {
+            state.x = parseFloat(e.target.value);
+            updateUI();
+        });
+
+        sliderH.addEventListener('input', (e) => {
+            if (state.isAnimating) {
+                state.isAnimating = false;
+                cancelAnimationFrame(state.animationFrameId);
+                togglePlayButtonState(false);
+            }
+            state.h = parseFloat(e.target.value);
+            updateUI();
+        });
+
+        chkTangent.addEventListener('change', (e) => {
+            state.showTangent = e.target.checked;
+            draw();
+        });
+
+        btnAnimate.addEventListener('click', () => {
+            if (state.isAnimating) {
+                state.isAnimating = false;
+                cancelAnimationFrame(state.animationFrameId);
+                togglePlayButtonState(false);
+            } else {
+                if (state.h <= 0.005) {
+                    state.h = 1.5; // reset h if already very small
+                    sliderH.value = state.h;
+                }
+                state.isAnimating = true;
+                togglePlayButtonState(true);
+                animateApproach();
+            }
+        });
+
+        btnReset.addEventListener('click', () => {
+            if (state.isAnimating) {
+                state.isAnimating = false;
+                cancelAnimationFrame(state.animationFrameId);
+                togglePlayButtonState(false);
+            }
+            state.x = 1.0;
+            state.h = 1.5;
+            state.offsetX = 0;
+            state.offsetY = 0;
+            state.scale = 60;
+            sliderX.value = state.x;
+            sliderH.value = state.h;
+            updateUI();
+        });
+
+        // Drag to Pan Canvas
+        wrapper.addEventListener('mousedown', (e) => {
+            state.isDragging = true;
+            state.dragStartX = e.clientX - state.offsetX;
+            state.dragStartY = e.clientY - state.offsetY;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (state.isDragging) {
+                state.offsetX = e.clientX - state.dragStartX;
+                state.offsetY = e.clientY - state.dragStartY;
+                draw();
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            state.isDragging = false;
+        });
+
+        // Touch events for mobile
+        wrapper.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                state.isDragging = true;
+                state.dragStartX = e.touches[0].clientX - state.offsetX;
+                state.dragStartY = e.touches[0].clientY - state.offsetY;
+            }
+        });
+
+        wrapper.addEventListener('touchmove', (e) => {
+            if (state.isDragging && e.touches.length === 1) {
+                state.offsetX = e.touches[0].clientX - state.dragStartX;
+                state.offsetY = e.touches[0].clientY - state.dragStartY;
+                draw();
+            }
+        });
+
+        wrapper.addEventListener('touchend', () => {
+            state.isDragging = false;
+        });
+
+        // Zoom with Mouse Wheel
+        wrapper.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+            const newScale = state.scale * zoomFactor;
+
+            // Limit zoom
+            if (newScale >= 20 && newScale <= 200) {
+                state.scale = newScale;
+                draw();
+            }
+        }, { passive: false });
+
+        // Initialize on Window Load
+        window.onload = function() {
+            initLaTeX();
+            resizeCanvas();
+            updateUI();
+            window.addEventListener('resize', resizeCanvas);
+        };
+    </script>
+</body>
+</html>
