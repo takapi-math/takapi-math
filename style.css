@@ -1,0 +1,186 @@
+@charset "UTF-8";
+
+/* ==========================================
+   日本語用クールテーマ CSS (style.css) 完全版
+   ========================================== */
+
+/* 変数定義 */
+:root {
+  --bg-color: #0b0f19;
+  --surface-color: #131c2e;
+  --text-main: #e2e8f0;
+  --text-muted: #94a3b8;
+  --accent-primary: #38bdf8;
+  --accent-glow: rgba(56, 189, 248, 0.3);
+  --border-color: #1e293b;
+  --font-japanese: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "BIZ UDPGothic", Meiryo, sans-serif;
+}
+
+/* 基本設定・リセット */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  font-family: var(--font-japanese);
+  line-height: 1.8;
+  letter-spacing: 0.05em;
+  word-break: break-all;
+  overflow-x: hidden;
+  padding-top: 70px; /* ナビゲーションバーが固定されるための余白 */
+}
+
+/* コンテナ */
+.container {
+  max-width: 800px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
+
+/* ナビゲーションバー */
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 70px;
+  background-color: rgba(11, 15, 25, 0.85);
+  backdrop-filter: blur(8px); /* 背景をぼかす近未来エフェクト */
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 40px;
+  z-index: 1000;
+}
+
+.nav-logo {
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: var(--text-main);
+  text-decoration: none;
+  letter-spacing: 0.15em;
+}
+
+.nav-links {
+  display: flex;
+  list-style: none;
+  gap: 24px;
+}
+
+.nav-item a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.nav-item a:hover {
+  color: var(--accent-primary);
+  text-shadow: 0 0 8px var(--accent-glow);
+}
+
+/* 見出し */
+h1, h2, h3 {
+  color: var(--text-main);
+  line-height: 1.4;
+  margin-top: 2em;
+  margin-bottom: 0.8em;
+  font-weight: 700;
+}
+
+h1 {
+  font-size: 2.2rem;
+  border-bottom: 2px solid var(--accent-primary);
+  padding-bottom: 0.3em;
+  text-shadow: 0 0 10px var(--accent-glow);
+}
+
+h2 {
+  font-size: 1.6rem;
+  border-left: 4px solid var(--accent-primary);
+  padding-left: 0.5em;
+}
+
+/* 段落・テキスト */
+p {
+  color: var(--text-muted);
+  margin-bottom: 1.5em;
+  font-size: 1rem;
+}
+
+strong {
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+/* カード型コンポーネント */
+.card {
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 20px;
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 15px var(--accent-glow);
+  transform: translateY(-2px);
+}
+
+/* 基本リンク */
+a {
+  color: var(--accent-primary);
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+a:hover {
+  opacity: 0.8;
+}
+
+/* アイコン付きサイバーボタン */
+.btn-cyber {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px; /* 文字とアイコンの間隔 */
+  padding: 12px 32px;
+  background: transparent;
+  color: var(--accent-primary);
+  border: 1px solid var(--accent-primary);
+  border-radius: 4px;
+  font-weight: 600;
+  text-decoration: none;
+  letter-spacing: 0.1em;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.1);
+  margin-top: 15px;
+  cursor: pointer;
+}
+
+.btn-cyber:hover {
+  background: var(--accent-primary);
+  color: var(--bg-color);
+  box-shadow: 0 0 25px var(--accent-primary);
+  transform: translateY(-2px);
+}
+
+.btn-cyber:active {
+  transform: translateY(0);
+}
+
+/* ボタン内の矢印アニメーション */
+.btn-cyber .arrow {
+  transition: transform 0.3s ease;
+}
+
+.btn-cyber:hover .arrow {
+  transform: translateX(4px); /* ホバー時に矢印が右に動く */
+}
