@@ -77,44 +77,46 @@
         <!-- Canvas Visualizer Section -->
         <section class="w-full flex flex-col gap-3">
             
-            <!-- Top Unified Control Bar -->
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-lg flex flex-wrap items-center gap-3">
-                <!-- Preset Dropdown (Wider container) -->
-                <div class="flex items-center gap-2 flex-1 sm:flex-[2.5] min-w-[320px]">
-                    <label class="text-xs font-semibold text-slate-400 whitespace-nowrap"><i class="fa-solid fa-list-check text-sky-400 mr-1"></i>方程式:</label>
-                    <select id="presetSelect" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 transition">
+            <!-- Top Unified Control Bar (Stacked Layout) -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg flex flex-col gap-3.5">
+                <!-- Row 1: Equation Preset Selection (Wider & Larger text) -->
+                <div class="flex items-center gap-3 w-full">
+                    <label class="text-sm font-bold text-slate-300 whitespace-nowrap"><i class="fa-solid fa-list-check text-sky-400 mr-1.5"></i>方程式:</label>
+                    <select id="presetSelect" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3.5 py-2.5 text-sm sm:text-base text-slate-100 font-medium focus:outline-none focus:ring-2 focus:ring-sky-500 transition shadow-inner">
                         <!-- Options injected by JS -->
                     </select>
                 </div>
 
-                <!-- t Parameter Slider & Play Controls -->
-                <div class="flex items-center gap-2 shrink-0 min-w-[210px] sm:min-w-[240px] bg-slate-950/80 border border-slate-800/80 rounded-lg px-2.5 py-1.5">
-                    <button id="playBtn" class="w-7 h-7 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white rounded-full flex items-center justify-center transition shadow shrink-0">
-                        <i class="fa-solid fa-play text-xs ml-0.5" id="playIcon"></i>
-                    </button>
-                    <!-- 再生速度倍率 -->
-                    <select id="speedSelect" class="bg-slate-800 border border-slate-700 rounded px-1.5 py-0.5 text-[11px] text-slate-300 focus:outline-none shrink-0" title="再生速度">
-                        <option value="0.5">0.5x</option>
-                        <option value="1" selected>1.0x</option>
-                        <option value="2">2.0x</option>
-                    </select>
-                    <span class="text-xs font-bold code-font text-sky-400 shrink-0 ml-1">t = <span id="tValueText">0.00</span></span>
-                    <input type="range" id="tRange" min="-2" max="2" step="0.02" value="0" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500">
-                    <!-- スライダー範囲切り替え（±2, ±3, ±5） -->
-                    <select id="tLimitSelect" class="bg-slate-800 border border-slate-700 rounded px-1.5 py-0.5 text-[11px] text-slate-300 focus:outline-none shrink-0 font-mono" title="tの範囲切り替え">
-                        <option value="2" selected>±2</option>
-                        <option value="3">±3</option>
-                        <option value="5">±5</option>
-                    </select>
-                </div>
+                <!-- Row 2: t Parameter Slider & Play Controls & Range Toggle -->
+                <div class="flex flex-wrap items-center justify-between gap-3.5 pt-3 border-t border-slate-800/80">
+                    <div class="flex items-center gap-3.5 flex-1 min-w-[300px]">
+                        <button id="playBtn" class="w-10 h-10 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white rounded-full flex items-center justify-center transition shadow shrink-0 text-base">
+                            <i class="fa-solid fa-play text-sm ml-0.5" id="playIcon"></i>
+                        </button>
+                        <!-- 再生速度倍率 (Large size matching equation selector style) -->
+                        <select id="speedSelect" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm sm:text-base text-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-sky-500 transition shrink-0 shadow-inner" title="再生速度">
+                            <option value="0.5">0.5x</option>
+                            <option value="1" selected>1.0x</option>
+                            <option value="2">2.0x</option>
+                        </select>
+                        <span class="text-xs sm:text-sm font-bold code-font text-sky-400 shrink-0 ml-1">t = <span id="tValueText">0.00</span></span>
+                        <input type="range" id="tRange" min="-2" max="2" step="0.02" value="0" class="w-full h-2.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500">
+                        <!-- スライダー範囲切り替え（±2, ±3, ±5） (Large size) -->
+                        <select id="tLimitSelect" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm sm:text-base text-slate-200 font-mono font-medium focus:outline-none focus:ring-2 focus:ring-sky-500 transition shrink-0 shadow-inner" title="tの範囲切り替え">
+                            <option value="2" selected>±2</option>
+                            <option value="3">±3</option>
+                            <option value="5">±5</option>
+                        </select>
+                    </div>
 
-                <!-- COMPACT PINK DOMAIN RANGE TOGGLE BUTTON -->
-                <div class="shrink-0 flex items-center gap-1.5">
-                    <span class="text-xs text-slate-400 font-semibold hidden sm:inline">tの範囲:</span>
-                    <button id="domainModeBtn" class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-600/60 transition shadow-sm flex items-center gap-1.5 active:scale-95">
-                        <i class="fa-solid fa-arrows-left-right text-[10px] text-rose-400"></i>
-                        <span id="domainBtnText">t: 全範囲</span>
-                    </button>
+                    <!-- COMPACT PINK DOMAIN RANGE TOGGLE BUTTON (Larger size) -->
+                    <div class="shrink-0 flex items-center gap-2">
+                        <span class="text-xs text-slate-400 font-semibold hidden lg:inline">tの範囲:</span>
+                        <button id="domainModeBtn" class="px-4 py-2 rounded-lg text-sm font-mono font-bold bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-600/60 transition shadow-sm flex items-center gap-2 active:scale-95">
+                            <i class="fa-solid fa-arrows-left-right text-xs text-rose-400"></i>
+                            <span id="domainBtnText">t: 全範囲</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -246,11 +248,11 @@
     </div>
 
     <script>
-        // Math Presets Definition for Circle Center Loci
+        // Math Presets Definition for Circle Center Loci with requested format
         const PRESETS = [
             {
                 id: "preset1",
-                title: "1. 直線軌跡 (r²=t²+1): x² + y² - 2tx - 2(2t+1)y + 4t² + 4t = 0  →  (x - t)² + {y - (2t + 1)}² = t² + 1  中心(t, 2t + 1),  r² = t² + 1",
+                title: "x² + y² - 2tx - 2(2t+1)y + 4t² + 4t = 0\n→ (x - t)² + {y - (2t + 1)}² = t² + 1 [円の中心: (t, 2t + 1)]",
                 latexFunc: "x^2 + y^2 - 2tx - 2(2t+1)y + 4t^2 + 4t = 0",
                 completedLatex: "(x - t)^2 + \\{y - (2t + 1)\\}^2 = t^2 + 1",
                 locusLatex: "y = 2x + 1",
@@ -290,7 +292,7 @@
             },
             {
                 id: "preset2",
-                title: "2. 直線軌跡 (r²=t-1): x² + y² - 2(t+1)x + 2ty + 2t² + t + 2 = 0  →  {x - (t + 1)}² + (y + t)² = t - 1  中心(t + 1, -t),  r² = t - 1",
+                title: "x² + y² - 2(t+1)x + 2ty + 2t² + t + 2 = 0\n→ {x - (t + 1)}² + (y + t)² = t - 1 [円の中心: (t + 1, -t)]",
                 latexFunc: "x^2 + y^2 - 2(t+1)x + 2ty + 2t^2 + t + 2 = 0",
                 completedLatex: "\\{x - (t + 1)\\}^2 + (y + t)^2 = t - 1",
                 locusLatex: "y = -x + 1",
@@ -299,7 +301,6 @@
                 getLocusY: (x) => -x + 1,
                 getTRangeCondition: () => ({ valid: false, min: 1, max: Infinity, text: "t > 1" }),
                 getXDomain: (isBounded, tMin, tMax) => {
-                    // Circle existence condition r^2 > 0 => t > 1
                     let effectiveMinT = 1;
                     let effectiveMaxT = Infinity;
                     if (isBounded) {
@@ -348,7 +349,7 @@
             },
             {
                 id: "preset3",
-                title: "3. 放物線軌跡 (r²=-t²-t+2): x² + y² - 2tx - 2t²y + t⁴ + 2t² + t - 2 = 0  →  (x - t)² + (y - t²)² = -t² - t + 2  中心(t, t²),  r² = -t² - t + 2",
+                title: "x² + y² - 2tx - 2t²y + t⁴ + 2t² + t - 2 = 0\n→ (x - t)² + (y - t²)² = -t² - t + 2 [円の中心: (t, t²)]",
                 latexFunc: "x^2 + y^2 - 2tx - 2t^2y + t^4 + 2t^2 + t - 2 = 0",
                 completedLatex: "(x - t)^2 + (y - t^2)^2 = -t^2 - t + 2",
                 locusLatex: "y = x^2",
@@ -357,7 +358,6 @@
                 getLocusY: (x) => x * x,
                 getTRangeCondition: () => ({ valid: false, min: -2, max: 1, text: "-2 < t < 1" }),
                 getXDomain: (isBounded, tMin, tMax) => {
-                    // r^2 = -t^2 - t + 2 > 0 => (t+2)(t-1) < 0 => -2 < t < 1
                     let effMinT = Math.max(-2, isBounded ? tMin : -2);
                     let effMaxT = Math.min(1, isBounded ? tMax : 1);
 
@@ -399,24 +399,19 @@
         let playSpeed = 1.0;
         let showCircle = true;
         let showLocus = true;
-        let isBoundedDomain = false; // false = Full Reals (subject to r^2>0), true = Slider Bounded
+        let isBoundedDomain = false;
         
-        // Canvas Transform State
-        let scale = 40; // pixels per unit
+        let scale = 40;
         let offsetX = 0;
         let offsetY = 0;
         let isDragging = false;
         let dragStartX = 0;
         let dragStartY = 0;
 
-        // Animation timing
         let lastTimestamp = 0;
         let playDirection = 1;
-
-        // Center History
         let centerHistory = [];
 
-        // DOM elements
         let canvas, ctx;
         let tRange, tValueText, playBtn, playIcon, speedSelect, tLimitSelect, presetSelect;
         let currentVertexDisplay, canvasLocusFormula, canvasLocusDomain, circleInvalidBanner;
@@ -425,7 +420,6 @@
         let closeHelpBtn, closeHelpBtn2, zoomInBtn, zoomOutBtn;
         let tabMathBtn, tabConceptBtn, tabMathContent, tabConceptContent;
 
-        // Helper functions for coordinates
         function toScreenX(mathX) { return canvas.width / 2 + offsetX + mathX * scale; }
         function toScreenY(mathY) { return canvas.height / 2 + offsetY - mathY * scale; }
         function toMathX(screenX) { return (screenX - (canvas.width / 2 + offsetX)) / scale; }
@@ -448,7 +442,7 @@
 
         function addCurrentCenterToHistory() {
             const r2 = currentPreset.getR2(tValue);
-            if (r2 <= 0) return; // Don't add if circle doesn't exist
+            if (r2 <= 0) return;
 
             const center = currentPreset.getCenter(tValue);
             if (centerHistory.length === 0) {
@@ -497,7 +491,6 @@
             resizeCanvas();
             window.addEventListener('resize', resizeCanvas);
 
-            // Populate preset select
             presetSelect.innerHTML = '';
             PRESETS.forEach((p) => {
                 const opt = document.createElement('option');
@@ -587,7 +580,6 @@
             zoomInBtn.addEventListener('click', () => { scale = Math.min(scale * 1.25, 200); draw(); });
             zoomOutBtn.addEventListener('click', () => { scale = Math.max(scale / 1.25, 10); draw(); });
 
-            // Mouse Navigation
             canvas.addEventListener('mousedown', (e) => {
                 isDragging = true;
                 dragStartX = e.clientX - offsetX;
@@ -618,7 +610,6 @@
                 draw();
             }, { passive: false });
 
-            // Touch events
             canvas.addEventListener('touchstart', (e) => {
                 if (e.touches.length === 1) {
                     isDragging = true;
@@ -637,7 +628,6 @@
 
             canvas.addEventListener('touchend', () => { isDragging = false; });
 
-            // Tabs toggle
             tabMathBtn.addEventListener('click', () => {
                 tabMathBtn.className = "px-4 py-2 text-xs font-semibold border-b-2 border-sky-500 text-sky-400 transition";
                 tabConceptBtn.className = "px-4 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 transition border-b-2 border-transparent";
@@ -735,13 +725,11 @@
                 ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(canvas.width, py); ctx.stroke();
             }
 
-            // Axes
             ctx.strokeStyle = '#64748b';
             ctx.lineWidth = 2;
             ctx.beginPath(); ctx.moveTo(0, centerY); ctx.lineTo(canvas.width, centerY); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(centerX, 0); ctx.lineTo(centerX, canvas.height); ctx.stroke();
 
-            // Labels
             ctx.fillStyle = '#94a3b8';
             ctx.font = '10px "Fira Code", monospace';
             ctx.fillText('O', centerX - 12, centerY + 14);
@@ -766,7 +754,6 @@
             const tMax = parseFloat(tRange.max);
             const xDomain = currentPreset.getXDomain(isBoundedDomain, tMin, tMax);
 
-            // 1. Out-of-domain locus as dashed faded pink line
             ctx.save();
             ctx.lineWidth = 1.8;
             ctx.strokeStyle = 'rgba(244, 63, 94, 0.35)';
@@ -790,7 +777,6 @@
             ctx.stroke();
             ctx.restore();
 
-            // 2. In-Domain Locus as Solid Pink Line
             if (!isNaN(xDomain.min)) {
                 ctx.save();
                 ctx.lineWidth = 3;
@@ -844,7 +830,7 @@
         }
 
         function drawCircleGraphic(center, r2) {
-            if (r2 <= 0) return; // Do not draw circle if r^2 <= 0
+            if (r2 <= 0) return;
 
             const r = Math.sqrt(r2);
             const cx = toScreenX(center.x);
@@ -852,72 +838,62 @@
             const radiusPx = r * scale;
 
             ctx.save();
-            // Circle fill
             ctx.fillStyle = 'rgba(56, 189, 248, 0.12)';
             ctx.beginPath(); ctx.arc(cx, cy, radiusPx, 0, Math.PI * 2); ctx.fill();
 
-            // Circle stroke
             ctx.strokeStyle = '#38bdf8';
             ctx.lineWidth = 2;
             ctx.beginPath(); ctx.arc(cx, cy, radiusPx, 0, Math.PI * 2); ctx.stroke();
 
-            // Radius line
             ctx.strokeStyle = 'rgba(56, 189, 248, 0.6)';
             ctx.setLineDash([3, 3]);
             ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + radiusPx, cy); ctx.stroke();
 
             ctx.fillStyle = '#38bdf8';
             ctx.font = '10px "Fira Code", monospace';
-            ctx.fillText(`r = ${r.toFixed(2)}`, cx + radiusPx / 2 - 10, cy - 5);
+            ctx.fillText(`r = ${r.toFixed(2)}`, cx + radiusPx / 2 - 15, cy - 6);
 
             ctx.restore();
         }
 
-        function drawCenterMarker(center, r2) {
+        function drawCenterMarker(center) {
             const cx = toScreenX(center.x);
             const cy = toScreenY(center.y);
 
             ctx.save();
+            const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, 14);
+            gradient.addColorStop(0, 'rgba(52, 211, 153, 0.9)');
+            gradient.addColorStop(1, 'rgba(52, 211, 153, 0)');
 
-            if (r2 > 0) {
-                // Glow for valid center
-                const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, 14);
-                gradient.addColorStop(0, 'rgba(52, 211, 153, 0.9)');
-                gradient.addColorStop(1, 'rgba(52, 211, 153, 0)');
-                ctx.fillStyle = gradient;
-                ctx.beginPath(); ctx.arc(cx, cy, 16, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = gradient;
+            ctx.beginPath(); ctx.arc(cx, cy, 16, 0, Math.PI * 2); ctx.fill();
 
-                // Solid dot
-                ctx.fillStyle = '#34d399';
-                ctx.strokeStyle = '#ffffff';
-                ctx.lineWidth = 2;
-                ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#34d399';
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 11px "Fira Code", monospace';
-                ctx.fillText(` P(${center.x.toFixed(2)}, ${center.y.toFixed(2)})`, cx + 8, cy - 8);
-            } else {
-                // Dimmed dot for invalid circle
-                ctx.fillStyle = '#f59e0b';
-                ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2); ctx.fill();
-                ctx.fillStyle = '#f59e0b';
-                ctx.font = '10px "Fira Code", monospace';
-                ctx.fillText(` (r² <= 0 不成立)`, cx + 8, cy - 8);
-            }
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 11px "Fira Code", monospace';
+            ctx.textAlign = 'left';
+            ctx.fillText(` P(${center.x.toFixed(2)}, ${center.y.toFixed(2)})`, cx + 8, cy - 8);
 
-            // Axis projections
-            ctx.strokeStyle = 'rgba(148, 163, 184, 0.3)';
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
             ctx.setLineDash([3, 3]);
             ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, toScreenY(0)); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(toScreenX(0), cy); ctx.stroke();
+
+            const py0 = toScreenY(0);
+            const px0 = toScreenX(0);
+
+            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, py0); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(px0, cy); ctx.stroke();
 
             ctx.restore();
         }
 
         function draw() {
             if (!ctx) return;
-
+            
             ctx.fillStyle = '#0f172a';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -929,21 +905,19 @@
 
             drawCenterTrail();
 
-            const center = currentPreset.getCenter(tValue);
             const r2 = currentPreset.getR2(tValue);
+            const center = currentPreset.getCenter(tValue);
 
-            if (showCircle) {
-                drawCircleGraphic(center, r2);
-            }
-
-            drawCenterMarker(center, r2);
-
-            // Banner toggle
             if (r2 <= 0) {
                 circleInvalidBanner.classList.remove('hidden');
             } else {
                 circleInvalidBanner.classList.add('hidden');
+                if (showCircle) {
+                    drawCircleGraphic(center, r2);
+                }
             }
+
+            drawCenterMarker(center);
 
             if (currentVertexDisplay) {
                 currentVertexDisplay.textContent = `P(x, y) = (${center.x.toFixed(2)}, ${center.y.toFixed(2)})`;
@@ -973,13 +947,12 @@
 
             steps.forEach((st) => {
                 const stepCard = document.createElement('div');
-                stepCard.className = "bg-slate-950/70 border border-slate-800 rounded-lg p-3 space-y-1 text-xs shadow-sm flex flex-col justify-between";
+                stepCard.className = "bg-slate-950/70 border border-slate-800 rounded-lg p-2.5 space-y-1 text-xs shadow-sm";
 
-                let html = `<div class="font-bold text-sky-400 text-[11px] flex items-center justify-between gap-1">
+                let html = `<div class="font-bold text-sky-400 text-[11px] flex items-center justify-between">
                                 <span>${st.title}</span>
-                                ${st.badge ? `<span class="text-[9px] bg-rose-950 text-rose-300 border border-rose-700/60 px-1.5 py-0.5 rounded shrink-0">${st.badge}</span>` : ''}
                             </div>`;
-                html += `<div class="text-slate-200 overflow-x-auto py-1 font-mono">$${st.latex}$</div>`;
+                html += `<div class="text-slate-200 overflow-x-auto py-0.5 font-mono">$${st.latex}$</div>`;
                 if (st.latex2) {
                     html += `<div class="text-amber-300 overflow-x-auto py-0.5 font-mono">$${st.latex2}$</div>`;
                 }

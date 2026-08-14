@@ -81,8 +81,8 @@
             <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-lg flex flex-wrap items-center gap-3">
                 <!-- Preset Dropdown (Wider container) -->
                 <div class="flex items-center gap-2 flex-1 sm:flex-[2.5] min-w-[320px]">
-                    <label class="text-xs font-semibold text-slate-400 whitespace-nowrap"><i class="fa-solid fa-list-check text-indigo-400 mr-1"></i>関数:</label>
-                    <select id="presetSelect" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                    <label class="text-xs font-semibold text-slate-400 whitespace-nowrap"><i class="fa-solid fa-list-check text-indigo-400 mr-1"></i>グラフ選択:</label>
+                    <select id="presetSelect" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition whitespace-pre-line leading-relaxed">
                         <!-- Options injected by JS -->
                     </select>
                 </div>
@@ -253,7 +253,7 @@
         const PRESETS = [
             {
                 id: "preset1",
-                title: "1. y = x² - 2tx + 3t = (x - t)² - t² + 3t  頂点(t, -t² + 3t)",
+                title: "1. y = x² - 2tx + 3t\n   y = (x - t)² - t² + 3t  頂点の座標(t, -t² + 3t)",
                 latexFunc: "y = x^2 - 2tx + 3t",
                 locusLatex: "y = -x^2 + 3x",
                 getFx: (x, t) => x * x - 2 * t * x + 3 * t,
@@ -288,7 +288,7 @@
             },
             {
                 id: "preset2",
-                title: "2. y = -x² + 2(t - 1)x + t² - 3t = -{x - (t - 1)}² + 2t² - 5t + 1  頂点(t - 1, 2t² - 5t + 1)",
+                title: "2. y = -x² + 2(t - 1)x + t² - 3t\n   y = -{x - (t - 1)}² + 2t² - 5t + 1  頂点の座標(t - 1, 2t² - 5t + 1)",
                 latexFunc: "y = -x^2 + 2(t - 1)x + t^2 - 3t",
                 locusLatex: "y = 2x^2 - x - 2",
                 getFx: (x, t) => -x * x + 2 * (t - 1) * x + t * t - 3 * t,
@@ -325,7 +325,7 @@
             },
             {
                 id: "preset3",
-                title: "3. y = x² + 2tx + 2t² - t = (x + t)² + t² - t  頂点(-t, t² - t)",
+                title: "3. y = x² + 2tx + 2t² - t\n   y = (x + t)² + t² - t  頂点の座標(-t, t² - t)",
                 latexFunc: "y = x^2 + 2tx + 2t^2 - t",
                 locusLatex: "y = x^2 + x",
                 getFx: (x, t) => x * x + 2 * t * x + 2 * t * t - t,
