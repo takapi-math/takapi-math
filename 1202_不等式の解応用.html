@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数直線と不等式探索ツール</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700;800&display=swap');
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #0f172a;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        .no-select {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-slate-900 text-white border-b border-slate-800 shadow-sm sticky top-0 z-20">
+        <div class="max-w-7xl mx-auto px-4 py-3 sm:px-6 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-black text-white text-lg shadow-md">
+                    &isin;
+                </div>
+                <div>
+                    <h1 class="text-base sm:text-lg font-bold leading-tight">数直線と不等式探索ツール</h1>
+                    <p class="text-xs text-slate-400">不等式の条件とパラメーター <em class="not-italic text-indigo-300 font-semibold">a</em> の動的ビジュアル探究</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="btn-preset-default" class="px-3 py-1.5 bg-indigo-600/80 hover:bg-indigo-600 text-white text-xs font-bold rounded-lg border border-indigo-500/50 transition shadow-xs">標準 (x &gt; 1)</button>
+                <button id="btn-preset-inclusive" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg border border-slate-700 transition shadow-xs">端点含む (x &ge; 1)</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="max-w-7xl mx-auto px-4 py-6 sm:px-6 flex-1 w-full space-y-6">
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <!-- Left Panel (1/3 Width): Inequality Settings & Slider Controls -->
+            <section class="lg:col-span-1 bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col justify-between space-y-5">
+                <div class="space-y-4">
+                    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                        1. 不等式の設定と変数 a
+                    </h2>
+
+                    <!-- Inequality Conditions Container -->
+                    <div class="flex flex-col gap-3">
+                        <!-- Condition 1: x [op1] b -->
+                        <div class="flex items-center justify-between gap-2 bg-blue-50/90 p-3.5 rounded-xl border border-blue-200 text-blue-950">
+                            <span class="font-bold text-sm sm:text-base">条件 1:</span>
+                            <div class="flex items-center gap-2 font-bold text-lg">
+                                <span class="text-xl font-extrabold">x</span>
+                                <select id="op1" class="bg-white border-2 border-blue-300 rounded-lg px-2.5 py-1.5 text-base sm:text-lg font-mono focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer shadow-xs font-bold">
+                                    <option value=">" selected>&gt;</option>
+                                    <option value=">=">&ge;</option>
+                                    <option value="<">&lt;</option>
+                                    <option value="<=">&le;</option>
+                                </select>
+                                <input type="number" id="val-b" value="1" step="1" class="w-16 bg-white border-2 border-blue-300 rounded-lg px-2 py-1.5 text-center text-lg font-mono font-bold focus:ring-2 focus:ring-blue-500 outline-none shadow-xs">
+                            </div>
+                        </div>
+
+                        <!-- Condition 2: x [op2] (a-1)/2 -->
+                        <div class="flex items-center justify-between gap-2 bg-rose-50/90 p-3.5 rounded-xl border border-rose-200 text-rose-950">
+                            <span class="font-bold text-sm sm:text-base">条件 2:</span>
+                            <div class="flex items-center gap-2 font-bold text-lg">
+                                <span class="text-xl font-extrabold">x</span>
+                                <select id="op2" class="bg-white border-2 border-rose-300 rounded-lg px-2.5 py-1.5 text-base sm:text-lg font-mono focus:ring-2 focus:ring-rose-500 outline-none cursor-pointer shadow-xs font-bold">
+                                    <option value="<" selected>&lt;</option>
+                                    <option value="<=">&le;</option>
+                                    <option value=">">&gt;</option>
+                                    <option value=">=">&ge;</option>
+                                </select>
+                                <!-- Fraction (a-1)/2 -->
+                                <div class="inline-flex flex-col items-center justify-center text-rose-600 font-black leading-none bg-white px-2.5 py-1 rounded-lg border-2 border-rose-300 shadow-xs">
+                                    <span class="text-sm border-b-2 border-rose-400 pb-0.5 px-1 font-mono">a - 1</span>
+                                    <span class="text-xs pt-0.5 font-mono">2</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Endpoint & Parameter a Controller -->
+                    <div class="bg-gradient-to-br from-indigo-50/80 to-purple-50/50 p-4 rounded-xl border border-indigo-100 flex flex-col gap-3 w-full">
+                        <div class="flex flex-col gap-1 border-b border-indigo-100 pb-2.5">
+                            <div class="flex items-center justify-between">
+                                <span class="font-bold text-xs sm:text-sm text-slate-600">端点 <span class="text-rose-600 font-black font-mono">(a - 1) / 2</span> :</span>
+                                <span id="label-endpoint-val" class="text-2xl sm:text-3xl font-black text-rose-600 font-mono tracking-tight">1.75</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="font-bold text-xs text-slate-500">対応する変数 <em class="not-italic text-indigo-700 font-black">a</em> の値:</span>
+                                <span id="label-a-val" class="text-lg font-bold text-indigo-700 font-mono">4.5</span>
+                            </div>
+                        </div>
+
+                        <!-- Slider with visible ticks -->
+                        <div class="relative w-full pt-1">
+                            <input type="range" id="slider-a" min="-10" max="15" step="0.2" value="4.5" class="w-full accent-rose-600 cursor-pointer h-2.5 bg-slate-200 rounded-lg">
+                            <div class="flex justify-between items-center text-[11px] font-mono font-bold text-slate-400 mt-1 px-0.5">
+                                <span class="flex flex-col items-center"><span>|</span><span>-10</span></span>
+                                <span class="flex flex-col items-center"><span>|</span><span>-5</span></span>
+                                <span class="flex flex-col items-center text-slate-800 font-black"><span>|</span><span>0</span></span>
+                                <span class="flex flex-col items-center text-slate-800 font-black"><span>|</span><span>5</span></span>
+                                <span class="flex flex-col items-center"><span>|</span><span>10</span></span>
+                                <span class="flex flex-col items-center"><span>|</span><span>15</span></span>
+                            </div>
+                        </div>
+
+                        <!-- Stepper Buttons -->
+                        <div class="grid grid-cols-4 gap-1.5 pt-0.5">
+                            <button id="btn-step-prev-big" class="py-1.5 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg text-slate-700 text-xs font-bold transition shadow-xs active:scale-95">-2.0</button>
+                            <button id="btn-step-prev" class="py-1.5 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg text-slate-700 text-xs font-bold transition shadow-xs active:scale-95">-0.2</button>
+                            <button id="btn-step-next" class="py-1.5 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg text-slate-700 text-xs font-bold transition shadow-xs active:scale-95">+0.2</button>
+                            <button id="btn-step-next-big" class="py-1.5 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg text-slate-700 text-xs font-bold transition shadow-xs active:scale-95">+2.0</button>
+                        </div>
+
+                        <!-- Process computation badge (Positioned right below slider & buttons) -->
+                        <div class="bg-white/95 p-3 rounded-xl border border-rose-200 text-xs text-slate-700 flex flex-col gap-1.5 shadow-xs font-mono mt-1">
+                            <div class="font-bold text-rose-800 text-xs font-sans flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                                端点からの a 算出プロセス:
+                            </div>
+                            <div id="calc-process-text" class="text-center font-bold text-sm sm:text-base text-slate-800 bg-rose-50/70 py-2 px-2 rounded-lg border border-rose-100">
+                                (a - 1) / 2 = 1.75 &rArr; a = 2 &times; 1.75 + 1 = 4.5
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Panel (2/3 Width): Interactive Dynamic Number Line -->
+            <section class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col justify-between">
+                <div>
+                    <div class="flex flex-wrap justify-between items-center mb-3 gap-2">
+                        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            2. 動的数直線
+                        </h2>
+                        <div class="flex items-center gap-3 text-xs font-semibold">
+                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-blue-500 inline-block shadow-xs"></span>条件1</span>
+                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-rose-500 inline-block shadow-xs"></span>条件2</span>
+                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500 inline-block shadow-xs"></span>共通領域</span>
+                        </div>
+                    </div>
+
+                    <!-- SVG Container -->
+                    <div class="relative w-full overflow-x-auto custom-scrollbar bg-slate-900 rounded-xl p-3 min-h-[240px] no-select border border-slate-800 shadow-inner flex items-center">
+                        <svg id="numberline-svg" class="w-full min-w-[650px] h-[230px]" viewBox="0 0 800 230">
+                            <!-- SVG content rendered dynamically -->
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Realtime Status Feedback -->
+                <div class="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-sm sm:text-base">
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-slate-700">現在の解の状態:</span>
+                        <span id="status-real-solution" class="px-3.5 py-1 rounded-full font-bold text-xs sm:text-sm bg-emerald-100 text-emerald-800 border border-emerald-200">実数解あり</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-slate-700">含まれる整数解:</span>
+                        <span id="status-integer-list" class="font-mono font-bold text-base text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-200">{ 2, 3, 4 } (計 3 個)</span>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- Bottom Panel: Questions & Realtime Solution Explanations -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6">
+            <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
+                <div>
+                    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+                        3. 問題とリアルタイム解答・解説
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-0.5">条件の変更に応じて答えも自動計算・同期表示されます</p>
+                </div>
+                <button id="toggle-answers-btn" class="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl text-xs transition border border-indigo-200 flex items-center gap-2 shadow-xs active:scale-95">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                    <span>解答・解説を表示</span>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Question 1 -->
+                <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/70 flex flex-col justify-between">
+                    <div>
+                        <div class="inline-block px-2.5 py-0.5 bg-slate-200 text-slate-700 text-xs font-bold rounded-md mb-2">問題 1</div>
+                        <p id="q1-text-title" class="text-sm font-bold text-slate-800">これを満たす実数 <span class="text-indigo-700 font-extrabold">x</span> が存在する <span class="text-rose-600 font-extrabold">a</span> の範囲を求めよ。</p>
+                    </div>
+                    <div class="answer-box hidden mt-4 pt-3 border-t border-slate-200">
+                        <div class="text-[11px] text-slate-400 font-bold mb-1">【答え】</div>
+                        <div id="ans-q1" class="text-base sm:text-lg font-bold text-indigo-600 font-mono">a > 3</div>
+                        <p id="ans-q1-desc" class="text-xs text-slate-600 mt-1 leading-relaxed">数直線上で2つの条件の共通部分が存在する条件です。</p>
+                    </div>
+                </div>
+
+                <!-- Question 2 -->
+                <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/70 flex flex-col justify-between">
+                    <div>
+                        <div class="inline-block px-2.5 py-0.5 bg-slate-200 text-slate-700 text-xs font-bold rounded-md mb-2">問題 2</div>
+                        <p id="q2-text-title" class="text-sm font-bold text-slate-800">これを満たす実数 <span class="text-indigo-700 font-extrabold">x</span> が存在しない <span class="text-rose-600 font-extrabold">a</span> の範囲を求めよ。</p>
+                    </div>
+                    <div class="answer-box hidden mt-4 pt-3 border-t border-slate-200">
+                        <div class="text-[11px] text-slate-400 font-bold mb-1">【答え】</div>
+                        <div id="ans-q2" class="text-base sm:text-lg font-bold text-indigo-600 font-mono">a ≤ 3</div>
+                        <p id="ans-q2-desc" class="text-xs text-slate-600 mt-1 leading-relaxed">問題1の補集合（共通部分が存在しない a の範囲）です。</p>
+                    </div>
+                </div>
+
+                <!-- Question 3 -->
+                <div class="border border-amber-200 rounded-xl p-4 bg-amber-50/30 flex flex-col justify-between">
+                    <div>
+                        <div class="inline-block px-2.5 py-0.5 bg-amber-100 text-amber-800 text-xs font-bold rounded-md mb-2">問題 3</div>
+                        <p id="q3-text-title" class="text-sm font-bold text-slate-800">これを満たす整数解が<span class="text-rose-600 font-black">ちょうど3つ</span>ある <span class="text-rose-600 font-extrabold">a</span> の範囲を求めよ。</p>
+                    </div>
+                    <div class="answer-box hidden mt-4 pt-3 border-t border-amber-200/80">
+                        <div class="text-[11px] text-slate-400 font-bold mb-1">【答え】</div>
+                        <div id="ans-q3" class="text-base sm:text-lg font-black text-rose-600 font-mono">9 < a ≤ 11</div>
+                        <p id="ans-q3-desc" class="text-xs text-slate-600 mt-1 leading-relaxed">端点 (a-1)/2 の位置と、不等号のイコール（＝）の有無に注意します。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Explanation Box -->
+            <div id="explanation-box" class="answer-box hidden mt-5 p-4 sm:p-5 bg-indigo-50/80 rounded-xl border border-indigo-100 text-sm">
+                <h3 class="font-bold text-indigo-950 mb-2.5 flex items-center gap-1.5 text-xs sm:text-sm">
+                    <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    問題3 (整数解がちょうど3つ) の詳細な考え方
+                </h3>
+                <div id="explanation-content" class="text-slate-700 leading-relaxed text-xs sm:text-sm space-y-2">
+                    <!-- Dynamic explanation text injected by JS -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-200/60 border-t border-slate-200 py-3 text-center text-xs text-slate-500 font-medium">
+        不等式と実数解・整数解の探究インタラクティブアプリ
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // State Variables
+        let state = {
+            b: 1,
+            a: 4.5,
+            op1: '>',  // '>', '>=', '<', '<='
+            op2: '<',  // '<', '<=', '>', '>='
+            showAnswers: false
+        };
+
+        // DOM Element Getters
+        const op1El = document.getElementById('op1');
+        const op2El = document.getElementById('op2');
+        const valBEl = document.getElementById('val-b');
+        const sliderAEl = document.getElementById('slider-a');
+        const labelAValEl = document.getElementById('label-a-val');
+        const labelEndpointValEl = document.getElementById('label-endpoint-val');
+        const calcProcessTextEl = document.getElementById('calc-process-text');
+        const svgEl = document.getElementById('numberline-svg');
+        const toggleAnswersBtn = document.getElementById('toggle-answers-btn');
+        const answerBoxes = document.querySelectorAll('.answer-box');
+
+        // Status elements
+        const statusRealEl = document.getElementById('status-real-solution');
+        const statusIntEl = document.getElementById('status-integer-list');
+
+        // Answer elements
+        const ansQ1El = document.getElementById('ans-q1');
+        const ansQ1DescEl = document.getElementById('ans-q1-desc');
+        const ansQ2El = document.getElementById('ans-q2');
+        const ansQ2DescEl = document.getElementById('ans-q2-desc');
+        const ansQ3El = document.getElementById('ans-q3');
+        const explanationContentEl = document.getElementById('explanation-content');
+
+        // Safe Event Binding Helper
+        function bindEvent(elementId, eventType, callback) {
+            const el = document.getElementById(elementId);
+            if (el) {
+                el.addEventListener(eventType, callback);
+            }
+        }
+
+        // Presets Setup
+        bindEvent('btn-preset-default', 'click', () => {
+            state.b = 1;
+            state.op1 = '>';
+            state.op2 = '<';
+            state.a = 4.5;
+            syncInputs();
+            updateAll();
+        });
+
+        bindEvent('btn-preset-inclusive', 'click', () => {
+            state.b = 1;
+            state.op1 = '>=';
+            state.op2 = '<=';
+            state.a = 4.5;
+            syncInputs();
+            updateAll();
+        });
+
+        // Event Listeners for inputs
+        if (op1El) op1El.addEventListener('change', (e) => { state.op1 = e.target.value; updateAll(); });
+        if (op2El) op2El.addEventListener('change', (e) => { state.op2 = e.target.value; updateAll(); });
+        if (valBEl) valBEl.addEventListener('change', (e) => { 
+            state.b = parseFloat(e.target.value) || 0; 
+            updateAll(); 
+        });
+
+        if (sliderAEl) {
+            sliderAEl.addEventListener('input', (e) => {
+                state.a = parseFloat(e.target.value);
+                updateControlLabels();
+                updateAll();
+            });
+        }
+
+        // Stepper Buttons
+        bindEvent('btn-step-prev', 'click', () => {
+            state.a = Math.max(-10, Math.round((state.a - 0.2) * 10) / 10);
+            syncInputs();
+            updateAll();
+        });
+
+        bindEvent('btn-step-next', 'click', () => {
+            state.a = Math.min(15, Math.round((state.a + 0.2) * 10) / 10);
+            syncInputs();
+            updateAll();
+        });
+
+        bindEvent('btn-step-prev-big', 'click', () => {
+            state.a = Math.max(-10, Math.round((state.a - 2.0) * 10) / 10);
+            syncInputs();
+            updateAll();
+        });
+
+        bindEvent('btn-step-next-big', 'click', () => {
+            state.a = Math.min(15, Math.round((state.a + 2.0) * 10) / 10);
+            syncInputs();
+            updateAll();
+        });
+
+        if (toggleAnswersBtn) {
+            toggleAnswersBtn.addEventListener('click', () => {
+                state.showAnswers = !state.showAnswers;
+                const span = toggleAnswersBtn.querySelector('span');
+                if (span) {
+                    span.textContent = state.showAnswers ? '解答・解説を隠す' : '解答・解説を表示';
+                }
+                answerBoxes.forEach(box => {
+                    if (state.showAnswers) {
+                        box.classList.remove('hidden');
+                    } else {
+                        box.classList.add('hidden');
+                    }
+                });
+            });
+        }
+
+        function syncInputs() {
+            if (op1El) op1El.value = state.op1;
+            if (op2El) op2El.value = state.op2;
+            if (valBEl) valBEl.value = state.b;
+            if (sliderAEl) sliderAEl.value = state.a;
+            updateControlLabels();
+        }
+
+        function updateControlLabels() {
+            const endpointVal = (state.a - 1) / 2;
+            if (labelAValEl) labelAValEl.textContent = state.a.toFixed(1);
+            if (labelEndpointValEl) labelEndpointValEl.textContent = endpointVal.toFixed(2);
+            if (calcProcessTextEl) {
+                calcProcessTextEl.innerHTML = `(a - 1) / 2 = <strong>${endpointVal.toFixed(2)}</strong> &rArr; a = 2 &times; ${endpointVal.toFixed(2)} + 1 = <strong class="text-indigo-700">${state.a.toFixed(1)}</strong>`;
+            }
+        }
+
+        function satisfiesCond1(x, b, op1) {
+            if (op1 === '>') return x > b;
+            if (op1 === '>=') return x >= b;
+            if (op1 === '<') return x < b;
+            if (op1 === '<=') return x <= b;
+            return false;
+        }
+
+        function satisfiesCond2(x, endVal, op2) {
+            if (op2 === '<') return x < endVal;
+            if (op2 === '<=') return x <= endVal;
+            if (op2 === '>') return x > endVal;
+            if (op2 === '>=') return x >= endVal;
+            return false;
+        }
+
+        // Real Solution Existence Logic
+        function hasRealSolution(b, endVal, op1, op2) {
+            const is1Right = op1.includes('>');
+            const is2Right = op2.includes('>');
+            const is1Inc = op1.includes('=');
+            const is2Inc = op2.includes('=');
+
+            if (is1Right && is2Right) return true;
+            if (!is1Right && !is2Right) return true;
+
+            if (is1Right && !is2Right) {
+                if (endVal > b) return true;
+                if (endVal === b) return is1Inc && is2Inc;
+                return false;
+            }
+
+            if (!is1Right && is2Right) {
+                if (b > endVal) return true;
+                if (b === endVal) return is1Inc && is2Inc;
+                return false;
+            }
+
+            return false;
+        }
+
+        function getIntegerSolutions(b, a, op1, op2) {
+            const endpointVal = (a - 1) / 2;
+            const minCheck = Math.min(b, endpointVal) - 10;
+            const maxCheck = Math.max(b, endpointVal) + 10;
+            const res = [];
+            for (let i = Math.floor(minCheck); i <= Math.ceil(maxCheck); i++) {
+                if (satisfiesCond1(i, b, op1) && satisfiesCond2(i, endpointVal, op2)) {
+                    res.push(i);
+                }
+            }
+            return res;
+        }
+
+        // Dynamic SVG Number Line Rendering
+        function renderSVG() {
+            if (!svgEl) return;
+            const width = 800;
+            const height = 230;
+            const minX = -4;
+            const maxX = 8;
+            const padding = 50;
+
+            function toSvgX(val) {
+                return padding + ((val - minX) / (maxX - minX)) * (width - 2 * padding);
+            }
+
+            let html = '';
+            const axisY = 160;
+            
+            // Main Axis Line
+            html += `<line x1="${padding - 20}" y1="${axisY}" x2="${width - padding + 20}" y2="${axisY}" stroke="#64748b" stroke-width="3" stroke-linecap="round" />`;
+
+            // Ticks & Numbers
+            for (let i = Math.ceil(minX); i <= Math.floor(maxX); i++) {
+                const sx = toSvgX(i);
+                html += `<line x1="${sx}" y1="${axisY - 8}" x2="${sx}" y2="${axisY + 8}" stroke="#64748b" stroke-width="2" />`;
+                html += `<text x="${sx}" y="${axisY + 28}" fill="#cbd5e1" font-size="15" font-family="monospace" font-weight="bold" text-anchor="middle">${i}</text>`;
+            }
+
+            // Region 1 (b condition)
+            const y1 = 100;
+            const bx = toSvgX(state.b);
+            const isBInclusive = state.op1.includes('=');
+            const isBRight = state.op1.includes('>');
+
+            // Region 2 (endpoint (a-1)/2 condition)
+            const endpointVal = (state.a - 1) / 2;
+            const y2 = 45;
+            const ax = toSvgX(endpointVal);
+            const isAInclusive = state.op2.includes('=');
+            const isARight = state.op2.includes('>');
+
+            // Ray 1 (Blue)
+            const ray1EndX = isBRight ? width - padding + 20 : padding - 20;
+            html += `<line x1="${bx}" y1="${y1}" x2="${ray1EndX}" y2="${y1}" stroke="#3b82f6" stroke-width="4" stroke-linecap="round" />`;
+            html += `<line x1="${bx}" y1="${y1}" x2="${bx}" y2="${axisY}" stroke="#3b82f6" stroke-width="2" stroke-dasharray="4 4" opacity="0.6" />`;
+            html += `<circle cx="${bx}" cy="${y1}" r="8" fill="${isBInclusive ? '#3b82f6' : '#0f172a'}" stroke="#3b82f6" stroke-width="3.5" />`;
+            html += `<text x="${bx}" y="${y1 - 12}" fill="#60a5fa" font-size="16" font-weight="bold" font-family="monospace" text-anchor="middle">b = ${state.b}</text>`;
+
+            // Ray 2 (Rose)
+            const ray2EndX = isARight ? width - padding + 20 : padding - 20;
+            html += `<line x1="${ax}" y1="${y2}" x2="${ray2EndX}" y2="${y2}" stroke="#f43f5e" stroke-width="4" stroke-linecap="round" />`;
+            html += `<line x1="${ax}" y1="${y2}" x2="${ax}" y2="${axisY}" stroke="#f43f5e" stroke-width="2" stroke-dasharray="4 4" opacity="0.6" />`;
+            html += `<g id="svg-a-group">
+                <circle cx="${ax}" cy="${y2}" r="8.5" fill="${isAInclusive ? '#f43f5e' : '#0f172a'}" stroke="#f43f5e" stroke-width="3.5" />
+                <text x="${ax}" y="${y2 - 20}" fill="#fb7185" font-size="15" font-weight="black" font-family="monospace" text-anchor="middle">端点 (a-1)/2 = ${endpointVal.toFixed(2)}</text>
+                <text x="${ax}" y="${y2 - 4}" fill="#fda4af" font-size="12" font-weight="bold" font-family="monospace" text-anchor="middle">(a = ${state.a.toFixed(1)})</text>
+            </g>`;
+
+            // Overlap Highlight Region
+            let overlapLeft = null;
+            let overlapRight = null;
+
+            if (isBRight && !isARight) {
+                overlapLeft = bx;
+                overlapRight = ax;
+            } else if (!isBRight && isARight) {
+                overlapLeft = ax;
+                overlapRight = bx;
+            }
+
+            if (overlapLeft !== null && overlapRight !== null && overlapLeft < overlapRight) {
+                const overlapWidth = overlapRight - overlapLeft;
+                html += `<rect x="${overlapLeft}" y="${y2 - 6}" width="${overlapWidth}" height="${axisY - y2 + 6}" fill="#10b981" opacity="0.2" />`;
+                html += `<line x1="${overlapLeft}" y1="${y2 - 4}" x2="${overlapRight}" y2="${overlapRight - overlapLeft > 0 ? y2 - 4 : y2 - 4}" stroke="#10b981" stroke-width="5" stroke-linecap="round" />`;
+            }
+
+            // Integer Solution Dots
+            const intSols = getIntegerSolutions(state.b, state.a, state.op1, state.op2);
+            for (let i = Math.ceil(minX); i <= Math.floor(maxX); i++) {
+                const sx = toSvgX(i);
+                const isSol = intSols.includes(i);
+                if (isSol) {
+                    html += `<circle cx="${sx}" cy="${axisY}" r="8" fill="#10b981" stroke="#ffffff" stroke-width="2.5" />`;
+                    html += `<text x="${sx}" y="${axisY - 14}" fill="#34d399" font-size="14" font-weight="extrabold" font-family="monospace" text-anchor="middle">${i}</text>`;
+                }
+            }
+
+            svgEl.innerHTML = html;
+        }
+
+        // Automatic Answer Generator
+        function updateAnswers() {
+            const b = state.b;
+            const op1 = state.op1;
+            const op2 = state.op2;
+
+            const isStandard = (op1 === '>' || op1 === '>=') && (op2 === '<' || op2 === '<=');
+
+            if (!isStandard) {
+                if (ansQ1El) ansQ1El.textContent = "標準的な領域設定でご確認ください";
+                if (ansQ1DescEl) ansQ1DescEl.textContent = "現在の不等号の方向では領域が無限または逆向きになります。";
+                if (ansQ2El) ansQ2El.textContent = "-";
+                if (ansQ2DescEl) ansQ2DescEl.textContent = "-";
+                if (ansQ3El) ansQ3El.textContent = "-";
+                if (explanationContentEl) explanationContentEl.innerHTML = "<p class='text-slate-600'>現在選択されている不等号の組み合わせは標準的な間隔問題ではありません。『標準』ボタンを押すと通常の条件に戻ります。</p>";
+                return;
+            }
+
+            const bothInclusive = (op1 === '>=') && (op2 === '<=');
+            const limitA = 2 * b + 1;
+            let q1Ans = bothInclusive ? `a ≥ ${limitA}` : `a > ${limitA}`;
+            let q2Ans = bothInclusive ? `a < ${limitA}` : `a ≤ ${limitA}`;
+
+            if (ansQ1El) ansQ1El.innerHTML = `<span class="text-indigo-600">${q1Ans}</span> <span class="text-xs text-slate-500 font-sans font-normal">(端点: (a-1)/2 ${bothInclusive ? '≥' : '>'} ${b})</span>`;
+            if (ansQ1DescEl) ansQ1DescEl.textContent = `端点 (a-1)/2 > ${b} より、両辺を2倍して1を足すと a > ${limitA} となります。`;
+            
+            if (ansQ2El) ansQ2El.innerHTML = `<span class="text-indigo-600">${q2Ans}</span> <span class="text-xs text-slate-500 font-sans font-normal">(端点: (a-1)/2 ${bothInclusive ? '<' : '≤'} ${b})</span>`;
+            if (ansQ2DescEl) ansQ2DescEl.textContent = `問題1の補集合（共通部分が存在しない a の範囲）です。`;
+
+            let firstInt;
+            if (op1 === '>') {
+                firstInt = Math.floor(b) + 1;
+            } else {
+                firstInt = Number.isInteger(b) ? b : Math.floor(b) + 1;
+            }
+
+            const int1 = firstInt;
+            const int2 = firstInt + 1;
+            const int3 = firstInt + 2;
+            const int4 = firstInt + 3;
+
+            let endLow = int3;
+            let endHigh = int4;
+            let aLow = 2 * endLow + 1;
+            let aHigh = 2 * endHigh + 1;
+
+            let q3Ans = "";
+            let endCondText = "";
+            let expDetail = "";
+
+            if (op2 === '<') {
+                q3Ans = `${aLow} < a ≤ ${aHigh}`;
+                endCondText = `${endLow} < (a-1)/2 ≤ ${endHigh}`;
+                expDetail = `
+                    <p>1. 条件1 (x ${op1 === '>' ? '>' : '≥'} ${b}) より、含まれる最初の最小整数解は <strong>${int1}</strong> です。</p>
+                    <p>2. 整数解がちょうど3つ存在するためには、含まれる整数は <strong>${int1}, ${int2}, ${int3}</strong> であり、<strong>${int4} は含まれてはいけません</strong>。</p>
+                    <p>3. 数直線上の端点 (a-1)/2 が満たすべき条件を立てます：</p>
+                    <ul class="list-disc list-inside ml-2 space-y-1 my-1 font-mono text-indigo-900 bg-white/60 p-2.5 rounded-lg border border-indigo-100">
+                        <li>${int3} を含めるために: <strong>(a-1)/2 > ${endLow}</strong></li>
+                        <li>${int4} を含めないために: <strong>(a-1)/2 ≤ ${endHigh}</strong> （端点が ${endHigh} に重なっても x < ${endHigh} となり ${endHigh} は含まれません）</li>
+                    </ul>
+                    <p>4. 端点の不等式 ${endLow} < (a-1)/2 ≤ ${endHigh} から a の範囲を解きます：</p>
+                    <div class="bg-indigo-100/70 p-3 rounded-lg font-mono text-indigo-950 font-bold space-y-1 my-2 border border-indigo-200">
+                        <div>・各辺を 2 倍: &nbsp;&nbsp; ${2 * endLow} < a - 1 ≤ ${2 * endHigh}</div>
+                        <div>・各辺に 1 を加える: <strong class="text-rose-600 text-base">${aLow} < a ≤ ${aHigh}</strong></div>
+                    </div>
+                `;
+            } else {
+                q3Ans = `${aLow} ≤ a < ${aHigh}`;
+                endCondText = `${endLow} ≤ (a-1)/2 < ${endHigh}`;
+                expDetail = `
+                    <p>1. 条件1 (x ${op1 === '>' ? '>' : '≥'} ${b}) より、含まれる最初の最小整数解は <strong>${int1}</strong> です。</p>
+                    <p>2. 整数解がちょうど3つ存在するためには、含まれる整数は <strong>${int1}, ${int2}, ${int3}</strong> であり、<strong>${int4} は含まれてはいけません</strong>。</p>
+                    <p>3. 数直線上の端点 (a-1)/2 が満たすべき条件を立てます：</p>
+                    <ul class="list-disc list-inside ml-2 space-y-1 my-1 font-mono text-indigo-900 bg-white/60 p-2.5 rounded-lg border border-indigo-100">
+                        <li>${int3} を含めるために: <strong>(a-1)/2 ≥ ${endLow}</strong> （x ≤ (a-1)/2 のため含みます）</li>
+                        <li>${int4} を含めないために: <strong>(a-1)/2 < ${endHigh}</strong></li>
+                    </ul>
+                    <p>4. 端点の不等式 ${endLow} ≤ (a-1)/2 < ${endHigh} から a の範囲を解きます：</p>
+                    <div class="bg-indigo-100/70 p-3 rounded-lg font-mono text-indigo-950 font-bold space-y-1 my-2 border border-indigo-200">
+                        <div>・各辺を 2 倍: &nbsp;&nbsp; ${2 * endLow} ≤ a - 1 < ${2 * endHigh}</div>
+                        <div>・各辺に 1 を加える: <strong class="text-rose-600 text-base">${aLow} ≤ a < ${aHigh}</strong></div>
+                    </div>
+                `;
+            }
+
+            if (ansQ3El) ansQ3El.innerHTML = `<div>${q3Ans}</div><div class="text-xs font-normal text-slate-500 font-sans mt-0.5">(端点: ${endCondText})</div>`;
+            if (explanationContentEl) explanationContentEl.innerHTML = expDetail;
+        }
+
+        // Global Sync & Update Trigger
+        function updateAll() {
+            renderSVG();
+
+            const endpointVal = (state.a - 1) / 2;
+            const hasReal = hasRealSolution(state.b, endpointVal, state.op1, state.op2);
+            const intSols = getIntegerSolutions(state.b, state.a, state.op1, state.op2);
+            
+            if (statusRealEl) {
+                if (hasReal) {
+                    statusRealEl.textContent = "実数解あり";
+                    statusRealEl.className = "px-3.5 py-1 rounded-full font-bold text-xs sm:text-sm bg-emerald-100 text-emerald-800 border border-emerald-200";
+                } else {
+                    statusRealEl.textContent = "実数解なし";
+                    statusRealEl.className = "px-3.5 py-1 rounded-full font-bold text-xs sm:text-sm bg-rose-100 text-rose-800 border border-rose-200";
+                }
+            }
+
+            if (statusIntEl) {
+                if (intSols.length === 0) {
+                    statusIntEl.textContent = "なし (0個)";
+                } else if (intSols.length > 15) {
+                    statusIntEl.textContent = `多数 (${intSols.length}個以上)`;
+                } else {
+                    statusIntEl.textContent = `{ ${intSols.join(', ')} } (計 ${intSols.length} 個)`;
+                }
+            }
+
+            updateAnswers();
+        }
+
+        // Initial Load Event
+        window.onload = function() {
+            syncInputs();
+            updateAll();
+        };
+    </script>
+</body>
+</html>
