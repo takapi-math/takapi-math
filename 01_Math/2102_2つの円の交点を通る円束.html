@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2つの円の交点を通る円束 (根軸) シミュレーター</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .mono-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
+
+    <!-- Header Section -->
+    <header class="bg-slate-800/80 backdrop-blur border-b border-slate-700/60 sticky top-0 z-30 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-indigo-600 rounded-lg text-white">
+                    <i class="fa-solid fa-circle-notch text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold leading-tight">2つの円の交点を通る円束 (Pencil of Circles)</h1>
+                    <p class="text-xs text-slate-400">方程式 <span class="mono-font text-indigo-300">f(x,y) + k · g(x,y) = 0</span> の動作と根軸</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2 text-xs bg-slate-900/60 px-3 py-1.5 rounded-full border border-slate-700">
+                <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span class="text-slate-300 font-medium">インタラクティブ学習ツール</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 flex flex-col gap-5">
+
+        <!-- 1. TOP CONTROLS ROW (Side-by-side inputs and k parameter) -->
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-4">
+            
+            <!-- Coefficients Input (Circles f and g) -->
+            <div class="xl:col-span-5 bg-slate-800 rounded-xl p-3.5 border border-slate-700/70 shadow-lg flex flex-col justify-between">
+                <h2 class="text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-sliders"></i> 円 f, g の中心と半径の設定
+                </h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <!-- Circle f Input -->
+                    <div class="bg-blue-950/40 p-2.5 rounded-lg border border-blue-800/40">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="font-bold text-blue-400 text-xs flex items-center gap-1">
+                                <span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span>
+                                円 f(x,y) = 0
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-1.5">
+                            <div>
+                                <label class="text-[10px] text-slate-400 block mb-0.5 text-center">中心 x₁</label>
+                                <input type="number" id="x1" value="-2" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-center text-xs font-semibold text-white focus:outline-none focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="text-[10px] text-slate-400 block mb-0.5 text-center">中心 y₁</label>
+                                <input type="number" id="y1" value="-1.5" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-center text-xs font-semibold text-white focus:outline-none focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="text-[10px] text-slate-400 block mb-0.5 text-center">半径 r₁</label>
+                                <input type="number" id="r1" value="3" step="0.5" min="0.1" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-center text-xs font-semibold text-white focus:outline-none focus:border-blue-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Circle g Input -->
+                    <div class="bg-rose-950/40 p-2.5 rounded-lg border border-rose-800/40">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="font-bold text-rose-400 text-xs flex items-center gap-1">
+                                <span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span>
+                                円 g(x,y) = 0
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-1.5">
+                            <div>
+                                <label class="text-[10px] text-slate-400 block mb-0.5 text-center">中心 x₂</label>
+                                <input type="number" id="x2" value="2" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-center text-xs font-semibold text-white focus:outline-none focus:border-rose-500">
+                            </div>
+                            <div>
+                                <label class="text-[10px] text-slate-400 block mb-0.5 text-center">中心 y₂</label>
+                                <input type="number" id="y2" value="1.5" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-center text-xs font-semibold text-white focus:outline-none focus:border-rose-500">
+                            </div>
+                            <div>
+                                <label class="text-[10px] text-slate-400 block mb-0.5 text-center">半径 r₂</label>
+                                <input type="number" id="r2" value="3" step="0.5" min="0.1" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-center text-xs font-semibold text-white focus:outline-none focus:border-rose-500">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Parameter k Control & Formula Display (f + kg = 0) -->
+            <div class="xl:col-span-7 bg-slate-800 rounded-xl p-3.5 border border-slate-700/70 shadow-lg flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-2">
+                    <h2 class="text-xs font-semibold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-gauge-high"></i> パラメータ k の操作
+                    </h2>
+                    <div class="flex items-center gap-2">
+                        <button id="set-k-minus-1" class="text-xs bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30 px-2 py-1 rounded transition">
+                            k = -1 (根軸)
+                        </button>
+                        <button id="anim-btn" class="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 px-2.5 py-1 rounded transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-play" id="anim-icon"></i>
+                            <span id="anim-text">アニメーション</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                    <!-- Left: Slider, Direct Input, Range -->
+                    <div class="md:col-span-7 flex flex-col gap-2">
+                        <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-700/80">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-[11px] text-slate-400">現在の k:</span>
+                                <span id="k-value-display" class="mono-font text-base font-bold text-amber-400">k = 1.00</span>
+                            </div>
+                            <input type="range" id="k-slider" min="-10" max="10" step="0.05" value="1" class="w-full accent-amber-500 cursor-pointer h-1.5 bg-slate-700 rounded-lg appearance-none">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div class="flex items-center gap-1.5">
+                                <label class="text-[11px] text-slate-400 whitespace-nowrap">k直接指定:</label>
+                                <input type="number" id="k-num" value="1.0" step="0.1" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-amber-300 font-semibold text-center text-xs focus:outline-none focus:border-amber-500">
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <label class="text-[11px] text-slate-400 whitespace-nowrap">範囲 (±):</label>
+                                <select id="k-range" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-slate-200 text-center text-xs focus:outline-none">
+                                    <option value="5">± 5</option>
+                                    <option value="10" selected>± 10</option>
+                                    <option value="20">± 20</option>
+                                    <option value="50">± 50</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: f + kg = 0 Equation Display -->
+                    <div class="md:col-span-5 bg-amber-950/30 border border-amber-500/40 p-2.5 rounded-lg flex flex-col justify-center min-h-[82px]">
+                        <span class="text-[10px] text-amber-400 font-semibold uppercase mb-1 flex items-center gap-1">
+                            <i class="fa-solid fa-square-root-variable"></i> 円束の方程式 (f + kg = 0)
+                        </span>
+                        <div id="f-plus-kg-expr" class="mono-font text-[11px] sm:text-xs text-amber-200 font-bold break-all leading-relaxed">
+                            (x² + y² + 4x - 5) + k(x² + y² - 4x - 5) = 0
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 2. GRAPH CANVAS AREA -->
+        <div class="bg-slate-800 rounded-xl p-4 border border-slate-700/70 shadow-lg flex flex-col relative">
+            
+            <!-- Canvas toolbar -->
+            <div class="flex items-center justify-between mb-2 text-xs">
+                <div class="flex items-center space-x-2">
+                    <span class="font-semibold text-slate-200">2次元座標平面</span>
+                    <span id="intersection-status" class="bg-indigo-950 text-indigo-300 px-2 py-0.5 rounded border border-indigo-800/50">
+                        交点: 2点で交わる
+                    </span>
+                </div>
+                <div class="flex items-center space-x-1">
+                    <button id="zoom-in" class="p-1.5 bg-slate-700 hover:bg-slate-600 rounded text-slate-200 transition" title="拡大">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                    <button id="zoom-out" class="p-1.5 bg-slate-700 hover:bg-slate-600 rounded text-slate-200 transition" title="縮小">
+                        <i class="fa-solid fa-minus"></i>
+                    </button>
+                    <button id="reset-view" class="p-1.5 bg-slate-700 hover:bg-slate-600 rounded text-slate-200 transition" title="リセット">
+                        <i class="fa-solid fa-rotate-left"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Canvas container -->
+            <div class="relative w-full h-[480px] bg-slate-950 rounded-lg overflow-hidden border border-slate-800 cursor-crosshair">
+                <canvas id="graphCanvas" class="w-full h-full block"></canvas>
+                
+                <!-- Prominent Graph Equations Overlay (Larger font) -->
+                <div class="absolute top-3 left-3 bg-slate-900/95 backdrop-blur border border-slate-700/90 p-3 rounded-lg text-xs space-y-1.5 shadow-xl max-w-xs sm:max-w-md pointer-events-none">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-blue-500 shrink-0"></span>
+                        <span id="overlay-f-expr" class="mono-font text-blue-300 font-semibold text-sm sm:text-base">f: (x + 2.0)² + y² = 9.0</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-rose-500 shrink-0"></span>
+                        <span id="overlay-g-expr" class="mono-font text-rose-300 font-semibold text-sm sm:text-base">g: (x - 2.0)² + y² = 9.0</span>
+                    </div>
+                    <div class="flex items-center gap-2 border-t border-slate-800 pt-1.5 mt-1">
+                        <span class="w-3 h-3 rounded-full bg-amber-400 shrink-0"></span>
+                        <span id="overlay-ck-expr" class="mono-font text-amber-300 font-bold text-sm sm:text-base">C_k: x² + y² - 5.00 = 0</span>
+                    </div>
+                    <div class="flex items-center justify-between text-amber-400 font-mono text-xs sm:text-sm pl-5">
+                        <span id="overlay-k-val" class="font-bold">k = +1.00</span>
+                    </div>
+                </div>
+
+                <!-- Legend Overlay (Smaller text) -->
+                <div class="absolute bottom-3 left-3 bg-slate-900/85 backdrop-blur border border-slate-700/70 p-2 rounded-lg text-[11px] space-y-1 pointer-events-none shadow-md">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full border-2 border-yellow-300 bg-yellow-400/30 inline-block"></span>
+                        <span class="text-yellow-200">交点 (2円の共通点)</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span>
+                        <span class="text-emerald-300">指定点 P(x₀, y₀)</span>
+                    </div>
+                </div>
+
+                <!-- Instruction hint -->
+                <div class="absolute top-3 right-3 bg-slate-900/80 text-slate-400 text-[10px] px-2.5 py-1 rounded border border-slate-800 pointer-events-none">
+                    <i class="fa-solid fa-hand-pointer mr-1"></i> 画面クリックで点 P(x₀,y₀) を配置
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. BOTTOM SIDE-BY-SIDE CARDS (Point input & Circle/Line Equation details) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            <!-- Left: Target Point Input & Solver Card -->
+            <div class="bg-slate-800 rounded-xl p-4 border border-slate-700/70 shadow-lg flex flex-col justify-between">
+                <div>
+                    <h2 class="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-1 flex items-center gap-2">
+                        <i class="fa-solid fa-location-crosshairs"></i> 指定する点 P(x₀, y₀) を通る条件
+                    </h2>
+                    <p class="text-xs text-slate-400 mb-3">
+                        この点を通るように $k$ を自動的に逆算します（グラフ上をクリックしても指定可能）。
+                    </p>
+
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div>
+                            <label class="text-xs text-slate-300 block mb-1">x₀ 座標:</label>
+                            <input type="number" id="px" value="0" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-center font-semibold text-emerald-400 focus:outline-none focus:border-emerald-500">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-300 block mb-1">y₀ 座標:</label>
+                            <input type="number" id="py" value="3" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-center font-semibold text-emerald-400 focus:outline-none focus:border-emerald-500">
+                        </div>
+                    </div>
+
+                    <button id="calc-k-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold py-2 px-3 rounded-lg transition flex items-center justify-center gap-2 shadow">
+                        <i class="fa-solid fa-calculator"></i> 点 (x₀, y₀) を通る k と図形を求める
+                    </button>
+                </div>
+
+                <!-- Result output box -->
+                <div id="solver-result" class="mt-3 p-2.5 bg-slate-900/90 rounded-lg border border-slate-700 text-xs space-y-1">
+                    <div class="text-slate-400 text-[11px]">計算結果:</div>
+                    <div id="k-calc-step" class="mono-font text-slate-300 text-[11px]">f(0, 3) = 4, g(0, 3) = 4</div>
+                    <div id="k-calc-val" class="mono-font text-emerald-400 font-bold text-sm">k = -1.000 (根軸)</div>
+                </div>
+            </div>
+
+            <!-- Right: Circle/Line equation details card -->
+            <div class="bg-slate-800 rounded-xl p-4 border border-slate-700/70 shadow-lg flex flex-col justify-between">
+                <div>
+                    <h2 class="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-1 flex items-center gap-2">
+                        <i class="fa-solid fa-square-root-variable"></i> 現在の図形 C_k の詳細
+                    </h2>
+                    <p class="text-xs text-slate-400 mb-3">
+                        $f + kg = 0$ を整理した結果（$k=-1$ のときは直線、それ以外は円）。
+                    </p>
+                </div>
+
+                <div class="bg-slate-900 p-3.5 rounded-lg border border-purple-500/30 font-mono text-center space-y-2">
+                    <div id="ck-type-badge" class="text-[11px] text-amber-400 font-semibold">円 (標準形)</div>
+                    <div id="ck-general" class="text-purple-300 font-bold text-sm sm:text-base">x² + y² - 5.00 = 0</div>
+                    <div id="ck-details" class="text-xs text-purple-400 border-t border-slate-800 pt-2">中心: (0.00, 0.00), 半径: 2.24</div>
+                </div>
+
+                <div class="text-[11px] text-slate-500 text-center mt-2">
+                    ※ $k = -1$ のときは $x^2, y^2$ の項が消去され、2円の交点を通る直線（根軸）になります。
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 4. MATHEMATICAL EXPLANATION SECTION (At bottom) -->
+        <div class="bg-slate-800 rounded-xl p-4 border border-slate-700/70 shadow-lg">
+            <h2 class="text-sm font-semibold text-slate-200 uppercase tracking-wider mb-2 flex items-center gap-2">
+                <i class="fa-solid fa-graduation-cap text-indigo-400"></i> なぜ f + k·g = 0 は交点を通るのか？
+            </h2>
+            <div class="text-xs text-slate-300 space-y-2 leading-relaxed">
+                <p>
+                    2つの円 $f: x^2 + y^2 + l_1x + m_1y + n_1 = 0$ と $g: x^2 + y^2 + l_2x + m_2y + n_2 = 0$ の交点を $(x_i, y_i)$ とすると、
+                    この点はどちらの円周上にもあるため、<span class="text-blue-300 font-mono">f(x_i, y_i) = 0</span> かつ <span class="text-rose-300 font-mono">g(x_i, y_i) = 0</span> となります。
+                </p>
+                <p>
+                    新しい方程式 <span class="text-amber-300 font-mono font-bold">f(x,y) + k · g(x,y) = 0</span> に $(x_i, y_i)$ を代入すると：
+                    <span class="block bg-slate-900 p-2 rounded text-center my-1 font-mono text-indigo-300">
+                        0 + k · 0 = 0
+                    </span>
+                    となり、$k$ の値に関わらず常に成立します。したがって、この方程式が表す図形は<strong class="text-white">必ず2つの円の交点を通ります</strong>。
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                    <div class="bg-indigo-950/40 border-l-2 border-indigo-500 p-2 text-[11px] text-slate-400">
+                        <strong class="text-indigo-300">k ≠ -1 のとき (円):</strong><br>
+                        $x^2 + y^2$ の係数が $(1+k)$ となり、$1+k \neq 0$ なので両辺を割ることで円の方程式になります。中心は2円の中心を結ぶ線分上に位置します。
+                    </div>
+                    <div class="bg-rose-950/40 border-l-2 border-rose-500 p-2 text-[11px] text-slate-400">
+                        <strong class="text-rose-300">k = -1 のとき (根軸 - 直線):</strong><br>
+                        $x^2 + y^2$ の項が相殺されて消去され、$x, y$ の1次方程式（直線）になります。この直線は2円の交点を通る直線（<strong>根軸</strong>）と呼ばれます。
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // --- State Management ---
+        const state = {
+            // Circle f: center (x1, y1), radius r1
+            x1: -2, y1: -1.5, r1: 3,
+            // Circle g: center (x2, y2), radius r2
+            x2: 2, y2: 1.5, r2: 3,
+            // Parameter k
+            k: 1.0,
+            // Target Point P(px, py)
+            px: 0, py: 3,
+            // Viewport scale & offset
+            scale: 30, // px per math unit
+            offsetX: 0,
+            offsetY: 0,
+            // Animation state
+            isAnimating: false,
+            animDirection: 1,
+            animFrameId: null
+        };
+
+        // DOM Elements
+        const canvas = document.getElementById('graphCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const x1El = document.getElementById('x1');
+        const y1El = document.getElementById('y1');
+        const r1El = document.getElementById('r1');
+        const x2El = document.getElementById('x2');
+        const y2El = document.getElementById('y2');
+        const r2El = document.getElementById('r2');
+
+        const fPlusKgExpr = document.getElementById('f-plus-kg-expr');
+        const overlayFExpr = document.getElementById('overlay-f-expr');
+        const overlayGExpr = document.getElementById('overlay-g-expr');
+        const overlayCkExpr = document.getElementById('overlay-ck-expr');
+        const overlayKVal = document.getElementById('overlay-k-val');
+
+        const kSlider = document.getElementById('k-slider');
+        const kNum = document.getElementById('k-num');
+        const kRange = document.getElementById('k-range');
+        const kValueDisplay = document.getElementById('k-value-display');
+        const setKMinus1Btn = document.getElementById('set-k-minus-1');
+        const animBtn = document.getElementById('anim-btn');
+        const animIcon = document.getElementById('anim-icon');
+        const animText = document.getElementById('anim-text');
+
+        const pxEl = document.getElementById('px');
+        const pyEl = document.getElementById('py');
+        const calcKBtn = document.getElementById('calc-k-btn');
+        const kCalcStep = document.getElementById('k-calc-step');
+        const kCalcVal = document.getElementById('k-calc-val');
+
+        const ckTypeBadge = document.getElementById('ck-type-badge');
+        const ckGeneral = document.getElementById('ck-general');
+        const ckDetails = document.getElementById('ck-details');
+        const intersectionStatus = document.getElementById('intersection-status');
+
+        // Calculate general coefficients for circle: x^2 + y^2 + lx + my + n = 0
+        function getGeneralCoeffs(x, y, r) {
+            const l = -2 * x;
+            const m = -2 * y;
+            const n = x * x + y * y - r * r;
+            return { l, m, n };
+        }
+
+        // Format circle or line general form equation string
+        function formatCircleExpr(x0, y0, r) {
+            const cX = x0 % 1 === 0 ? x0 : x0.toFixed(2);
+            const cY = y0 % 1 === 0 ? y0 : y0.toFixed(2);
+            const rSq = (r * r) % 1 === 0 ? (r * r) : (r * r).toFixed(2);
+
+            let xPart = x0 === 0 ? "x²" : `(x ${x0 > 0 ? '-' : '+'} ${Math.abs(cX)})²`;
+            let yPart = y0 === 0 ? "y²" : `(y ${y0 > 0 ? '-' : '+'} ${Math.abs(cY)})²`;
+
+            return `${xPart} + ${yPart} = ${rSq}`;
+        }
+
+        // Format expanded equation: x^2 + y^2 + lx + my + n = 0
+        function formatExpandedExpr(l, m, n) {
+            let parts = ["x²", "+ y²"];
+            
+            if (Math.abs(l) > 0.0001) {
+                const sign = l > 0 ? "+" : "-";
+                const absL = Math.abs(l);
+                parts.push(`${sign} ${absL % 1 === 0 ? absL : absL.toFixed(2)}x`);
+            }
+            if (Math.abs(m) > 0.0001) {
+                const sign = m > 0 ? "+" : "-";
+                const absM = Math.abs(m);
+                parts.push(`${sign} ${absM % 1 === 0 ? absM : absM.toFixed(2)}y`);
+            }
+            if (Math.abs(n) > 0.0001) {
+                const sign = n > 0 ? "+" : "-";
+                const absN = Math.abs(n);
+                parts.push(`${sign} ${absN % 1 === 0 ? absN : absN.toFixed(2)}`);
+            }
+
+            return parts.join(" ") + " = 0";
+        }
+
+        // Format linear equation Ax + By + C = 0
+        function formatLineExpr(a, b, c) {
+            let parts = [];
+            if (Math.abs(a) > 0.0001) {
+                if (a === 1) parts.push("x");
+                else if (a === -1) parts.push("-x");
+                else parts.push(`${a % 1 === 0 ? a : a.toFixed(2)}x`);
+            }
+            if (Math.abs(b) > 0.0001) {
+                const sign = parts.length > 0 ? (b > 0 ? " + " : " - ") : (b < 0 ? "-" : "");
+                const absB = Math.abs(b);
+                if (absB === 1) parts.push(`${sign}y`);
+                else parts.push(`${sign}${absB % 1 === 0 ? absB : absB.toFixed(2)}y`);
+            }
+            if (Math.abs(c) > 0.0001 || parts.length === 0) {
+                const sign = parts.length > 0 ? (c > 0 ? " + " : " - ") : (c < 0 ? "-" : "");
+                const absC = Math.abs(c);
+                parts.push(`${sign}${absC % 1 === 0 ? absC : absC.toFixed(2)}`);
+            }
+            return parts.join("") + " = 0";
+        }
+
+        // Evaluate f(x, y) = (x-x1)^2 + (y-y1)^2 - r1^2
+        function evalCircle(x, y, cx, cy, r) {
+            return (x - cx) ** 2 + (y - cy) ** 2 - r ** 2;
+        }
+
+        // Analytical calculation of intersection points between Circle 1 and Circle 2
+        function getIntersections() {
+            const dSq = (state.x2 - state.x1) ** 2 + (state.y2 - state.y1) ** 2;
+            const d = Math.sqrt(dSq);
+
+            if (d === 0) return { type: "concentric", points: [] }; // Concentric circles
+
+            const r1 = state.r1;
+            const r2 = state.r2;
+
+            if (d > r1 + r2) return { type: "separated", points: [] }; // Too far
+            if (d < Math.abs(r1 - r2)) return { type: "nested", points: [] }; // One inside another
+
+            // Distance from circle 1 center to radical line along center vector
+            const a = (r1 * r1 - r2 * r2 + dSq) / (2 * d);
+            const hSq = r1 * r1 - a * a;
+            const h = hSq < 0 ? 0 : Math.sqrt(hSq);
+
+            // Foot of perpendicular on line connecting centers
+            const p2x = state.x1 + a * (state.x2 - state.x1) / d;
+            const p2y = state.y1 + a * (state.y2 - state.y1) / d;
+
+            if (Math.abs(d - (r1 + r2)) < 0.00001 || Math.abs(d - Math.abs(r1 - r2)) < 0.00001 || h < 0.00001) {
+                // Single point of tangency
+                return { type: "tangent", points: [{ x: p2x, y: p2y }] };
+            }
+
+            // Two intersection points
+            const rx = -(state.y2 - state.y1) * (h / d);
+            const ry = (state.x2 - state.x1) * (h / d);
+
+            return {
+                type: "intersecting",
+                points: [
+                    { x: p2x + rx, y: p2y + ry },
+                    { x: p2x - rx, y: p2y - ry }
+                ]
+            };
+        }
+
+        // Sync values from UI inputs
+        function updateFromInputs() {
+            state.x1 = parseFloat(x1El.value) || 0;
+            state.y1 = parseFloat(y1El.value) || 0;
+            state.r1 = Math.max(0.1, parseFloat(r1El.value) || 1);
+
+            state.x2 = parseFloat(x2El.value) || 0;
+            state.y2 = parseFloat(y2El.value) || 0;
+            state.r2 = Math.max(0.1, parseFloat(r2El.value) || 1);
+
+            state.px = parseFloat(pxEl.value) || 0;
+            state.py = parseFloat(pyEl.value) || 0;
+
+            // Formatted expressions
+            overlayFExpr.textContent = `f: ${formatCircleExpr(state.x1, state.y1, state.r1)}`;
+            overlayGExpr.textContent = `g: ${formatCircleExpr(state.x2, state.y2, state.r2)}`;
+
+            const cf1 = getGeneralCoeffs(state.x1, state.y1, state.r1);
+            const cf2 = getGeneralCoeffs(state.x2, state.y2, state.r2);
+
+            const fExpStr = formatExpandedExpr(cf1.l, cf1.m, cf1.n).replace(" = 0", "");
+            const gExpStr = formatExpandedExpr(cf2.l, cf2.m, cf2.n).replace(" = 0", "");
+            fPlusKgExpr.textContent = `(${fExpStr}) + k(${gExpStr}) = 0`;
+
+            updateK(parseFloat(kSlider.value));
+            updateIntersectionBadge();
+        }
+
+        function updateK(val) {
+            state.k = val;
+            kSlider.value = val;
+            kNum.value = val.toFixed(2);
+            const kFormatted = `k = ${val >= 0 ? '+' : ''}${val.toFixed(2)}`;
+            kValueDisplay.textContent = kFormatted;
+            overlayKVal.textContent = kFormatted;
+
+            const cf1 = getGeneralCoeffs(state.x1, state.y1, state.r1);
+            const cf2 = getGeneralCoeffs(state.x2, state.y2, state.r2);
+
+            // Check if k is very close to -1
+            if (Math.abs(state.k + 1.0) < 0.0001) {
+                // Radical Axis Line: (l1 - l2)x + (m1 - m2)y + (n1 - n2) = 0
+                const A = cf1.l - cf2.l;
+                const B = cf1.m - cf2.m;
+                const C = cf1.n - cf2.n;
+
+                const lineStr = formatLineExpr(A, B, C);
+                ckTypeBadge.textContent = "根軸 (直線 - k = -1)";
+                ckTypeBadge.className = "text-[11px] text-rose-400 font-bold";
+                ckGeneral.textContent = lineStr;
+                overlayCkExpr.textContent = `L_rad: ${lineStr}`;
+                ckDetails.textContent = "2円の交点（または接点）を通る直線";
+            } else {
+                // Circle C_k
+                const denom = 1 + state.k;
+                const L = (cf1.l + state.k * cf2.l) / denom;
+                const M = (cf1.m + state.k * cf2.m) / denom;
+                const N = (cf1.n + state.k * cf2.n) / denom;
+
+                const xc = -L / 2;
+                const yc = -M / 2;
+                const rSq = xc * xc + yc * yc - N;
+
+                const generalStr = formatExpandedExpr(L, M, N);
+                ckGeneral.textContent = generalStr;
+
+                if (rSq >= 0) {
+                    const r = Math.sqrt(rSq);
+                    const stdStr = formatCircleExpr(xc, yc, r);
+                    ckTypeBadge.textContent = "円 (実円)";
+                    ckTypeBadge.className = "text-[11px] text-amber-400 font-semibold";
+                    overlayCkExpr.textContent = `C_k: ${stdStr}`;
+                    ckDetails.textContent = `中心: (${xc.toFixed(2)}, ${yc.toFixed(2)}), 半径: ${r.toFixed(2)}`;
+                } else {
+                    ckTypeBadge.textContent = "虚円 (半径r² < 0)";
+                    ckTypeBadge.className = "text-[11px] text-slate-400 font-semibold";
+                    overlayCkExpr.textContent = `C_k: ${generalStr}`;
+                    ckDetails.textContent = `中心: (${xc.toFixed(2)}, ${yc.toFixed(2)}), r² = ${rSq.toFixed(2)} (虚数半径)`;
+                }
+            }
+
+            draw();
+        }
+
+        // Solve for k given Point (px, py)
+        function solveKForPoint() {
+            const fVal = evalCircle(state.px, state.py, state.x1, state.y1, state.r1);
+            const gVal = evalCircle(state.px, state.py, state.x2, state.y2, state.r2);
+
+            kCalcStep.textContent = `f(${state.px}, ${state.py}) = ${fVal.toFixed(2)}, g(${state.px}, ${state.py}) = ${gVal.toFixed(2)}`;
+
+            if (Math.abs(gVal) < 0.00001) {
+                if (Math.abs(fVal) < 0.00001) {
+                    kCalcVal.textContent = "任意の k (交点上の点)";
+                } else {
+                    kCalcVal.textContent = "解なし (円g上の点: k→∞)";
+                }
+                return;
+            }
+
+            const targetK = -fVal / gVal;
+            const isRadical = Math.abs(targetK + 1) < 0.0001;
+            kCalcVal.textContent = `k = -(${fVal.toFixed(2)}) / (${gVal.toFixed(2)}) = ${targetK.toFixed(3)}${isRadical ? ' (根軸)' : ''}`;
+
+            // Adjust range if targetK exceeds slider bounds
+            const curMax = parseFloat(kSlider.max);
+            if (Math.abs(targetK) > curMax) {
+                const newRange = Math.ceil(Math.abs(targetK) / 10) * 10;
+                kSlider.min = -newRange;
+                kSlider.max = newRange;
+                kRange.value = newRange > 50 ? "50" : (newRange > 20 ? "50" : (newRange > 10 ? "20" : "10"));
+            }
+
+            updateK(targetK);
+        }
+
+        function updateIntersectionBadge() {
+            const res = getIntersections();
+            if (res.type === "intersecting") {
+                const p1 = res.points[0];
+                const p2 = res.points[1];
+                intersectionStatus.innerHTML = `交点: <span class="mono-font text-yellow-300 font-bold">2点で交わる</span>`;
+                intersectionStatus.className = "bg-indigo-950 text-indigo-300 px-2 py-0.5 rounded border border-indigo-800/50";
+            } else if (res.type === "tangent") {
+                intersectionStatus.innerHTML = `<span class="text-emerald-300 font-bold">1点で接する</span>`;
+                intersectionStatus.className = "bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded border border-emerald-800/50";
+            } else if (res.type === "concentric") {
+                intersectionStatus.innerHTML = `<span class="text-rose-400 font-bold">同心円</span>`;
+                intersectionStatus.className = "bg-rose-950 text-rose-300 px-2 py-0.5 rounded border border-rose-800/50";
+            } else {
+                intersectionStatus.innerHTML = `<span class="text-slate-400 font-bold">離れている (交点なし)</span>`;
+                intersectionStatus.className = "bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700";
+            }
+        }
+
+        // Canvas Coordinate Transformations
+        function toScreenX(x) {
+            return canvas.width / 2 + state.offsetX + x * state.scale;
+        }
+
+        function toScreenY(y) {
+            return canvas.height / 2 + state.offsetY - y * state.scale;
+        }
+
+        function toMathX(px) {
+            return (px - (canvas.width / 2 + state.offsetX)) / state.scale;
+        }
+
+        function toMathY(py) {
+            return ((canvas.height / 2 + state.offsetY) - py) / state.scale;
+        }
+
+        // Draw Circle on Canvas
+        function drawCircle(cx, cy, r, strokeStyle, lineWidth, isDashed = false) {
+            if (r <= 0 || isNaN(r)) return;
+            ctx.save();
+            ctx.strokeStyle = strokeStyle;
+            ctx.lineWidth = lineWidth;
+            if (isDashed) ctx.setLineDash([6, 4]);
+
+            const sx = toScreenX(cx);
+            const sy = toScreenY(cy);
+            const sr = r * state.scale;
+
+            ctx.beginPath();
+            ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // Draw Line on Canvas: Ax + By + C = 0
+        function drawLineCoeffs(a, b, c, strokeStyle, lineWidth, isDashed = false) {
+            ctx.save();
+            ctx.strokeStyle = strokeStyle;
+            ctx.lineWidth = lineWidth;
+            if (isDashed) ctx.setLineDash([6, 4]);
+
+            const minX = toMathX(0);
+            const maxX = toMathX(canvas.width);
+            const minY = toMathY(canvas.height);
+            const maxY = toMathY(0);
+
+            let points = [];
+
+            if (Math.abs(b) > 0.0001) {
+                const y1 = (-a * minX - c) / b;
+                const y2 = (-a * maxX - c) / b;
+                points.push({ x: minX, y: y1 });
+                points.push({ x: maxX, y: y2 });
+            } else if (Math.abs(a) > 0.0001) {
+                const xVal = -c / a;
+                points.push({ x: xVal, y: minY });
+                points.push({ x: xVal, y: maxY });
+            }
+
+            if (points.length === 2) {
+                ctx.beginPath();
+                ctx.moveTo(toScreenX(points[0].x), toScreenY(points[0].y));
+                ctx.lineTo(toScreenX(points[1].x), toScreenY(points[1].y));
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
+        // Main Rendering Routine
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const width = canvas.width;
+            const height = canvas.height;
+            const centerX = width / 2 + state.offsetX;
+            const centerY = height / 2 + state.offsetY;
+
+            // 1. Grid lines
+            ctx.strokeStyle = "#1e293b";
+            ctx.lineWidth = 1;
+
+            const minX = Math.floor(toMathX(0));
+            const maxX = Math.ceil(toMathX(width));
+            const minY = Math.floor(toMathY(height));
+            const maxY = Math.ceil(toMathY(0));
+
+            let step = 1;
+            if (state.scale < 15) step = 5;
+            if (state.scale < 5) step = 10;
+
+            ctx.font = "10px JetBrains Mono";
+            ctx.fillStyle = "#64748b";
+
+            for (let x = Math.floor(minX / step) * step; x <= maxX; x += step) {
+                const sx = toScreenX(x);
+                ctx.beginPath();
+                ctx.moveTo(sx, 0);
+                ctx.lineTo(sx, height);
+                ctx.stroke();
+
+                if (x !== 0) ctx.fillText(x.toString(), sx + 2, centerY + 12);
+            }
+
+            for (let y = Math.floor(minY / step) * step; y <= maxY; y += step) {
+                const sy = toScreenY(y);
+                ctx.beginPath();
+                ctx.moveTo(0, sy);
+                ctx.lineTo(width, sy);
+                ctx.stroke();
+
+                if (y !== 0) ctx.fillText(y.toString(), centerX + 4, sy - 2);
+            }
+
+            // 2. Axes
+            ctx.strokeStyle = "#475569";
+            ctx.lineWidth = 2;
+            
+            ctx.beginPath();
+            ctx.moveTo(0, centerY);
+            ctx.lineTo(width, centerY);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(centerX, 0);
+            ctx.lineTo(centerX, height);
+            ctx.stroke();
+
+            ctx.fillStyle = "#94a3b8";
+            ctx.font = "12px sans-serif";
+            ctx.fillText("X", width - 15, centerY - 8);
+            ctx.fillText("Y", centerX + 8, 15);
+            ctx.fillText("O", centerX - 12, centerY + 14);
+
+            // 3. Draw Circle f
+            drawCircle(state.x1, state.y1, state.r1, "#3b82f6", 2);
+
+            // 4. Draw Circle g
+            drawCircle(state.x2, state.y2, state.r2, "#f43f5e", 2);
+
+            // 5. Draw Pencil Circle/Line C_k
+            const cf1 = getGeneralCoeffs(state.x1, state.y1, state.r1);
+            const cf2 = getGeneralCoeffs(state.x2, state.y2, state.r2);
+
+            if (Math.abs(state.k + 1.0) < 0.0001) {
+                // Radical Axis Line
+                const A = cf1.l - cf2.l;
+                const B = cf1.m - cf2.m;
+                const C = cf1.n - cf2.n;
+                drawLineCoeffs(A, B, C, "#fbbf24", 3.5);
+            } else {
+                const denom = 1 + state.k;
+                const L = (cf1.l + state.k * cf2.l) / denom;
+                const M = (cf1.m + state.k * cf2.m) / denom;
+                const N = (cf1.n + state.k * cf2.n) / denom;
+
+                const xc = -L / 2;
+                const yc = -M / 2;
+                const rSq = xc * xc + yc * yc - N;
+
+                if (rSq >= 0) {
+                    drawCircle(xc, yc, Math.sqrt(rSq), "#fbbf24", 3.5);
+                } else {
+                    // Draw dashed point/circle for imaginary circle center
+                    ctx.save();
+                    ctx.fillStyle = "rgba(251, 191, 36, 0.4)";
+                    ctx.beginPath();
+                    ctx.arc(toScreenX(xc), toScreenY(yc), 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+
+            // 6. Draw Intersection Points
+            const inters = getIntersections();
+            if (inters.points.length > 0) {
+                inters.points.forEach(pt => {
+                    const ix = toScreenX(pt.x);
+                    const iy = toScreenY(pt.y);
+
+                    ctx.fillStyle = "rgba(250, 204, 21, 0.3)";
+                    ctx.beginPath();
+                    ctx.arc(ix, iy, 10, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = "#facc15";
+                    ctx.strokeStyle = "#ffffff";
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(ix, iy, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                });
+            }
+
+            // 7. Draw Target Point P(px, py)
+            const pxScr = toScreenX(state.px);
+            const pyScr = toScreenY(state.py);
+
+            ctx.fillStyle = "#10b981";
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 2;
+
+            ctx.beginPath();
+            ctx.arc(pxScr, pyScr, 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = "#34d399";
+            ctx.font = "bold 11px JetBrains Mono";
+            ctx.fillText(`P(${state.px}, ${state.py})`, pxScr + 9, pyScr - 9);
+        }
+
+        // Canvas resizing
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            draw();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        // Listeners for circle parameters
+        [x1El, y1El, r1El, x2El, y2El, r2El].forEach(el => {
+            el.addEventListener('input', updateFromInputs);
+        });
+
+        kSlider.addEventListener('input', (e) => {
+            updateK(parseFloat(e.target.value));
+        });
+
+        kNum.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            if (!isNaN(val)) updateK(val);
+        });
+
+        kRange.addEventListener('change', (e) => {
+            const r = parseFloat(e.target.value);
+            kSlider.min = -r;
+            kSlider.max = r;
+        });
+
+        setKMinus1Btn.addEventListener('click', () => {
+            updateK(-1.0);
+        });
+
+        pxEl.addEventListener('input', () => {
+            state.px = parseFloat(pxEl.value) || 0;
+            draw();
+        });
+
+        pyEl.addEventListener('input', () => {
+            state.py = parseFloat(pyEl.value) || 0;
+            draw();
+        });
+
+        calcKBtn.addEventListener('click', solveKForPoint);
+
+        // Canvas click to select point P
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const mathX = Math.round(toMathX(mouseX) * 2) / 2;
+            const mathY = Math.round(toMathY(mouseY) * 2) / 2;
+
+            state.px = mathX;
+            state.py = mathY;
+            pxEl.value = mathX;
+            pyEl.value = mathY;
+
+            solveKForPoint();
+        });
+
+        // Zoom controls
+        document.getElementById('zoom-in').addEventListener('click', () => {
+            state.scale *= 1.25;
+            draw();
+        });
+
+        document.getElementById('zoom-out').addEventListener('click', () => {
+            state.scale /= 1.25;
+            draw();
+        });
+
+        document.getElementById('reset-view').addEventListener('click', () => {
+            state.scale = 30;
+            state.offsetX = 0;
+            state.offsetY = 0;
+            draw();
+        });
+
+        // Animation toggle
+        animBtn.addEventListener('click', () => {
+            state.isAnimating = !state.isAnimating;
+
+            if (state.isAnimating) {
+                animIcon.className = "fa-solid fa-pause";
+                animText.textContent = "一時停止";
+                animBtn.classList.replace("bg-amber-500/20", "bg-amber-500/40");
+                animateK();
+            } else {
+                animIcon.className = "fa-solid fa-play";
+                animText.textContent = "アニメーション";
+                animBtn.classList.replace("bg-amber-500/40", "bg-amber-500/20");
+                if (state.animFrameId) cancelAnimationFrame(state.animFrameId);
+            }
+        });
+
+        function animateK() {
+            if (!state.isAnimating) return;
+
+            let nextK = state.k + 0.05 * state.animDirection;
+            const maxK = parseFloat(kSlider.max);
+            const minK = parseFloat(kSlider.min);
+
+            if (nextK >= maxK) {
+                nextK = maxK;
+                state.animDirection = -1;
+            } else if (nextK <= minK) {
+                nextK = minK;
+                state.animDirection = 1;
+            }
+
+            updateK(nextK);
+            state.animFrameId = requestAnimationFrame(animateK);
+        }
+
+        // Initial setup
+        window.onload = () => {
+            resizeCanvas();
+            updateFromInputs();
+            solveKForPoint();
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>重心Pの軌跡シミュレーター</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        .code-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        /* Custom styled slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: #334155;
+            border-radius: 4px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #6366f1;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -5px;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+            border: 2px solid #ffffff;
+        }
+        input[type=range]::-moz-range-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: #334155;
+            border-radius: 4px;
+        }
+        input[type=range]::-moz-range-thumb {
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #6366f1;
+            cursor: pointer;
+            border: 2px solid #ffffff;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-start p-3 sm:p-6 text-slate-100">
+
+    <div class="w-full max-w-4xl flex flex-col gap-4">
+        
+        <!-- App Title Header -->
+        <header class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div>
+                <h1 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line text-indigo-400"></i>
+                    三角形ABQの重心Pの軌跡
+                </h1>
+                <p class="text-xs text-slate-400 mt-1">
+                    円上を動く点Qによる重心Pの軌跡シミュレーター
+                </p>
+            </div>
+            <span class="text-xs px-2.5 py-1 bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 rounded-full font-medium">
+                高校数学II：図形と方程式
+            </span>
+        </header>
+
+        <!-- 1. Pattern Selector Section (Side by Side & Compact) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <!-- Pattern 1 Button Card -->
+            <button id="btnPattern1" onclick="setPattern(1)" class="w-full text-left p-3 rounded-xl border transition-all duration-200 bg-indigo-950/60 border-indigo-500/80 text-white shadow-lg hover:border-indigo-400 flex flex-col justify-between gap-1.5">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold flex items-center gap-1.5">
+                        <i class="fa-solid fa-circle-check text-indigo-400"></i> パターン 1（常に三角形）
+                    </span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">完全な円</span>
+                </div>
+                <div class="code-font text-[11px] bg-slate-900/80 px-2.5 py-1.5 rounded-lg border border-slate-800 flex items-center justify-between text-slate-300">
+                    <span>定点: <strong class="text-amber-300">A(3, 5), B(6, 4)</strong></span>
+                    <span class="text-slate-500">|</span>
+                    <span>円: <strong class="text-rose-300">x² + y² = 9</strong></span>
+                </div>
+            </button>
+
+            <!-- Pattern 2 Button Card -->
+            <button id="btnPattern2" onclick="setPattern(2)" class="w-full text-left p-3 rounded-xl border transition-all duration-200 bg-slate-900/60 border-slate-700 text-slate-300 hover:bg-slate-800/80 flex flex-col justify-between gap-1.5">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold flex items-center gap-1.5">
+                        <i class="fa-solid fa-triangle-exclamation text-rose-400"></i> パターン 2（x軸上・除外点あり）
+                    </span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">穴あき円</span>
+                </div>
+                <div class="code-font text-[11px] bg-slate-900/80 px-2.5 py-1.5 rounded-lg border border-slate-800 flex items-center justify-between text-slate-300">
+                    <span>定点: <strong class="text-amber-300">A(-1, 0), B(4, 0)</strong></span>
+                    <span class="text-slate-500">|</span>
+                    <span>円: <strong class="text-rose-300">x² + y² = 9</strong></span>
+                </div>
+            </button>
+        </div>
+
+        <!-- 2. Compact Controls Section (Speed dropdown left of slider) -->
+        <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-3 shadow-xl flex items-center gap-3">
+            <!-- Speed Dropdown -->
+            <div class="flex items-center gap-1.5">
+                <label for="speedSelect" class="text-xs text-slate-400 flex items-center gap-1">
+                    <i class="fa-solid fa-gauge-high"></i>
+                </label>
+                <select id="speedSelect" onchange="changeSpeed(this.value)" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200 code-font focus:outline-none focus:border-indigo-500">
+                    <option value="0.5">×0.5</option>
+                    <option value="1.0" selected>×1.0</option>
+                    <option value="2.0">×2.0</option>
+                </select>
+            </div>
+
+            <!-- Angle Slider -->
+            <div class="flex-1 flex items-center gap-2">
+                <input id="angleSlider" type="range" min="0" max="360" value="45" step="0.5" class="w-full" oninput="onSliderInput(this.value)">
+                <span id="angleValue" class="code-font text-xs font-semibold text-indigo-300 w-12 text-right">45°</span>
+            </div>
+
+            <!-- Play / Pause Button -->
+            <button id="btnPlayPause" onclick="togglePlay()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow">
+                <i id="playIcon" class="fa-solid fa-pause"></i>
+                <span id="playText">停止</span>
+            </button>
+
+            <!-- Reset Button -->
+            <button onclick="resetAngle()" class="p-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-xs transition-colors" title="初期位置に戻す">
+                <i class="fa-solid fa-rotate-left"></i>
+            </button>
+        </div>
+
+        <!-- 3. Graph Canvas Container (x:-6~6, y:-6~6) -->
+        <div class="relative bg-slate-900/90 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col items-center">
+            <!-- Overlay Warning Badge for Pattern 2 Excluded State -->
+            <div id="collinearWarning" class="hidden absolute top-3 left-3 bg-rose-500/90 text-white text-xs px-3 py-1.5 rounded-lg border border-rose-400 font-medium shadow-lg backdrop-blur flex items-center gap-1.5 animate-pulse z-10">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span>A, B, Q が一直線上に並びました（三角形が不成立のため重心Pは存在しません）</span>
+            </div>
+
+            <canvas id="graphCanvas" class="w-full aspect-square max-h-[500px] cursor-crosshair block"></canvas>
+        </div>
+
+        <!-- 4. Mathematical Formula & Locus Derivation Section -->
+        <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-4 md:p-5 shadow-xl flex flex-col gap-4">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-2 border-b border-slate-700 pb-2">
+                <i class="fa-solid fa-square-root-variable"></i> 軌跡の数学的導出・方程式
+            </h2>
+
+            <!-- Dynamic Math Formula Content -->
+            <div id="mathContent" class="text-xs text-slate-300 leading-relaxed flex flex-col gap-3">
+                <!-- Content will be rendered dynamically based on pattern -->
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Simulation State
+        let pattern = 1; // 1 or 2
+        let angle = 45; // Degrees
+        let isPlaying = true;
+        let speedMultiplier = 1.0;
+        let animationFrameId = null;
+
+        // Fixed Points
+        let pointA = { x: 3, y: 5 };
+        let pointB = { x: 6, y: 4 };
+        const circleRadius = 3; // Circle x^2 + y^2 = 9
+
+        // Canvas Elements
+        const canvas = document.getElementById('graphCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Screen Coordinate Transformation Parameters
+        let originX = 0;
+        let originY = 0;
+        let scale = 1; // Pixels per math unit
+
+        // Initialize Canvas & Resize Listener
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            originX = canvas.width / 2;
+            originY = canvas.height / 2;
+            // Fixed range: x: -6 to 6, y: -6 to 6 (Total 12 units)
+            scale = Math.min(canvas.width, canvas.height) / 12;
+            draw();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        // Coordinate Convertors
+        function toScreen(x, y) {
+            return {
+                x: originX + x * scale,
+                y: originY - y * scale // Flip y for standard cartesian plane
+            };
+        }
+
+        // Set Simulation Pattern
+        function setPattern(p) {
+            pattern = p;
+            const btn1 = document.getElementById('btnPattern1');
+            const btn2 = document.getElementById('btnPattern2');
+
+            if (pattern === 1) {
+                // Pattern 1: A(3,5), B(6,4). Locus Center C' = (3,3), Radius r' = 1.
+                pointA = { x: 3, y: 5 };
+                pointB = { x: 6, y: 4 };
+
+                btn1.className = "w-full text-left p-3 rounded-xl border transition-all duration-200 bg-indigo-950/60 border-indigo-500/80 text-white shadow-lg hover:border-indigo-400 flex flex-col justify-between gap-1.5";
+                btn2.className = "w-full text-left p-3 rounded-xl border transition-all duration-200 bg-slate-900/60 border-slate-700 text-slate-300 hover:bg-slate-800/80 flex flex-col justify-between gap-1.5";
+            } else {
+                // Pattern 2: A(-1,0), B(4,0) on x-axis. Locus Center C' = (1,0), Radius r' = 1.
+                pointA = { x: -1, y: 0 };
+                pointB = { x: 4, y: 0 };
+
+                btn2.className = "w-full text-left p-3 rounded-xl border transition-all duration-200 bg-rose-950/60 border-rose-500/80 text-white shadow-lg hover:border-rose-400 flex flex-col justify-between gap-1.5";
+                btn1.className = "w-full text-left p-3 rounded-xl border transition-all duration-200 bg-slate-900/60 border-slate-700 text-slate-300 hover:bg-slate-800/80 flex flex-col justify-between gap-1.5";
+            }
+
+            updateMathUI();
+            draw();
+        }
+
+        // Slider Input Handler (Pauses Animation Automatically)
+        function onSliderInput(val) {
+            angle = parseFloat(val);
+            document.getElementById('angleValue').innerText = `${Math.round(angle)}°`;
+
+            // Pause playback when user drags the slider
+            if (isPlaying) {
+                isPlaying = false;
+                updatePlayButton();
+            }
+
+            draw();
+        }
+
+        // Speed Change Handler
+        function changeSpeed(val) {
+            speedMultiplier = parseFloat(val);
+        }
+
+        // Toggle Play / Pause
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            updatePlayButton();
+        }
+
+        function updatePlayButton() {
+            const icon = document.getElementById('playIcon');
+            const text = document.getElementById('playText');
+            const btn = document.getElementById('btnPlayPause');
+
+            if (isPlaying) {
+                icon.className = "fa-solid fa-pause";
+                text.innerText = "停止";
+                btn.className = "px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow";
+            } else {
+                icon.className = "fa-solid fa-play";
+                text.innerText = "再生";
+                btn.className = "px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow";
+            }
+        }
+
+        // Reset Angle to 0
+        function resetAngle() {
+            angle = 0;
+            document.getElementById('angleSlider').value = 0;
+            document.getElementById('angleValue').innerText = "0°";
+            draw();
+        }
+
+        // Main Render Loop
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Draw Grid Lines and Coordinate Axes (-6 to 6)
+            drawGrid();
+
+            // 2. Compute Positions of Q and P
+            const rad = angle * Math.PI / 180;
+            const qX = circleRadius * Math.cos(rad);
+            const qY = circleRadius * Math.sin(rad);
+
+            const pX = (pointA.x + pointB.x + qX) / 3;
+            const pY = (pointA.y + pointB.y + qY) / 3;
+
+            // Check collinearity for Pattern 2
+            let isCollinear = false;
+            if (pattern === 2 && Math.abs(qY) < 0.05) {
+                isCollinear = true;
+            }
+
+            const warningBadge = document.getElementById('collinearWarning');
+            if (isCollinear) {
+                warningBadge.classList.remove('hidden');
+            } else {
+                warningBadge.classList.add('hidden');
+            }
+
+            // 3. Draw Original Circle x^2 + y^2 = 9
+            const c0 = toScreen(0, 0);
+            ctx.beginPath();
+            ctx.arc(c0.x, c0.y, circleRadius * scale, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(244, 63, 94, 0.7)'; // Rose circle
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Label for Original Circle
+            ctx.fillStyle = '#f43f5e';
+            ctx.font = '11px JetBrains Mono';
+            ctx.fillText('x² + y² = 9', c0.x - 30, c0.y + circleRadius * scale + 15);
+
+            // 4. Draw Full Locus Circle of Centroid P
+            drawLocus(isCollinear);
+
+            // 5. Draw Triangle ABQ (if valid)
+            const ptA = toScreen(pointA.x, pointA.y);
+            const ptB = toScreen(pointB.x, pointB.y);
+            const ptQ = toScreen(qX, qY);
+            const ptP = toScreen(pX, pY);
+
+            // Line AB
+            ctx.beginPath();
+            ctx.moveTo(ptA.x, ptA.y);
+            ctx.lineTo(ptB.x, ptB.y);
+            ctx.strokeStyle = '#f59e0b'; // Amber line AB
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            if (!isCollinear) {
+                // Triangle fill and edges
+                ctx.beginPath();
+                ctx.moveTo(ptA.x, ptA.y);
+                ctx.lineTo(ptB.x, ptB.y);
+                ctx.lineTo(ptQ.x, ptQ.y);
+                ctx.closePath();
+                ctx.fillStyle = 'rgba(99, 102, 241, 0.15)'; // Indigo fill
+                ctx.fill();
+
+                ctx.strokeStyle = '#6366f1';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                // Dotted lines to Centroid P
+                ctx.beginPath();
+                ctx.setLineDash([2, 3]);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+                // Midpoint of AB to Q
+                const midAB = { x: (pointA.x + pointB.x) / 2, y: (pointA.y + pointB.y) / 2 };
+                const ptMid = toScreen(midAB.x, midAB.y);
+                ctx.moveTo(ptMid.x, ptMid.y);
+                ctx.lineTo(ptQ.x, ptQ.y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            } else {
+                // Collinear Line AQB
+                ctx.beginPath();
+                ctx.moveTo(ptA.x, ptA.y);
+                ctx.lineTo(ptQ.x, ptQ.y);
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 2.5;
+                ctx.stroke();
+            }
+
+            // 6. Draw Fixed Points A, B
+            drawPoint(ptA, 'A(' + pointA.x + ',' + pointA.y + ')', '#f59e0b', 'top');
+            drawPoint(ptB, 'B(' + pointB.x + ',' + pointB.y + ')', '#f59e0b', 'top');
+
+            // 7. Draw Moving Point Q
+            drawPoint(ptQ, 'Q(' + qX.toFixed(1) + ',' + qY.toFixed(1) + ')', '#f43f5e', 'bottom');
+
+            // 8. Draw Centroid P (if valid)
+            if (!isCollinear) {
+                drawPoint(ptP, 'P(' + pX.toFixed(1) + ',' + pY.toFixed(1) + ')', '#10b981', 'right', 6);
+            } else {
+                // Display excluded indicator at P position
+                ctx.beginPath();
+                ctx.arc(ptP.x, ptP.y, 7, 0, Math.PI * 2);
+                ctx.fillStyle = '#0f172a';
+                ctx.fill();
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                ctx.fillStyle = '#ef4444';
+                ctx.font = 'bold 11px JetBrains Mono';
+                ctx.fillText('P (除外点)', ptP.x + 10, ptP.y + 4);
+            }
+        }
+
+        // Draw Locus Curve and Holes
+        function drawLocus(isCurrentCollinear) {
+            let locusCenter, locusRadius = 1;
+
+            if (pattern === 1) {
+                // Pattern 1: Center = (3, 3)
+                locusCenter = { x: 3, y: 3 };
+                const sc = toScreen(locusCenter.x, locusCenter.y);
+
+                ctx.beginPath();
+                ctx.arc(sc.x, sc.y, locusRadius * scale, 0, Math.PI * 2);
+                ctx.strokeStyle = '#10b981'; // Emerald solid locus
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                // Label for locus
+                ctx.fillStyle = '#10b981';
+                ctx.font = 'bold 11px JetBrains Mono';
+                ctx.fillText('(x-3)² + (y-3)² = 1', sc.x - 45, sc.y - locusRadius * scale - 10);
+            } else {
+                // Pattern 2: Center = (1, 0)
+                locusCenter = { x: 1, y: 0 };
+                const sc = toScreen(locusCenter.x, locusCenter.y);
+
+                // Main Circle Curve
+                ctx.beginPath();
+                ctx.arc(sc.x, sc.y, locusRadius * scale, 0, Math.PI * 2);
+                ctx.strokeStyle = '#10b981';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                // Excluded Holes at (0,0) and (2,0)
+                const hole1 = toScreen(0, 0);
+                const hole2 = toScreen(2, 0);
+
+                // Draw Hole 1: (0,0)
+                ctx.beginPath();
+                ctx.arc(hole1.x, hole1.y, 6, 0, Math.PI * 2);
+                ctx.fillStyle = '#0f172a'; // Background color fill
+                ctx.fill();
+                ctx.strokeStyle = '#ef4444'; // Red outline
+                ctx.lineWidth = 2.5;
+                ctx.stroke();
+
+                // Draw Hole 2: (2,0)
+                ctx.beginPath();
+                ctx.arc(hole2.x, hole2.y, 6, 0, Math.PI * 2);
+                ctx.fillStyle = '#0f172a';
+                ctx.fill();
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 2.5;
+                ctx.stroke();
+
+                // Labels for excluded points
+                ctx.fillStyle = '#ef4444';
+                ctx.font = '10px JetBrains Mono';
+                ctx.fillText('除外点(0,0)', hole1.x - 22, hole1.y + 18);
+                ctx.fillText('除外点(2,0)', hole2.x - 22, hole2.y + 18);
+
+                ctx.fillStyle = '#10b981';
+                ctx.font = 'bold 11px JetBrains Mono';
+                ctx.fillText('(x-1)² + y² = 1 (点(0,0),(2,0)を除く)', sc.x - 70, sc.y - locusRadius * scale - 10);
+            }
+        }
+
+        // Draw Coordinate Grid & Axes (-6 to 6)
+        function drawGrid() {
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+
+            // Lines for integers -6 to 6
+            for (let val = -6; val <= 6; val++) {
+                const pX = toScreen(val, 0);
+                ctx.beginPath();
+                ctx.moveTo(pX.x, 0);
+                ctx.lineTo(pX.x, canvas.height);
+                ctx.stroke();
+
+                const pY = toScreen(0, val);
+                ctx.beginPath();
+                ctx.moveTo(0, pY.y);
+                ctx.lineTo(canvas.width, pY.y);
+                ctx.stroke();
+            }
+
+            // Main Axes (X and Y)
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(0, originY);
+            ctx.lineTo(canvas.width, originY);
+            ctx.moveTo(originX, 0);
+            ctx.lineTo(originX, canvas.height);
+            ctx.stroke();
+
+            // Axis labels (-6 to 6)
+            ctx.fillStyle = '#64748b';
+            ctx.font = '10px JetBrains Mono';
+            ctx.fillText('O', originX - 12, originY + 14);
+
+            for (let val = -6; val <= 6; val += 2) {
+                if (val === 0) continue;
+                const pX = toScreen(val, 0);
+                const pY = toScreen(0, val);
+
+                ctx.fillText(val.toString(), pX.x - 5, originY + 14);
+                ctx.fillText(val.toString(), originX + 6, pY.y + 4);
+            }
+
+            ctx.fillText('x', canvas.width - 15, originY - 6);
+            ctx.fillText('y', originX + 6, 15);
+        }
+
+        // Helper to Draw a Point with Label
+        function drawPoint(pt, label, color, position = 'top', radius = 5) {
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            ctx.fillStyle = color;
+            ctx.font = '600 11px JetBrains Mono';
+
+            let offsetX = 8;
+            let offsetY = -8;
+            if (position === 'bottom') offsetY = 16;
+            if (position === 'left') offsetX = -40;
+            if (position === 'right') offsetX = 10;
+
+            ctx.fillText(label, pt.x + offsetX, pt.y + offsetY);
+        }
+
+        // Render Math Equations & Explanations Dynamically
+        function updateMathUI() {
+            const mathBox = document.getElementById('mathContent');
+
+            if (pattern === 1) {
+                mathBox.innerHTML = `
+                    <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700/60 flex flex-col gap-2">
+                        <div class="font-bold text-amber-300">【パターン1】常に三角形ができる場合（除外点なし）</div>
+                        <div>定点 <span class="code-font text-amber-300">A(3, 5), B(6, 4)</span>、円 <span class="code-font text-rose-300">x² + y² = 9</span> 上を動く点 <span class="code-font text-rose-300">Q(s, t)</span> とする。</div>
+                        <div class="code-font bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-slate-200">
+                            Q(s, t) は円上の点より： <span class="text-rose-400">s² + t² = 9</span> ・・・ ①<br>
+                            重心 P の座標を (x, y) とすると：<br>
+                            &nbsp;&nbsp;x = (3 + 6 + s) / 3 = 3 + s/3 &nbsp;⇒&nbsp; <span class="text-indigo-300">s = 3(x - 3)</span><br>
+                            &nbsp;&nbsp;y = (5 + 4 + t) / 3 = 3 + t/3 &nbsp;⇒&nbsp; <span class="text-indigo-300">t = 3(y - 3)</span>
+                        </div>
+                        <div>これらを①に代入すると：</div>
+                        <div class="code-font bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-emerald-400 font-semibold">
+                            {3(x - 3)}² + {3(y - 3)}² = 9 &nbsp;⇒&nbsp; (x - 3)² + (y - 3)² = 1
+                        </div>
+                        <div class="text-slate-400">
+                            ※ 直線 AB (x + y = 8) と円 x² + y² = 9 は交点を持たないため、Q が直線 AB 上に来ることはありません。<br>
+                            したがって、常に △ABQ が成り立ち、重心 P の軌跡は <strong class="text-emerald-300">中心 (3, 3)、半径 1 の完全な円</strong> となります。
+                        </div>
+                    </div>
+                `;
+            } else {
+                mathBox.innerHTML = `
+                    <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700/60 flex flex-col gap-2">
+                        <div class="font-bold text-rose-400">【パターン2】一直線になる場合が存在（除外点あり）</div>
+                        <div>x軸上の定点 <span class="code-font text-amber-300">A(-1, 0), B(4, 0)</span>、円 <span class="code-font text-rose-300">x² + y² = 9</span> 上を動く点 <span class="code-font text-rose-300">Q(s, t)</span> とする。</div>
+                        <div class="code-font bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-slate-200">
+                            Q(s, t) は円上の点より： <span class="text-rose-400">s² + t² = 9</span> ・・・ ①<br>
+                            重心 P の座標を (x, y) とすると：<br>
+                            &nbsp;&nbsp;x = (-1 + 4 + s) / 3 = 1 + s/3 &nbsp;⇒&nbsp; <span class="text-indigo-300">s = 3(x - 1)</span><br>
+                            &nbsp;&nbsp;y = (0 + 0 + t) / 3 = t/3 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;⇒&nbsp; <span class="text-indigo-300">t = 3y</span>
+                        </div>
+                        <div>これらを①に代入すると：</div>
+                        <div class="code-font bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-emerald-400 font-semibold">
+                            {3(x - 1)}² + (3y)² = 9 &nbsp;⇒&nbsp; (x - 1)² + y² = 1
+                        </div>
+                        <div class="bg-rose-950/40 p-2.5 rounded-lg border border-rose-500/30 text-slate-200">
+                            <strong class="text-rose-400">【三角形が崩壊する除外点の判定】</strong><br>
+                            点 Q が x 軸（直線 AB）上に来る点 <span class="code-font text-rose-300">Q(3, 0)</span> および <span class="code-font text-rose-300">Q(-3, 0)</span> の時、3点 A, B, Q が一直線上に並ぶため <strong>△ABQ が作成できず、重心 P は存在しません</strong>。<br>
+                            ・Q(3, 0) のとき: P = (1 + 3/3, 0) = <strong class="text-rose-300">(2, 0)</strong><br>
+                            ・Q(-3, 0) のとき: P = (1 - 3/3, 0) = <strong class="text-rose-300">(0, 0)</strong><br>
+                            したがって、求める軌跡は <strong class="text-emerald-300">円 (x - 1)² + y² = 1（ただし、点(0,0)および点(2,0)を除く）</strong> となります。
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Main Animation Loop
+        function animate() {
+            if (isPlaying) {
+                angle += 0.8 * speedMultiplier;
+                if (angle >= 360) angle -= 360;
+
+                document.getElementById('angleSlider').value = angle;
+                document.getElementById('angleValue').innerText = `${Math.round(angle)}°`;
+
+                draw();
+            }
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        // Window Load Handler
+        window.onload = function() {
+            resizeCanvas();
+            setPattern(1);
+            animate();
+        };
+    </script>
+</body>
+</html>

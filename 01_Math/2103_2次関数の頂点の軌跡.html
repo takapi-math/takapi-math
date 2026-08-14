@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2次関数の頂点の軌跡 シミュレーター</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- MathJax for rendering LaTeX formulas -->
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        .code-font {
+            font-family: 'Fira Code', monospace;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        canvas {
+            touch-action: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-950 text-slate-100">
+
+    <!-- Header -->
+    <header class="bg-slate-900 border-b border-slate-800 px-4 py-3 sm:px-6 flex flex-wrap justify-between items-center gap-2">
+        <div class="flex items-center space-x-3">
+            <div class="bg-indigo-600 text-white p-2 rounded-lg shadow-md">
+                <i class="fa-solid fa-chart-line text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-lg sm:text-xl font-bold bg-gradient-to-r from-indigo-400 via-sky-300 to-emerald-400 bg-clip-text text-transparent">
+                    2次関数の頂点の軌跡 シミュレーター
+                </h1>
+                <p class="text-xs text-slate-400">動点 $P(x, y)$ の動く様子と $t$ の消去法</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <button id="resetViewBtn" class="px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition flex items-center gap-1.5">
+                <i class="fa-solid fa-compress"></i> 視点リセット
+            </button>
+            <button id="helpModalBtn" class="px-3 py-1.5 text-xs bg-indigo-900/50 hover:bg-indigo-800/60 text-indigo-300 rounded-lg border border-indigo-700/50 transition flex items-center gap-1.5">
+                <i class="fa-solid fa-circle-question"></i> 使い方のヒント
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col gap-6 p-4 max-w-[1400px] mx-auto w-full">
+        
+        <!-- Canvas Visualizer Section -->
+        <section class="w-full flex flex-col gap-3">
+            
+            <!-- Top Unified Control Bar -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-lg flex flex-wrap items-center gap-3">
+                <!-- Preset Dropdown (Wider container) -->
+                <div class="flex items-center gap-2 flex-1 sm:flex-[2.5] min-w-[320px]">
+                    <label class="text-xs font-semibold text-slate-400 whitespace-nowrap"><i class="fa-solid fa-list-check text-indigo-400 mr-1"></i>関数:</label>
+                    <select id="presetSelect" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                        <!-- Options injected by JS -->
+                    </select>
+                </div>
+
+                <!-- t Parameter Slider & Play Controls (Compact width & Range -2 to 2) -->
+                <div class="flex items-center gap-2 shrink-0 min-w-[210px] sm:min-w-[240px] bg-slate-950/80 border border-slate-800/80 rounded-lg px-2.5 py-1.5">
+                    <button id="playBtn" class="w-7 h-7 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white rounded-full flex items-center justify-center transition shadow shrink-0">
+                        <i class="fa-solid fa-play text-xs ml-0.5" id="playIcon"></i>
+                    </button>
+                    <!-- 再生ボタンの右隣に速度倍率を配置 -->
+                    <select id="speedSelect" class="bg-slate-800 border border-slate-700 rounded px-1.5 py-0.5 text-[11px] text-slate-300 focus:outline-none shrink-0" title="再生速度">
+                        <option value="0.5">0.5x</option>
+                        <option value="1" selected>1.0x</option>
+                        <option value="2">2.0x</option>
+                    </select>
+                    <span class="text-xs font-bold code-font text-sky-400 shrink-0 ml-1">t = <span id="tValueText">0.00</span></span>
+                    <input type="range" id="tRange" min="-2" max="2" step="0.02" value="0" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                    <!-- スライダー範囲切り替え（±2, ±3, ±5） -->
+                    <select id="tLimitSelect" class="bg-slate-800 border border-slate-700 rounded px-1.5 py-0.5 text-[11px] text-slate-300 focus:outline-none shrink-0 font-mono" title="tの範囲切り替え">
+                        <option value="2" selected>±2</option>
+                        <option value="3">±3</option>
+                        <option value="5">±5</option>
+                    </select>
+                </div>
+
+                <!-- COMPACT PINK DOMAIN RANGE TOGGLE BUTTON -->
+                <div class="shrink-0 flex items-center gap-1.5">
+                    <span class="text-xs text-slate-400 font-semibold hidden sm:inline">tの範囲:</span>
+                    <button id="domainModeBtn" class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-600/60 transition shadow-sm flex items-center gap-1.5 active:scale-95">
+                        <i class="fa-solid fa-arrows-left-right text-[10px] text-rose-400"></i>
+                        <span id="domainBtnText">t: 全範囲</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Canvas Container -->
+            <div class="relative flex-1 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl min-h-[460px] lg:min-h-[520px] flex flex-col">
+                <!-- Overlay Controls on Canvas Header -->
+                <div class="absolute top-3 left-3 right-3 flex justify-between items-center pointer-events-none z-10 flex-wrap gap-2">
+                    <div class="bg-slate-950/90 backdrop-blur border border-emerald-500/40 rounded-lg px-3.5 py-2 text-sm font-mono pointer-events-auto shadow-xl flex items-center gap-2.5">
+                        <span class="text-slate-300 font-semibold text-xs sm:text-sm">動点 P の座標:</span>
+                        <span id="currentVertexDisplay" class="text-emerald-400 font-extrabold text-sm sm:text-base tracking-wide bg-emerald-950/60 px-2.5 py-0.5 rounded border border-emerald-500/30">P(x, y) = (0, 0)</span>
+                    </div>
+
+                    <!-- Locus Equation Overlay Tag near canvas top-right -->
+                    <div id="canvasLocusBadge" class="bg-rose-950/90 backdrop-blur border border-rose-600/60 rounded-lg px-3 py-1.5 text-xs font-mono pointer-events-auto shadow-xl flex items-center gap-2 text-rose-200">
+                        <i class="fa-solid fa-route text-rose-400"></i>
+                        <span>軌跡: <strong id="canvasLocusFormula" class="text-white">$y = -x^2 + 3x$</strong></span>
+                        <span id="canvasLocusDomain" class="text-[11px] text-rose-300 bg-rose-900/60 px-1.5 py-0.5 rounded border border-rose-700/50">全実数</span>
+                    </div>
+
+                    <div class="bg-slate-950/80 backdrop-blur border border-slate-800 rounded-lg p-1 pointer-events-auto flex gap-1 shadow-lg ml-auto">
+                        <button id="toggleGraph2d" class="px-2 py-1 text-xs rounded bg-indigo-600 text-white hover:bg-indigo-500 transition">放物線を表示</button>
+                        <button id="toggleLocus" class="px-2 py-1 text-xs rounded bg-rose-600 text-white hover:bg-rose-500 transition">軌跡線を常時表示</button>
+                        <button id="clearTraceBtn" class="px-2 py-1 text-xs rounded bg-slate-800 text-slate-300 hover:bg-slate-700 transition" title="残像をクリア">クリア</button>
+                    </div>
+                </div>
+
+                <!-- Canvas -->
+                <canvas id="graphCanvas" class="w-full h-full cursor-grab active:cursor-grabbing flex-1"></canvas>
+
+                <!-- Canvas Footer Info / Zoom buttons -->
+                <div class="absolute bottom-3 right-3 flex items-center gap-2 pointer-events-auto">
+                    <div class="bg-slate-950/80 backdrop-blur border border-slate-800 rounded-lg p-1 flex items-center gap-1">
+                        <button id="zoomInBtn" class="w-7 h-7 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded flex items-center justify-center text-xs transition"><i class="fa-solid fa-plus"></i></button>
+                        <button id="zoomOutBtn" class="w-7 h-7 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded flex items-center justify-center text-xs transition"><i class="fa-solid fa-minus"></i></button>
+                    </div>
+                </div>
+
+                <div class="absolute bottom-3 left-3 bg-slate-950/70 backdrop-blur border border-slate-800/80 rounded px-2 py-1 text-[10px] text-slate-400 pointer-events-none">
+                    ドラッグ: 移動 | ホイール: 拡大縮小
+                </div>
+            </div>
+        </section>
+
+        <!-- Control & Explanation Section (Placed BELOW the visualizer) -->
+        <section class="w-full flex flex-col gap-4">
+
+            <!-- Mathematical Formulation & Parameter Elimination Explanation -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg flex-1 flex flex-col">
+                <!-- Navigation Tabs -->
+                <div class="flex border-b border-slate-800 mb-4">
+                    <button id="tabMathBtn" class="px-4 py-2 text-xs font-semibold border-b-2 border-indigo-500 text-indigo-400 transition">
+                        <i class="fa-solid fa-calculator mr-1"></i> tの消去と解説
+                    </button>
+                    <button id="tabConceptBtn" class="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 transition border-b-2 border-transparent">
+                        <i class="fa-solid fa-lightbulb mr-1"></i> 解法のポイント
+                    </button>
+                </div>
+
+                <!-- Tab 1: Step-by-Step Math Guide -->
+                <div id="tabMathContent" class="flex-1 flex flex-col space-y-4">
+                    <!-- Function Equation Box -->
+                    <div class="bg-slate-950 border border-slate-800 rounded-lg p-3.5 text-center">
+                        <span class="text-xs text-slate-400 block mb-1">与えられた2次関数</span>
+                        <div id="mathFunctionFormula" class="text-lg text-sky-300 font-semibold overflow-x-auto py-1">
+                            $y = x^2 - 2tx + 3t$
+                        </div>
+                    </div>
+
+                    <!-- Steps Timeline -->
+                    <div id="mathStepsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <!-- Dynamic steps generated by JS -->
+                    </div>
+
+                    <!-- Final Answer Box -->
+                    <div class="bg-emerald-950/40 border border-emerald-800/60 rounded-lg p-4 text-center shadow-inner">
+                        <span class="text-xs text-emerald-400 block font-semibold mb-1"><i class="fa-solid fa-check-circle mr-1"></i> 頂点 P の軌跡の方程式</span>
+                        <div id="mathLocusResult" class="text-xl text-emerald-300 font-bold overflow-x-auto py-1">
+                            $y = -x^2 + 3x$
+                        </div>
+                        <p id="mathLocusDomain" class="text-xs text-amber-300 font-semibold mt-1 bg-amber-950/40 border border-amber-800/40 rounded py-1 px-2.5 inline-block"></p>
+                    </div>
+                </div>
+
+                <!-- Tab 2: General Concepts & Rules -->
+                <div id="tabConceptContent" class="hidden space-y-4 text-xs leading-relaxed text-slate-300">
+                    <div class="bg-slate-950 p-4 rounded-lg border border-slate-800 space-y-2">
+                        <h3 class="font-bold text-amber-400 text-sm flex items-center gap-1.5">
+                            <i class="fa-solid fa-key"></i> 動点 P(x, y) の軌跡を求める手順
+                        </h3>
+                        <ol class="list-decimal list-inside space-y-2 text-slate-300 pl-1">
+                            <li><strong>平方完成:</strong> 2次関数を $y = a(x - p)^2 + q$ の形に変形し、頂点座標をパラメータ $t$ で表す。</li>
+                            <li><strong>動点 $P(x, y)$ とおく:</strong> 頂点の座標を大文字 $X, Y$ ではなく動点 $P(x, y)$ とおく。
+                                <div class="my-1 pl-4 text-sky-300 font-mono text-[11px]">x = (tの式), \quad y = (tの式)</div>
+                            </li>
+                            <li><strong>パラメータ $t$ の消去:</strong> $x = \dots$ から $t = \dots$ の形を作り、$y = \dots$ に代入して $x$ と $y$ のみの関係式を導く。</li>
+                            <li><strong>$x$ の変域の計算:</strong> パラメータ $t$ に範囲制限（例: $-5 \le t \le 5$ や $t \ge 0$）がある場合、$x = g(t)$ を用いて $x$ の動き得る範囲（変域）を不等式計算で求める。</li>
+                            <li><strong>結論の記述:</strong> 「軌跡は 放物線 $y = f(x)$ ($a \le x \le b$)」のようにグラフの種類と変域を明記する。</li>
+                        </ol>
+                    </div>
+
+                    <div class="bg-slate-950 p-4 rounded-lg border border-slate-800 space-y-1">
+                        <h4 class="font-semibold text-indigo-300 text-xs">$t$ の範囲制限がある場合の $x$ の変域計算</h4>
+                        <p class="text-slate-400">
+                            例えば $x = 2t$ かつ $-5 \le t \le 5$ の場合、$t = \frac{x}{2}$ より $-5 \le \frac{x}{2} \le 5$ となり、各辺に $2$ を掛けて $-10 \le x \le 10$ と計算できます。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Help Modal -->
+    <div id="helpModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 max-w-md w-full shadow-2xl relative space-y-4">
+            <button id="closeHelpBtn" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h3 class="text-lg font-bold text-indigo-400 flex items-center gap-2">
+                <i class="fa-solid fa-circle-info"></i> シミュレーターの使い方
+            </h3>
+            <ul class="space-y-2 text-xs text-slate-300 leading-relaxed list-disc list-inside">
+                <li><strong class="text-sky-300">パラメータ $t$ スライダー:</strong> $t$ の値を動かすことで、2次関数のグラフの変化と頂点の移動が確認できます。</li>
+                <li><strong class="text-sky-300">再生/停止ボタン:</strong> $t$ を自動的にアニメーション変化させます。</li>
+                <li><strong class="text-sky-300">放物線/軌跡線切り替え:</strong> 移動する2次関数そのものの表示や、頂点が通った後にできる軌跡（放物線や直線）の表示を切り替えます。</li>
+                <li><strong class="text-sky-300">キャンバス操作:</strong> マウスドラッグで表示位置を移動、ホイール回転で拡大・縮小できます。</li>
+                <li><strong class="text-sky-300">下部解説パネル:</strong> 各プリセット問題における頂点座標の求め方と $t$ の消去手順を段階的に詳しく解説しています。</li>
+            </ul>
+            <button id="closeHelpBtn2" class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg transition">
+                理解しました
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Math Presets Definition
+        const PRESETS = [
+            {
+                id: "preset1",
+                title: "1. y = x² - 2tx + 3t = (x - t)² - t² + 3t  頂点(t, -t² + 3t)",
+                latexFunc: "y = x^2 - 2tx + 3t",
+                locusLatex: "y = -x^2 + 3x",
+                getFx: (x, t) => x * x - 2 * t * x + 3 * t,
+                getVertex: (t) => ({ x: t, y: -t * t + 3 * t }),
+                getLocusY: (x) => -x * x + 3 * x,
+                getXDomain: (isBounded, tMin, tMax) => {
+                    if (!isBounded) return { min: -Infinity, max: Infinity, text: "\\text{全実数}" };
+                    return { min: tMin, max: tMax, text: `${tMin.toFixed(2)} \\le x \\le ${tMax.toFixed(2)}` };
+                },
+                getSteps: (isBounded, tMin, tMax) => [
+                    {
+                        title: "1. 平方完成による頂点の抽出",
+                        latex: "y = (x - t)^2 - t^2 + 3t",
+                        latex2: "\\text{頂点 } P \\text{ の座標: } (t, -t^2 + 3t)"
+                    },
+                    {
+                        title: "2. 動点 P(x, y) とおいて立式",
+                        latex: "x = t \\quad \\text{--- ①}",
+                        latex2: "y = -t^2 + 3t \\quad \\text{--- ②}"
+                    },
+                    {
+                        title: "3. パラメータ t の消去",
+                        latex: "①より \\; t = x",
+                        latex2: "②に代入: \\; y = -x^2 + 3x"
+                    },
+                    ...(isBounded ? [{
+                        title: "4. t の範囲制限から x の変域を算出",
+                        latex: `${tMin.toFixed(2)} \\le t \\le ${tMax.toFixed(2)} \\; \\text{かつ} \\; t = x \\; \\text{より}`,
+                        latex2: `${tMin.toFixed(2)} \\le x \\le ${tMax.toFixed(2)}`
+                    }] : [])
+                ]
+            },
+            {
+                id: "preset2",
+                title: "2. y = -x² + 2(t - 1)x + t² - 3t = -{x - (t - 1)}² + 2t² - 5t + 1  頂点(t - 1, 2t² - 5t + 1)",
+                latexFunc: "y = -x^2 + 2(t - 1)x + t^2 - 3t",
+                locusLatex: "y = 2x^2 - x - 2",
+                getFx: (x, t) => -x * x + 2 * (t - 1) * x + t * t - 3 * t,
+                getVertex: (t) => ({ x: t - 1, y: 2 * t * t - 5 * t + 1 }),
+                getLocusY: (x) => 2 * x * x - x - 2,
+                getXDomain: (isBounded, tMin, tMax) => {
+                    if (!isBounded) return { min: -Infinity, max: Infinity, text: "\\text{全実数}" };
+                    const minX = tMin - 1;
+                    const maxX = tMax - 1;
+                    return { min: minX, max: maxX, text: `${minX.toFixed(2)} \\le x \\le ${maxX.toFixed(2)}` };
+                },
+                getSteps: (isBounded, tMin, tMax) => [
+                    {
+                        title: "1. 平方完成による頂点の抽出",
+                        latex: "y = -\\{x - (t - 1)\\}^2 + 2t^2 - 5t + 1",
+                        latex2: "\\text{頂点 } P \\text{ の座標: } (t - 1, 2t^2 - 5t + 1)"
+                    },
+                    {
+                        title: "2. 動点 P(x, y) とおいて立式",
+                        latex: "x = t - 1 \\quad \\text{--- ①}",
+                        latex2: "y = 2t^2 - 5t + 1 \\quad \\text{--- ②}"
+                    },
+                    {
+                        title: "3. パラメータ t の消去",
+                        latex: "①より \\; t = x + 1",
+                        latex2: "②に代入: \\; y = 2(x + 1)^2 - 5(x + 1) + 1 = 2x^2 - x - 2"
+                    },
+                    ...(isBounded ? [{
+                        title: "4. t の範囲制限から x の変域を算出",
+                        latex: `${tMin.toFixed(2)} \\le t \\le ${tMax.toFixed(2)} \\implies ${tMin.toFixed(2)} \\le x + 1 \\le ${tMax.toFixed(2)}`,
+                        latex2: `\\text{各辺から1を引いて: } ${(tMin - 1).toFixed(2)} \\le x \\le ${(tMax - 1).toFixed(2)}`
+                    }] : [])
+                ]
+            },
+            {
+                id: "preset3",
+                title: "3. y = x² + 2tx + 2t² - t = (x + t)² + t² - t  頂点(-t, t² - t)",
+                latexFunc: "y = x^2 + 2tx + 2t^2 - t",
+                locusLatex: "y = x^2 + x",
+                getFx: (x, t) => x * x + 2 * t * x + 2 * t * t - t,
+                getVertex: (t) => ({ x: -t, y: t * t - t }),
+                getLocusY: (x) => x * x + x,
+                getXDomain: (isBounded, tMin, tMax) => {
+                    if (!isBounded) return { min: -Infinity, max: Infinity, text: "\\text{全実数}" };
+                    const minX = -tMax;
+                    const maxX = -tMin;
+                    return { min: minX, max: maxX, text: `${minX.toFixed(2)} \\le x \\le ${maxX.toFixed(2)}` };
+                },
+                getSteps: (isBounded, tMin, tMax) => [
+                    {
+                        title: "1. 平方完成による頂点の抽出",
+                        latex: "y = (x + t)^2 + t^2 - t",
+                        latex2: "\\text{頂点 } P \\text{ の座標: } (-t, t^2 - t)"
+                    },
+                    {
+                        title: "2. 動点 P(x, y) とおいて立式",
+                        latex: "x = -t \\quad \\text{--- ①}",
+                        latex2: "y = t^2 - t \\quad \\text{--- ②}"
+                    },
+                    {
+                        title: "3. パラメータ t の消去",
+                        latex: "①より \\; t = -x",
+                        latex2: "②に代入: \\; y = (-x)^2 - (-x) = x^2 + x"
+                    },
+                    ...(isBounded ? [{
+                        title: "4. t の範囲制限から x の変域を算出",
+                        latex: `${tMin.toFixed(2)} \\le t \\le ${tMax.toFixed(2)} \\implies ${tMin.toFixed(2)} \\le -x \\le ${tMax.toFixed(2)}`,
+                        latex2: `\\text{各辺に-1を掛けて: } ${(-tMax).toFixed(2)} \\le x \\le ${(-tMin).toFixed(2)}`
+                    }] : [])
+                ]
+            }
+        ];
+
+        // Application State
+        let currentPreset = PRESETS[0];
+        let tValue = 0.0;
+        let isPlaying = false;
+        let playSpeed = 1.0;
+        let showGraph2d = true;
+        let showLocus = true;
+        let isBoundedDomain = false; // Toggle state: false = Full Reals, true = Slider range [-5, 5]
+        
+        // Canvas Transform State
+        let scale = 40; // pixels per unit
+        let offsetX = 0; // canvas center offset X
+        let offsetY = 0; // canvas center offset Y
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+
+        // Animation timing
+        let lastTimestamp = 0;
+        let playDirection = 1;
+
+        // Vertex Trail (History)
+        let vertexHistory = [];
+
+        // DOM elements
+        let canvas, ctx;
+        let tRange, tValueText, playBtn, playIcon, speedSelect, tLimitSelect, presetSelect;
+        let currentVertexDisplay, canvasLocusFormula, canvasLocusDomain;
+        let domainModeBtn, domainBtnText, toggleGraph2d, toggleLocus;
+        let clearTraceBtn, resetViewBtn, helpModalBtn, helpModal;
+        let closeHelpBtn, closeHelpBtn2, zoomInBtn, zoomOutBtn;
+        let tabMathBtn, tabConceptBtn, tabMathContent, tabConceptContent;
+
+        // Coordinate helper functions
+        function toScreenX(mathX) {
+            return canvas.width / 2 + offsetX + mathX * scale;
+        }
+
+        function toScreenY(mathY) {
+            return canvas.height / 2 + offsetY - mathY * scale;
+        }
+
+        function toMathX(screenX) {
+            return (screenX - (canvas.width / 2 + offsetX)) / scale;
+        }
+
+        function toMathY(screenY) {
+            return ((canvas.height / 2 + offsetY) - screenY) / scale;
+        }
+
+        function resetView() {
+            scale = 40;
+            offsetX = 0;
+            offsetY = 0;
+            draw();
+        }
+
+        function resizeCanvas() {
+            if (!canvas) return;
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            draw();
+        }
+
+        function addCurrentVertexToHistory() {
+            const vertex = currentPreset.getVertex(tValue);
+            if (vertexHistory.length === 0) {
+                vertexHistory.push(vertex);
+            } else {
+                const last = vertexHistory[vertexHistory.length - 1];
+                if (Math.hypot(last.x - vertex.x, last.y - vertex.y) > 0.02) {
+                    vertexHistory.push(vertex);
+                }
+            }
+        }
+
+        function init() {
+            // Element references
+            canvas = document.getElementById('graphCanvas');
+            ctx = canvas.getContext('2d');
+            tRange = document.getElementById('tRange');
+            tValueText = document.getElementById('tValueText');
+            playBtn = document.getElementById('playBtn');
+            playIcon = document.getElementById('playIcon');
+            speedSelect = document.getElementById('speedSelect');
+            tLimitSelect = document.getElementById('tLimitSelect');
+            presetSelect = document.getElementById('presetSelect');
+            currentVertexDisplay = document.getElementById('currentVertexDisplay');
+            canvasLocusFormula = document.getElementById('canvasLocusFormula');
+            canvasLocusDomain = document.getElementById('canvasLocusDomain');
+            domainModeBtn = document.getElementById('domainModeBtn');
+            domainBtnText = document.getElementById('domainBtnText');
+
+            toggleGraph2d = document.getElementById('toggleGraph2d');
+            toggleLocus = document.getElementById('toggleLocus');
+            clearTraceBtn = document.getElementById('clearTraceBtn');
+            resetViewBtn = document.getElementById('resetViewBtn');
+            helpModalBtn = document.getElementById('helpModalBtn');
+            helpModal = document.getElementById('helpModal');
+            closeHelpBtn = document.getElementById('closeHelpBtn');
+            closeHelpBtn2 = document.getElementById('closeHelpBtn2');
+            zoomInBtn = document.getElementById('zoomInBtn');
+            zoomOutBtn = document.getElementById('zoomOutBtn');
+
+            tabMathBtn = document.getElementById('tabMathBtn');
+            tabConceptBtn = document.getElementById('tabConceptBtn');
+            tabMathContent = document.getElementById('tabMathContent');
+            tabConceptContent = document.getElementById('tabConceptContent');
+
+            // Resize canvas to container
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            // Populate preset select dropdown
+            presetSelect.innerHTML = '';
+            PRESETS.forEach((p) => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = p.title;
+                presetSelect.appendChild(opt);
+            });
+
+            // Set default view position centered on origin (0, 0)
+            resetView();
+
+            // Setup event listeners
+            presetSelect.addEventListener('change', (e) => {
+                const selected = PRESETS.find(p => p.id === e.target.value);
+                if (selected) {
+                    currentPreset = selected;
+                    vertexHistory = [];
+                    addCurrentVertexToHistory();
+                    updateMathExplanation();
+                    draw();
+                }
+            });
+
+            // Domain Mode Toggle Button (Compact Pink Button)
+            domainModeBtn.addEventListener('click', () => {
+                isBoundedDomain = !isBoundedDomain;
+                const minT = parseFloat(tRange.min).toFixed(2);
+                const maxT = parseFloat(tRange.max).toFixed(2);
+                if (isBoundedDomain) {
+                    domainBtnText.textContent = `${minT} ≤ t ≤ ${maxT}`;
+                } else {
+                    domainBtnText.textContent = "t: 全範囲";
+                }
+                updateMathExplanation();
+                draw();
+            });
+
+            tRange.addEventListener('input', (e) => {
+                tValue = parseFloat(e.target.value);
+                tValueText.textContent = tValue.toFixed(2);
+                addCurrentVertexToHistory();
+                draw();
+            });
+
+            playBtn.addEventListener('click', togglePlay);
+
+            speedSelect.addEventListener('change', (e) => {
+                playSpeed = parseFloat(e.target.value);
+            });
+
+            // tの範囲切り替え（±2, ±3, ±5）
+            tLimitSelect.addEventListener('change', (e) => {
+                const limit = parseFloat(e.target.value);
+                tRange.min = -limit;
+                tRange.max = limit;
+                tRange.step = limit === 2 ? 0.02 : (limit === 3 ? 0.03 : 0.05);
+                
+                // 現在のt値が範囲を超えた場合は調整
+                if (tValue > limit) tValue = limit;
+                if (tValue < -limit) tValue = -limit;
+                tRange.value = tValue.toFixed(2);
+                tValueText.textContent = tValue.toFixed(2);
+
+                if (isBoundedDomain) {
+                    domainBtnText.textContent = `${(-limit).toFixed(2)} ≤ t ≤ ${limit.toFixed(2)}`;
+                }
+                updateMathExplanation();
+                addCurrentVertexToHistory();
+                draw();
+            });
+
+            toggleGraph2d.addEventListener('click', () => {
+                showGraph2d = !showGraph2d;
+                toggleGraph2d.className = showGraph2d 
+                    ? "px-2 py-1 text-xs rounded bg-indigo-600 text-white hover:bg-indigo-500 transition"
+                    : "px-2 py-1 text-xs rounded bg-slate-800 text-slate-400 hover:bg-slate-700 transition";
+                draw();
+            });
+
+            toggleLocus.addEventListener('click', () => {
+                showLocus = !showLocus;
+                toggleLocus.className = showLocus 
+                    ? "px-2 py-1 text-xs rounded bg-rose-600 text-white hover:bg-rose-500 transition"
+                    : "px-2 py-1 text-xs rounded bg-slate-800 text-slate-400 hover:bg-slate-700 transition";
+                draw();
+            });
+
+            clearTraceBtn.addEventListener('click', () => {
+                vertexHistory = [];
+                addCurrentVertexToHistory();
+                draw();
+            });
+
+            resetViewBtn.addEventListener('click', resetView);
+
+            zoomInBtn.addEventListener('click', () => {
+                scale = Math.min(scale * 1.25, 200);
+                draw();
+            });
+
+            zoomOutBtn.addEventListener('click', () => {
+                scale = Math.max(scale / 1.25, 10);
+                draw();
+            });
+
+            // Canvas Navigation Events (Pan & Zoom)
+            canvas.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                dragStartX = e.clientX - offsetX;
+                dragStartY = e.clientY - offsetY;
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    offsetX = e.clientX - dragStartX;
+                    offsetY = e.clientY - dragStartY;
+                    draw();
+                }
+            });
+
+            window.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+                
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                offsetX = mouseX - (mouseX - offsetX) * zoomFactor;
+                offsetY = mouseY - (mouseY - offsetY) * zoomFactor;
+                scale *= zoomFactor;
+                scale = Math.max(10, Math.min(200, scale));
+
+                draw();
+            }, { passive: false });
+
+            // Touch events for mobile canvas navigation
+            canvas.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    isDragging = true;
+                    dragStartX = e.touches[0].clientX - offsetX;
+                    dragStartY = e.touches[0].clientY - offsetY;
+                }
+            });
+
+            canvas.addEventListener('touchmove', (e) => {
+                if (isDragging && e.touches.length === 1) {
+                    offsetX = e.touches[0].clientX - dragStartX;
+                    offsetY = e.touches[0].clientY - dragStartY;
+                    draw();
+                }
+            });
+
+            canvas.addEventListener('touchend', () => {
+                isDragging = false;
+            });
+
+            // Tabs toggle
+            tabMathBtn.addEventListener('click', () => {
+                tabMathBtn.className = "px-4 py-2 text-xs font-semibold border-b-2 border-indigo-500 text-indigo-400 transition";
+                tabConceptBtn.className = "px-4 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 transition border-b-2 border-transparent";
+                tabMathContent.classList.remove('hidden');
+                tabConceptContent.classList.add('hidden');
+            });
+
+            tabConceptBtn.addEventListener('click', () => {
+                tabConceptBtn.className = "px-4 py-2 text-xs font-semibold border-b-2 border-indigo-500 text-indigo-400 transition";
+                tabMathBtn.className = "px-4 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 transition border-b-2 border-transparent";
+                tabConceptContent.classList.remove('hidden');
+                tabMathContent.classList.add('hidden');
+            });
+
+            // Modal toggle
+            helpModalBtn.addEventListener('click', () => {
+                helpModal.classList.remove('opacity-0', 'pointer-events-none');
+            });
+            const closeModal = () => helpModal.classList.add('opacity-0', 'pointer-events-none');
+            closeHelpBtn.addEventListener('click', closeModal);
+            closeHelpBtn2.addEventListener('click', closeModal);
+
+            // Initial math renders
+            updateMathExplanation();
+            addCurrentVertexToHistory();
+            draw();
+
+            // Animation Loop
+            lastTimestamp = performance.now();
+            requestAnimationFrame(animationLoop);
+        }
+
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            if (isPlaying) {
+                playIcon.className = 'fa-solid fa-pause text-xs';
+                playBtn.classList.add('bg-amber-600', 'hover:bg-amber-500');
+                playBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-500');
+            } else {
+                playIcon.className = 'fa-solid fa-play text-xs ml-0.5';
+                playBtn.classList.remove('bg-amber-600', 'hover:bg-amber-500');
+                playBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-500');
+            }
+        }
+
+        function animationLoop(timestamp) {
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const dt = (timestamp - lastTimestamp) / 1000;
+            lastTimestamp = timestamp;
+
+            if (isPlaying) {
+                const minT = parseFloat(tRange.min);
+                const maxT = parseFloat(tRange.max);
+                const speed = 1.5 * playSpeed; // t change speed
+
+                tValue += playDirection * speed * dt;
+
+                if (tValue >= maxT) {
+                    tValue = maxT;
+                    playDirection = -1;
+                } else if (tValue <= minT) {
+                    tValue = minT;
+                    playDirection = 1;
+                }
+
+                tRange.value = tValue.toFixed(2);
+                tValueText.textContent = tValue.toFixed(2);
+                addCurrentVertexToHistory();
+                draw();
+            }
+
+            requestAnimationFrame(animationLoop);
+        }
+
+        function drawGridAndAxes() {
+            const centerX = canvas.width / 2 + offsetX;
+            const centerY = canvas.height / 2 + offsetY;
+
+            // Grid lines
+            ctx.save();
+            ctx.strokeStyle = '#1e293b'; // slate-800
+            ctx.lineWidth = 1;
+
+            let gridStep = 1;
+            if (scale < 20) gridStep = 5;
+            if (scale < 8) gridStep = 10;
+            if (scale > 80) gridStep = 0.5;
+
+            const minX = Math.floor(toMathX(0) / gridStep) * gridStep;
+            const maxX = Math.ceil(toMathX(canvas.width) / gridStep) * gridStep;
+            const minY = Math.floor(toMathY(canvas.height) / gridStep) * gridStep;
+            const maxY = Math.ceil(toMathY(0) / gridStep) * gridStep;
+
+            for (let x = minX; x <= maxX; x += gridStep) {
+                const px = toScreenX(x);
+                ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, canvas.height); ctx.stroke();
+            }
+
+            for (let y = minY; y <= maxY; y += gridStep) {
+                const py = toScreenY(y);
+                ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(canvas.width, py); ctx.stroke();
+            }
+
+            // Axes (X and Y)
+            ctx.strokeStyle = '#64748b'; // slate-500
+            ctx.lineWidth = 2;
+
+            ctx.beginPath(); ctx.moveTo(0, centerY); ctx.lineTo(canvas.width, centerY); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(centerX, 0); ctx.lineTo(centerX, canvas.height); ctx.stroke();
+
+            // Axis Labels and numbers
+            ctx.fillStyle = '#94a3b8'; // slate-400
+            ctx.font = '10px "Fira Code", monospace';
+
+            ctx.fillText('O', centerX - 12, centerY + 14);
+
+            for (let x = minX; x <= maxX; x += gridStep) {
+                if (Math.abs(x) < 0.001) continue;
+                const px = toScreenX(x);
+                if (px >= 0 && px <= canvas.width) {
+                    ctx.fillText(Number(x.toFixed(2)).toString(), px - 6, centerY + 14);
+                }
+            }
+
+            for (let y = minY; y <= maxY; y += gridStep) {
+                if (Math.abs(y) < 0.001) continue;
+                const py = toScreenY(y);
+                if (py >= 0 && py <= canvas.height) {
+                    ctx.fillText(Number(y.toFixed(2)).toString(), centerX + 6, py + 4);
+                }
+            }
+
+            ctx.restore();
+        }
+
+        function drawTheoreticalLocus() {
+            const tMin = parseFloat(tRange.min);
+            const tMax = parseFloat(tRange.max);
+            const xDomain = currentPreset.getXDomain(isBoundedDomain, tMin, tMax);
+
+            // 1. Out-of-domain locus as dashed faded pink line (if domain is bounded)
+            if (isBoundedDomain) {
+                ctx.save();
+                ctx.lineWidth = 1.8;
+                ctx.strokeStyle = 'rgba(244, 63, 94, 0.35)'; // Faded rose/pink
+                ctx.setLineDash([4, 4]);
+
+                ctx.beginPath();
+                let started = false;
+
+                for (let px = 0; px <= canvas.width; px += 2) {
+                    const mathX = toMathX(px);
+                    const mathY = currentPreset.getLocusY(mathX);
+                    const py = toScreenY(mathY);
+
+                    if (!started) {
+                        ctx.moveTo(px, py);
+                        started = true;
+                    } else {
+                        ctx.lineTo(px, py);
+                    }
+                }
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // 2. In-Domain Locus as Solid Pink Line
+            ctx.save();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#f43f5e'; // Vibrant pink/rose
+            ctx.setLineDash([]);
+
+            ctx.beginPath();
+            let started = false;
+
+            for (let px = 0; px <= canvas.width; px += 2) {
+                const mathX = toMathX(px);
+                
+                if (isBoundedDomain && (mathX < xDomain.min || mathX > xDomain.max)) {
+                    started = false;
+                    continue;
+                }
+
+                const mathY = currentPreset.getLocusY(mathX);
+                const py = toScreenY(mathY);
+
+                if (!started) {
+                    ctx.moveTo(px, py);
+                    started = true;
+                } else {
+                    ctx.lineTo(px, py);
+                }
+            }
+
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawVertexTrail() {
+            if (vertexHistory.length < 2) return;
+
+            ctx.save();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#f43f5e';
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            ctx.beginPath();
+            vertexHistory.forEach((pt, index) => {
+                const px = toScreenX(pt.x);
+                const py = toScreenY(pt.y);
+                if (index === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            });
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawQuadraticGraph() {
+            ctx.save();
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 2;
+
+            ctx.beginPath();
+            let started = false;
+
+            for (let px = 0; px <= canvas.width; px += 2) {
+                const mathX = toMathX(px);
+                const mathY = currentPreset.getFx(mathX, tValue);
+                const py = toScreenY(mathY);
+
+                if (py < -2000 || py > canvas.height + 2000) {
+                    started = false;
+                    continue;
+                }
+
+                if (!started) {
+                    ctx.moveTo(px, py);
+                    started = true;
+                } else {
+                    ctx.lineTo(px, py);
+                }
+            }
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawVertexMarker(vertex) {
+            const vx = toScreenX(vertex.x);
+            const vy = toScreenY(vertex.y);
+
+            ctx.save();
+
+            // Glow
+            const gradient = ctx.createRadialGradient(vx, vy, 0, vx, vy, 14);
+            gradient.addColorStop(0, 'rgba(52, 211, 153, 0.9)');
+            gradient.addColorStop(1, 'rgba(52, 211, 153, 0)');
+
+            ctx.fillStyle = gradient;
+            ctx.beginPath(); ctx.arc(vx, vy, 16, 0, Math.PI * 2); ctx.fill();
+
+            // Solid dot
+            ctx.fillStyle = '#34d399';
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(vx, vy, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            // Label P(x,y) near marker
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 11px "Fira Code", monospace';
+            ctx.textAlign = 'left';
+            ctx.fillText(` P(${vertex.x.toFixed(2)}, ${vertex.y.toFixed(2)})`, vx + 8, vy - 8);
+
+            // Projections to axes
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
+            ctx.setLineDash([3, 3]);
+            ctx.lineWidth = 1;
+
+            const py0 = toScreenY(0);
+            const px0 = toScreenX(0);
+
+            ctx.beginPath(); ctx.moveTo(vx, vy); ctx.lineTo(vx, py0); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(vx, vy); ctx.lineTo(px0, vy); ctx.stroke();
+
+            ctx.restore();
+        }
+
+        function draw() {
+            if (!ctx) return;
+            
+            // Background
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw layers
+            drawGridAndAxes();
+
+            if (showLocus) {
+                drawTheoreticalLocus();
+            }
+
+            if (showGraph2d) {
+                drawQuadraticGraph();
+            }
+
+            drawVertexTrail();
+
+            const currentVertex = currentPreset.getVertex(tValue);
+            drawVertexMarker(currentVertex);
+
+            if (currentVertexDisplay) {
+                currentVertexDisplay.textContent = `P(x, y) = (${currentVertex.x.toFixed(2)}, ${currentVertex.y.toFixed(2)})`;
+            }
+        }
+
+        function updateMathExplanation() {
+            const formulaElem = document.getElementById('mathFunctionFormula');
+            const stepsElem = document.getElementById('mathStepsContainer');
+            const resultElem = document.getElementById('mathLocusResult');
+            const domainElem = document.getElementById('mathLocusDomain');
+
+            formulaElem.innerHTML = `$${currentPreset.latexFunc}$`;
+            resultElem.innerHTML = `$${currentPreset.locusLatex}$`;
+
+            const tMin = parseFloat(tRange.min);
+            const tMax = parseFloat(tRange.max);
+            const xDomain = currentPreset.getXDomain(isBoundedDomain, tMin, tMax);
+
+            // Canvas badge update
+            canvasLocusFormula.innerHTML = `$${currentPreset.locusLatex}$`;
+            canvasLocusDomain.innerHTML = `$${xDomain.text}$`;
+
+            domainElem.innerHTML = `変域: $${xDomain.text}$`;
+
+            // Step timeline generation
+            stepsElem.innerHTML = '';
+            const steps = currentPreset.getSteps(isBoundedDomain, tMin, tMax);
+
+            steps.forEach((st) => {
+                const stepCard = document.createElement('div');
+                stepCard.className = "bg-slate-950/70 border border-slate-800 rounded-lg p-2.5 space-y-1 text-xs shadow-sm";
+
+                let html = `<div class="font-bold text-sky-400 text-[11px] flex items-center justify-between">
+                                <span>${st.title}</span>
+                            </div>`;
+                html += `<div class="text-slate-200 overflow-x-auto py-0.5 font-mono">$${st.latex}$</div>`;
+                if (st.latex2) {
+                    html += `<div class="text-amber-300 overflow-x-auto py-0.5 font-mono">$${st.latex2}$</div>`;
+                }
+
+                stepCard.innerHTML = html;
+                stepsElem.appendChild(stepCard);
+            });
+
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                MathJax.typesetPromise([formulaElem, stepsElem, resultElem, canvasLocusFormula, canvasLocusDomain, domainElem]).catch((err) => console.log(err));
+            }
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
