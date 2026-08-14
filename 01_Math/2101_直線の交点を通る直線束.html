@@ -56,72 +56,71 @@
     </header>
 
     <!-- Main Content Area -->
-    <main class="flex-1 max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 flex flex-col gap-5">
 
-        <!-- Left Controls Column -->
-        <div class="lg:col-span-5 flex flex-col gap-5 overflow-y-auto max-h-[calc(100vh-6rem)] pr-1">
+        <!-- 1. TOP CONTROLS ROW (Side-by-side coefficients and k parameters) -->
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-4">
             
-            <!-- 1. Equation Settings Card -->
-            <div class="bg-slate-800 rounded-xl p-4 border border-slate-700/70 shadow-lg">
-                <h2 class="text-sm font-semibold text-indigo-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <!-- Coefficients Input (f and g) -->
+            <div class="xl:col-span-5 bg-slate-800 rounded-xl p-3.5 border border-slate-700/70 shadow-lg flex flex-col justify-between">
+                <h2 class="text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-2 flex items-center gap-2">
                     <i class="fa-solid fa-sliders"></i> 直線 f, g の係数設定
                 </h2>
-                
-                <!-- Line f Input -->
-                <div class="mb-4 bg-blue-950/40 p-3 rounded-lg border border-blue-800/40">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="font-bold text-blue-400 text-sm flex items-center gap-1.5">
-                            <span class="w-3 h-3 rounded-full bg-blue-500 inline-block"></span>
-                            直線 f(x,y) = 0
-                        </span>
-                        <span id="f-expr" class="mono-font text-xs text-blue-300">2x - y - 1 = 0</span>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <!-- Line f Input -->
+                    <div class="bg-blue-950/40 p-2.5 rounded-lg border border-blue-800/40">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="font-bold text-blue-400 text-xs flex items-center gap-1">
+                                <span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span>
+                                直線 f(x,y) = 0
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-1.5">
+                            <div>
+                                <label class="text-[10px] text-slate-400 block mb-0.5 text-center">a₁ (x)</label>
+                                <input type="number" id="a1" value="2" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-center text-xs font-semibold text-white focus:outline-none focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="text-[10px] text-slate-400 block mb-0.5 text-center">b₁ (y)</label>
+                                <input type="number" id="b1" value="-1" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-center text-xs font-semibold text-white focus:outline-none focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="text-[10px] text-slate-400 block mb-0.5 text-center">c₁ (定数)</label>
+                                <input type="number" id="c1" value="-1" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-center text-xs font-semibold text-white focus:outline-none focus:border-blue-500">
+                            </div>
+                        </div>
                     </div>
-                    <div class="grid grid-cols-3 gap-2">
-                        <div>
-                            <label class="text-[11px] text-slate-400 block mb-1">a₁ (xの係数)</label>
-                            <input type="number" id="a1" value="2" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-center text-sm font-semibold text-white focus:outline-none focus:border-blue-500">
-                        </div>
-                        <div>
-                            <label class="text-[11px] text-slate-400 block mb-1">b₁ (yの係数)</label>
-                            <input type="number" id="b1" value="-1" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-center text-sm font-semibold text-white focus:outline-none focus:border-blue-500">
-                        </div>
-                        <div>
-                            <label class="text-[11px] text-slate-400 block mb-1">c₁ (定数項)</label>
-                            <input type="number" id="c1" value="-1" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-center text-sm font-semibold text-white focus:outline-none focus:border-blue-500">
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Line g Input -->
-                <div class="bg-rose-950/40 p-3 rounded-lg border border-rose-800/40">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="font-bold text-rose-400 text-sm flex items-center gap-1.5">
-                            <span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span>
-                            直線 g(x,y) = 0
-                        </span>
-                        <span id="g-expr" class="mono-font text-xs text-rose-300">x + 2y - 8 = 0</span>
-                    </div>
-                    <div class="grid grid-cols-3 gap-2">
-                        <div>
-                            <label class="text-[11px] text-slate-400 block mb-1">a₂ (xの係数)</label>
-                            <input type="number" id="a2" value="1" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-center text-sm font-semibold text-white focus:outline-none focus:border-rose-500">
+                    <!-- Line g Input -->
+                    <div class="bg-rose-950/40 p-2.5 rounded-lg border border-rose-800/40">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="font-bold text-rose-400 text-xs flex items-center gap-1">
+                                <span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span>
+                                直線 g(x,y) = 0
+                            </span>
                         </div>
-                        <div>
-                            <label class="text-[11px] text-slate-400 block mb-1">b₂ (yの係数)</label>
-                            <input type="number" id="b2" value="2" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-center text-sm font-semibold text-white focus:outline-none focus:border-rose-500">
-                        </div>
-                        <div>
-                            <label class="text-[11px] text-slate-400 block mb-1">c₂ (定数項)</label>
-                            <input type="number" id="c2" value="-8" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-center text-sm font-semibold text-white focus:outline-none focus:border-rose-500">
+                        <div class="grid grid-cols-3 gap-1.5">
+                            <div>
+                                <label class="text-[10px] text-slate-400 block mb-0.5 text-center">a₂ (x)</label>
+                                <input type="number" id="a2" value="1" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-center text-xs font-semibold text-white focus:outline-none focus:border-rose-500">
+                            </div>
+                            <div>
+                                <label class="text-[10px] text-slate-400 block mb-0.5 text-center">b₂ (y)</label>
+                                <input type="number" id="b2" value="2" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-center text-xs font-semibold text-white focus:outline-none focus:border-rose-500">
+                            </div>
+                            <div>
+                                <label class="text-[10px] text-slate-400 block mb-0.5 text-center">c₂ (定数)</label>
+                                <input type="number" id="c2" value="-8" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-center text-xs font-semibold text-white focus:outline-none focus:border-rose-500">
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- 2. Parameter k Controls Card -->
-            <div class="bg-slate-800 rounded-xl p-4 border border-slate-700/70 shadow-lg">
+            <!-- Parameter k Control & Formula Display (F + kG = 0) -->
+            <div class="xl:col-span-7 bg-slate-800 rounded-xl p-3.5 border border-slate-700/70 shadow-lg flex flex-col justify-between">
                 <div class="flex items-center justify-between mb-2">
-                    <h2 class="text-sm font-semibold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                    <h2 class="text-xs font-semibold text-amber-400 uppercase tracking-wider flex items-center gap-2">
                         <i class="fa-solid fa-gauge-high"></i> パラメータ k の操作
                     </h2>
                     <button id="anim-btn" class="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 px-2.5 py-1 rounded transition flex items-center gap-1.5">
@@ -130,173 +129,196 @@
                     </button>
                 </div>
 
-                <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-700/80 mb-3">
-                    <div class="flex justify-between items-baseline mb-2">
-                        <span class="text-xs text-slate-400">現在の k の値:</span>
-                        <span id="k-value-display" class="mono-font text-xl font-bold text-amber-400">k = 1.00</span>
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                    <!-- Left: Slider, Direct Input, Range -->
+                    <div class="md:col-span-7 flex flex-col gap-2">
+                        <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-700/80">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-[11px] text-slate-400">現在の k:</span>
+                                <span id="k-value-display" class="mono-font text-base font-bold text-amber-400">k = 1.00</span>
+                            </div>
+                            <input type="range" id="k-slider" min="-10" max="10" step="0.05" value="1" class="w-full accent-amber-500 cursor-pointer h-1.5 bg-slate-700 rounded-lg appearance-none">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div class="flex items-center gap-1.5">
+                                <label class="text-[11px] text-slate-400 whitespace-nowrap">k直接指定:</label>
+                                <input type="number" id="k-num" value="1.0" step="0.1" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-amber-300 font-semibold text-center text-xs focus:outline-none focus:border-amber-500">
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <label class="text-[11px] text-slate-400 whitespace-nowrap">範囲 (±):</label>
+                                <select id="k-range" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-slate-200 text-center text-xs focus:outline-none">
+                                    <option value="5">± 5</option>
+                                    <option value="10" selected>± 10</option>
+                                    <option value="20">± 20</option>
+                                    <option value="50">± 50</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Slider Control -->
-                    <input type="range" id="k-slider" min="-10" max="10" step="0.05" value="1" class="w-full accent-amber-500 cursor-pointer h-2 bg-slate-700 rounded-lg appearance-none">
-
-                    <div class="flex justify-between text-[10px] text-slate-500 mt-1">
-                        <span>-10.0</span>
-                        <span>-5.0</span>
-                        <span>0.0</span>
-                        <span>5.0</span>
-                        <span>10.0</span>
+                    <!-- Right: F + kG = 0 Equation Display -->
+                    <div class="md:col-span-5 bg-amber-950/30 border border-amber-500/40 p-2.5 rounded-lg flex flex-col justify-center min-h-[82px]">
+                        <span class="text-[10px] text-amber-400 font-semibold uppercase mb-1 flex items-center gap-1">
+                            <i class="fa-solid fa-square-root-variable"></i> 直線束の方程式 (F + kG = 0)
+                        </span>
+                        <div id="f-plus-kg-expr" class="mono-font text-xs text-amber-200 font-bold break-all leading-relaxed">
+                            (2x - y - 1) + k(x + 2y - 8) = 0
+                        </div>
                     </div>
-                </div>
-
-                <!-- Numerical input & range adjustment -->
-                <div class="grid grid-cols-2 gap-3 text-xs">
-                    <div>
-                        <label class="text-slate-400 block mb-1">k を直接指定:</label>
-                        <input type="number" id="k-num" value="1.0" step="0.1" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-amber-300 font-semibold text-center focus:outline-none focus:border-amber-500">
-                    </div>
-                    <div>
-                        <label class="text-slate-400 block mb-1">スライダー範囲 (±):</label>
-                        <select id="k-range" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-slate-200 text-center focus:outline-none">
-                            <option value="5">± 5</option>
-                            <option value="10" selected>± 10</option>
-                            <option value="20">± 20</option>
-                            <option value="50">± 50</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 3. Target Point Input & Solver Card -->
-            <div class="bg-slate-800 rounded-xl p-4 border border-slate-700/70 shadow-lg">
-                <h2 class="text-sm font-semibold text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-2">
-                    <i class="fa-solid fa-location-crosshairs"></i> 指定する点 P(x₀, y₀) を通る条件
-                </h2>
-                <p class="text-xs text-slate-400 mb-3">
-                    この点を通るように $k$ を自動的に逆算します（グラフ上をクリックしても指定可能）。
-                </p>
-
-                <div class="grid grid-cols-2 gap-3 mb-3">
-                    <div>
-                        <label class="text-xs text-slate-300 block mb-1">x₀ 座標:</label>
-                        <input type="number" id="px" value="5" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-center font-semibold text-emerald-400 focus:outline-none focus:border-emerald-500">
-                    </div>
-                    <div>
-                        <label class="text-xs text-slate-300 block mb-1">y₀ 座標:</label>
-                        <input type="number" id="py" value="3" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-center font-semibold text-emerald-400 focus:outline-none focus:border-emerald-500">
-                    </div>
-                </div>
-
-                <button id="calc-k-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold py-2 px-3 rounded-lg transition flex items-center justify-center gap-2 shadow">
-                    <i class="fa-solid fa-calculator"></i> 点 (x₀, y₀) を通る k を求める
-                </button>
-
-                <!-- Result output box -->
-                <div id="solver-result" class="mt-3 p-3 bg-slate-900/90 rounded-lg border border-slate-700 text-xs space-y-1">
-                    <div class="text-slate-400">計算結果:</div>
-                    <div id="k-calc-step" class="mono-font text-slate-300">f(5, 3) = 6, g(5, 3) = 3</div>
-                    <div id="k-calc-val" class="mono-font text-emerald-400 font-bold text-sm">k = -2.000</div>
-                </div>
-            </div>
-
-            <!-- 4. Line equation details card -->
-            <div class="bg-slate-800 rounded-xl p-4 border border-slate-700/70 shadow-lg">
-                <h2 class="text-sm font-semibold text-purple-400 uppercase tracking-wider mb-2 flex items-center gap-2">
-                    <i class="fa-solid fa-square-root-variable"></i> 現在の直線 L_k の方程式
-                </h2>
-                <div class="bg-slate-900 p-3 rounded-lg border border-purple-500/30 font-mono text-center space-y-1.5">
-                    <div class="text-xs text-slate-400">一般形: (a₁+ka₂)x + (b₁+kb₂)y + (c₁+kc₂) = 0</div>
-                    <div id="lk-general" class="text-purple-300 font-bold text-sm">3.00x + 1.00y - 9.00 = 0</div>
-                    <div id="lk-slope" class="text-xs text-purple-400 border-t border-slate-800 pt-1">y = -3.00x + 9.00</div>
                 </div>
             </div>
 
         </div>
 
-        <!-- Right Interactive Canvas Column -->
-        <div class="lg:col-span-7 flex flex-col gap-4">
+        <!-- 2. GRAPH CANVAS AREA -->
+        <div class="bg-slate-800 rounded-xl p-4 border border-slate-700/70 shadow-lg flex flex-col relative">
             
-            <!-- Graph Box -->
-            <div class="bg-slate-800 rounded-xl p-4 border border-slate-700/70 shadow-lg flex flex-col flex-1 relative">
+            <!-- Canvas toolbar -->
+            <div class="flex items-center justify-between mb-2 text-xs">
+                <div class="flex items-center space-x-2">
+                    <span class="font-semibold text-slate-200">2次元座標平面</span>
+                    <span id="intersection-status" class="bg-indigo-950 text-indigo-300 px-2 py-0.5 rounded border border-indigo-800/50">
+                        交点: (2.0, 3.0)
+                    </span>
+                </div>
+                <div class="flex items-center space-x-1">
+                    <button id="zoom-in" class="p-1.5 bg-slate-700 hover:bg-slate-600 rounded text-slate-200 transition" title="拡大">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                    <button id="zoom-out" class="p-1.5 bg-slate-700 hover:bg-slate-600 rounded text-slate-200 transition" title="縮小">
+                        <i class="fa-solid fa-minus"></i>
+                    </button>
+                    <button id="reset-view" class="p-1.5 bg-slate-700 hover:bg-slate-600 rounded text-slate-200 transition" title="リセット">
+                        <i class="fa-solid fa-rotate-left"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Canvas container -->
+            <div class="relative w-full h-[480px] bg-slate-950 rounded-lg overflow-hidden border border-slate-800 cursor-crosshair">
+                <canvas id="graphCanvas" class="w-full h-full block"></canvas>
                 
-                <!-- Canvas toolbar -->
-                <div class="flex items-center justify-between mb-3 text-xs">
-                    <div class="flex items-center space-x-2">
-                        <span class="font-semibold text-slate-200">2次元座標平面</span>
-                        <span id="intersection-status" class="bg-indigo-950 text-indigo-300 px-2 py-0.5 rounded border border-indigo-800/50">
-                            交点: (2.0, 3.0)
-                        </span>
+                <!-- Prominent Graph Equations Overlay (Larger than legend) -->
+                <div class="absolute top-3 left-3 bg-slate-900/95 backdrop-blur border border-slate-700/90 p-3 rounded-lg text-xs space-y-1.5 shadow-xl max-w-xs sm:max-w-md pointer-events-none">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-blue-500 shrink-0"></span>
+                        <span id="overlay-f-expr" class="mono-font text-blue-300 font-semibold text-sm sm:text-base">f: 2x - y - 1 = 0</span>
                     </div>
-                    <div class="flex items-center space-x-1">
-                        <button id="zoom-in" class="p-1.5 bg-slate-700 hover:bg-slate-600 rounded text-slate-200 transition" title="拡大">
-                            <i class="fa-solid fa-plus"></i>
-                        </button>
-                        <button id="zoom-out" class="p-1.5 bg-slate-700 hover:bg-slate-600 rounded text-slate-200 transition" title="縮小">
-                            <i class="fa-solid fa-minus"></i>
-                        </button>
-                        <button id="reset-view" class="p-1.5 bg-slate-700 hover:bg-slate-600 rounded text-slate-200 transition" title="リセット">
-                            <i class="fa-solid fa-rotate-left"></i>
-                        </button>
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-rose-500 shrink-0"></span>
+                        <span id="overlay-g-expr" class="mono-font text-rose-300 font-semibold text-sm sm:text-base">g: x + 2y - 8 = 0</span>
+                    </div>
+                    <div class="flex items-center gap-2 border-t border-slate-800 pt-1.5 mt-1">
+                        <span class="w-3 h-3 rounded-full bg-amber-400 shrink-0"></span>
+                        <span id="overlay-lk-expr" class="mono-font text-amber-300 font-bold text-sm sm:text-base">L_k: 3.00x + 1.00y - 9.00 = 0</span>
+                    </div>
+                    <div class="flex items-center justify-between text-amber-400 font-mono text-xs sm:text-sm pl-5">
+                        <span id="overlay-k-val" class="font-bold">k = +1.00</span>
                     </div>
                 </div>
 
-                <!-- Canvas container -->
-                <div class="relative flex-1 w-full min-h-[420px] bg-slate-950 rounded-lg overflow-hidden border border-slate-800 cursor-crosshair">
-                    <canvas id="graphCanvas" class="w-full h-full block"></canvas>
-                    
-                    <!-- Legend Overlay -->
-                    <div class="absolute bottom-3 left-3 bg-slate-900/90 backdrop-blur border border-slate-700/80 p-2.5 rounded-lg text-[11px] space-y-1.5 pointer-events-none shadow-md">
-                        <div class="flex items-center gap-2">
-                            <span class="w-3.5 h-0.5 bg-blue-500 inline-block"></span>
-                            <span class="text-blue-300 font-medium">直線 f(x,y) = 0</span>
+                <!-- Legend Overlay (Smaller text) -->
+                <div class="absolute bottom-3 left-3 bg-slate-900/85 backdrop-blur border border-slate-700/70 p-2 rounded-lg text-[11px] space-y-1 pointer-events-none shadow-md">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full border-2 border-yellow-300 bg-yellow-400/30 inline-block"></span>
+                        <span class="text-yellow-200">交点 P_int</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span>
+                        <span class="text-emerald-300">指定点 P(x₀, y₀)</span>
+                    </div>
+                </div>
+
+                <!-- Instruction hint -->
+                <div class="absolute top-3 right-3 bg-slate-900/80 text-slate-400 text-[10px] px-2.5 py-1 rounded border border-slate-800 pointer-events-none">
+                    <i class="fa-solid fa-hand-pointer mr-1"></i> 画面クリックで点 P(x₀,y₀) を配置
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. BOTTOM SIDE-BY-SIDE CARDS (Point input & Line Equation details) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            <!-- Left: Target Point Input & Solver Card -->
+            <div class="bg-slate-800 rounded-xl p-4 border border-slate-700/70 shadow-lg flex flex-col justify-between">
+                <div>
+                    <h2 class="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-1 flex items-center gap-2">
+                        <i class="fa-solid fa-location-crosshairs"></i> 指定する点 P(x₀, y₀) を通る条件
+                    </h2>
+                    <p class="text-xs text-slate-400 mb-3">
+                        この点を通るように $k$ を自動的に逆算します（グラフ上をクリックしても指定可能）。
+                    </p>
+
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div>
+                            <label class="text-xs text-slate-300 block mb-1">x₀ 座標:</label>
+                            <input type="number" id="px" value="5" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-center font-semibold text-emerald-400 focus:outline-none focus:border-emerald-500">
                         </div>
-                        <div class="flex items-center gap-2">
-                            <span class="w-3.5 h-0.5 bg-rose-500 inline-block"></span>
-                            <span class="text-rose-300 font-medium">直線 g(x,y) = 0</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="w-3.5 h-1 bg-amber-400 inline-block"></span>
-                            <span class="text-amber-300 font-bold">交点を通る直線 L_k</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="w-2.5 h-2.5 rounded-full border-2 border-yellow-300 bg-yellow-400/30 inline-block"></span>
-                            <span class="text-yellow-200">交点 P_int</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span>
-                            <span class="text-emerald-300">指定点 P(x₀, y₀)</span>
+                        <div>
+                            <label class="text-xs text-slate-300 block mb-1">y₀ 座標:</label>
+                            <input type="number" id="py" value="3" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-center font-semibold text-emerald-400 focus:outline-none focus:border-emerald-500">
                         </div>
                     </div>
 
-                    <!-- Instruction hint -->
-                    <div class="absolute top-3 right-3 bg-slate-900/80 text-slate-400 text-[10px] px-2 py-1 rounded border border-slate-800 pointer-events-none">
-                        <i class="fa-solid fa-hand-pointer mr-1"></i> 画面クリックで点 P(x₀,y₀) を配置
-                    </div>
+                    <button id="calc-k-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold py-2 px-3 rounded-lg transition flex items-center justify-center gap-2 shadow">
+                        <i class="fa-solid fa-calculator"></i> 点 (x₀, y₀) を通る k と直線を求める
+                    </button>
+                </div>
+
+                <!-- Result output box -->
+                <div id="solver-result" class="mt-3 p-2.5 bg-slate-900/90 rounded-lg border border-slate-700 text-xs space-y-1">
+                    <div class="text-slate-400 text-[11px]">計算結果:</div>
+                    <div id="k-calc-step" class="mono-font text-slate-300 text-[11px]">f(5, 3) = 6, g(5, 3) = 3</div>
+                    <div id="k-calc-val" class="mono-font text-emerald-400 font-bold text-sm">k = -2.000</div>
                 </div>
             </div>
 
-            <!-- Mathematical Explanation Section -->
-            <div class="bg-slate-800 rounded-xl p-4 border border-slate-700/70 shadow-lg">
-                <h2 class="text-sm font-semibold text-slate-200 uppercase tracking-wider mb-2 flex items-center gap-2">
-                    <i class="fa-solid fa-graduation-cap text-indigo-400"></i> なぜ f + k·g = 0 は交点を通るのか？
-                </h2>
-                <div class="text-xs text-slate-300 space-y-2 leading-relaxed">
-                    <p>
-                        直線 $f: a_1x + b_1y + c_1 = 0$ と 直線 $g: a_2x + b_2y + c_2 = 0$ の交点を $(x_i, y_i)$ とすると、
-                        この点はどちらの式も満たすため、<span class="text-blue-300 font-mono">f(x_i, y_i) = 0</span> かつ <span class="text-rose-300 font-mono">g(x_i, y_i) = 0</span> となります。
+            <!-- Right: Line equation details card -->
+            <div class="bg-slate-800 rounded-xl p-4 border border-slate-700/70 shadow-lg flex flex-col justify-between">
+                <div>
+                    <h2 class="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-1 flex items-center gap-2">
+                        <i class="fa-solid fa-square-root-variable"></i> 現在の直線 L_k の方程式詳細
+                    </h2>
+                    <p class="text-xs text-slate-400 mb-3">
+                        係数 $(a_1 + ka_2)x + (b_1 + kb_2)y + (c_1 + kc_2) = 0$ を展開・整理した結果。
                     </p>
-                    <p>
-                        新しい方程式 <span class="text-amber-300 font-mono font-bold">f(x,y) + k · g(x,y) = 0</span> に $(x_i, y_i)$ を代入すると：
-                        <span class="block bg-slate-900 p-2 rounded text-center my-1 font-mono text-indigo-300">
-                            0 + k · 0 = 0
-                        </span>
-                        となり、$k$ の値が何であっても恒等的に成立します。したがって、この方程式が表す直線は<strong class="text-white">必ず2直線の交点を通ります</strong>。
-                    </p>
-                    <div class="bg-indigo-950/40 border-l-2 border-indigo-500 p-2 text-[11px] text-slate-400 mt-2">
-                        <strong class="text-indigo-300">注意:</strong> この表現では、$k$ をどんな値にしても直線 <span class="text-rose-400">g(x,y) = 0</span> そのものを表すことはできません（$k \to \pm\infty$ の極限にあたるため）。
-                    </div>
+                </div>
+
+                <div class="bg-slate-900 p-3.5 rounded-lg border border-purple-500/30 font-mono text-center space-y-2">
+                    <div class="text-[11px] text-slate-400">一般形</div>
+                    <div id="lk-general" class="text-purple-300 font-bold text-base">3.00x + 1.00y - 9.00 = 0</div>
+                    <div id="lk-slope" class="text-xs text-purple-400 border-t border-slate-800 pt-2">y = -3.00x + 9.00</div>
+                </div>
+
+                <div class="text-[11px] text-slate-500 text-center mt-2">
+                    ※ $k$ の変化に伴い直線が交点中心に回転します。
                 </div>
             </div>
 
+        </div>
+
+        <!-- 4. MATHEMATICAL EXPLANATION SECTION (At bottom) -->
+        <div class="bg-slate-800 rounded-xl p-4 border border-slate-700/70 shadow-lg">
+            <h2 class="text-sm font-semibold text-slate-200 uppercase tracking-wider mb-2 flex items-center gap-2">
+                <i class="fa-solid fa-graduation-cap text-indigo-400"></i> なぜ f + k·g = 0 は交点を通るのか？
+            </h2>
+            <div class="text-xs text-slate-300 space-y-2 leading-relaxed">
+                <p>
+                    直線 $f: a_1x + b_1y + c_1 = 0$ と 直線 $g: a_2x + b_2y + c_2 = 0$ の交点を $(x_i, y_i)$ とすると、
+                    この点はどちらの式も満たすため、<span class="text-blue-300 font-mono">f(x_i, y_i) = 0</span> かつ <span class="text-rose-300 font-mono">g(x_i, y_i) = 0</span> となります。
+                </p>
+                <p>
+                    新しい方程式 <span class="text-amber-300 font-mono font-bold">f(x,y) + k · g(x,y) = 0</span> に $(x_i, y_i)$ を代入すると：
+                    <span class="block bg-slate-900 p-2 rounded text-center my-1 font-mono text-indigo-300">
+                        0 + k · 0 = 0
+                    </span>
+                    となり、$k$ の値が何であっても恒等的に成立します。したがって、この方程式が表す直線は<strong class="text-white">必ず2直線の交点を通ります</strong>。
+                </p>
+                <div class="bg-indigo-950/40 border-l-2 border-indigo-500 p-2 text-[11px] text-slate-400 mt-2">
+                    <strong class="text-indigo-300">注意:</strong> この表現では、$k$ をどんな値にしても直線 <span class="text-rose-400">g(x,y) = 0</span> そのものを表すことはできません（$k \to \pm\infty$ の極限にあたるため）。
+                </div>
+            </div>
         </div>
 
     </main>
@@ -334,8 +356,11 @@
         const b2El = document.getElementById('b2');
         const c2El = document.getElementById('c2');
 
-        const fExprEl = document.getElementById('f-expr');
-        const gExprEl = document.getElementById('g-expr');
+        const fPlusKgExpr = document.getElementById('f-plus-kg-expr');
+        const overlayFExpr = document.getElementById('overlay-f-expr');
+        const overlayGExpr = document.getElementById('overlay-g-expr');
+        const overlayLkExpr = document.getElementById('overlay-lk-expr');
+        const overlayKVal = document.getElementById('overlay-k-val');
 
         const kSlider = document.getElementById('k-slider');
         const kNum = document.getElementById('k-num');
@@ -384,6 +409,12 @@
             return parts.join("") + " = 0";
         }
 
+        // Format expression without '= 0' for f + k·g formula display
+        function formatExprOnly(a, b, c) {
+            const eq = formatEquation(a, b, c);
+            return eq.replace(" = 0", "");
+        }
+
         // Calculate intersection of f and g
         function getIntersection() {
             const det = state.a1 * state.b2 - state.a2 * state.b1;
@@ -408,9 +439,18 @@
             state.px = parseFloat(pxEl.value) || 0;
             state.py = parseFloat(pyEl.value) || 0;
 
-            // Equations text
-            fExprEl.textContent = formatEquation(state.a1, state.b1, state.c1);
-            gExprEl.textContent = formatEquation(state.a2, state.b2, state.c2);
+            // Formatted expressions
+            const fStr = formatEquation(state.a1, state.b1, state.c1);
+            const gStr = formatEquation(state.a2, state.b2, state.c2);
+
+            // Overlay expressions on canvas
+            overlayFExpr.textContent = `f: ${fStr}`;
+            overlayGExpr.textContent = `g: ${gStr}`;
+
+            // F + k*G = 0 expression
+            const fPart = formatExprOnly(state.a1, state.b1, state.c1);
+            const gPart = formatExprOnly(state.a2, state.b2, state.c2);
+            fPlusKgExpr.textContent = `(${fPart}) + k(${gPart}) = 0`;
 
             updateK(parseFloat(kSlider.value));
             calculateIntersectionUI();
@@ -420,14 +460,18 @@
             state.k = val;
             kSlider.value = val;
             kNum.value = val.toFixed(2);
-            kValueDisplay.textContent = `k = ${val >= 0 ? '+' : ''}${val.toFixed(2)}`;
+            const kFormatted = `k = ${val >= 0 ? '+' : ''}${val.toFixed(2)}`;
+            kValueDisplay.textContent = kFormatted;
+            overlayKVal.textContent = kFormatted;
 
             // Current Line L_k coefficients: (a1 + k*a2)x + (b1 + k*b2)y + (c1 + k*c2) = 0
             const Ak = state.a1 + state.k * state.a2;
             const Bk = state.b1 + state.k * state.b2;
             const Ck = state.c1 + state.k * state.c2;
 
-            lkGeneral.textContent = formatEquation(Ak, Bk, Ck);
+            const lkStr = formatEquation(Ak, Bk, Ck);
+            lkGeneral.textContent = lkStr;
+            overlayLkExpr.textContent = `L_k: ${lkStr}`;
 
             if (Math.abs(Bk) > 0.0001) {
                 const m = -Ak / Bk;
