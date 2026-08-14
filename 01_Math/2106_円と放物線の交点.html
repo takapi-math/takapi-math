@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>放物線と円の共有点の可視化 (y = x² + a と x² + y² = 9)</title>
+    <!-- Tailwind CSS for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for smooth mathematical plotting -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- KaTeX for beautiful mathematical notation rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-between p-4 md:p-6">
+
+    <header class="w-full max-w-5xl mb-4 text-center">
+        <h1 class="text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
+            放物線と円の交点数シミュレーター
+        </h1>
+        <p class="text-slate-300 text-sm mt-1" id="subtitleMath">
+            放物線と円の共有点の変化を視覚化します
+        </p>
+    </header>
+
+    <main class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow">
+        
+        <!-- Left 2 Cols: Graph Canvas with absolute container for tangent alert -->
+        <section class="lg:col-span-2 bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 shadow-xl flex flex-col justify-between backdrop-blur-md relative">
+            <div class="relative w-full h-[400px] md:h-[480px] flex items-center justify-center">
+                <canvas id="mathChart"></canvas>
+                
+                <!-- Tangent Alert relocated to bottom-right inside the graph section with doubled text size -->
+                <div id="tangentAlert" class="hidden absolute bottom-6 right-6 px-5 py-3 bg-cyan-500/20 border border-cyan-400/40 rounded-2xl text-cyan-300 text-base md:text-lg font-bold flex items-center gap-2 animate-pulse shadow-xl shadow-cyan-500/20 backdrop-blur-md z-10">
+                    <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span>接しています！</span>
+                </div>
+            </div>
+            
+            <!-- Parameter Control Panel -->
+            <div class="mt-4 pt-4 border-t border-slate-700/60 flex flex-col gap-3">
+                <div class="flex justify-between items-center text-sm">
+                    <span class="font-medium text-slate-300" id="paramLabelMath">パラメータ $a$ の値:</span>
+                    <span id="aValueDisplay" class="font-bold text-blue-400 text-lg">a = 0.00</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <input type="range" id="aSlider" min="-10" max="10" step="0.05" value="0" 
+                           class="w-full accent-blue-500 h-2 bg-slate-700 rounded-lg cursor-pointer">
+                    <button id="playBtn" class="bg-blue-600 hover:bg-blue-500 text-white font-medium px-4 py-2 rounded-xl text-sm transition shadow-md shadow-blue-500/20 whitespace-nowrap">
+                        ▶
+                    </button>
+                </div>
+                <!-- Quick jump buttons for critical values sorted in ascending order -->
+                <div class="flex flex-wrap gap-2 pt-2">
+                    <span class="text-xs text-slate-400 self-center">注目ポイント:</span>
+                    <button onclick="setA(-9.25)" class="bg-slate-700 hover:bg-slate-600 px-2.5 py-1 rounded-lg text-xs font-medium transition text-cyan-300">a = -9.25 (下側接点)</button>
+                    <button onclick="setA(-5)" class="bg-slate-700 hover:bg-slate-600 px-2.5 py-1 rounded-lg text-xs font-medium transition">a = -5</button>
+                    <button onclick="setA(-3)" class="bg-slate-700 hover:bg-slate-600 px-2.5 py-1 rounded-lg text-xs font-medium transition">a = -3 (接点)</button>
+                    <button onclick="setA(0)" class="bg-slate-700 hover:bg-slate-600 px-2.5 py-1 rounded-lg text-xs font-medium transition">a = 0</button>
+                    <button onclick="setA(3)" class="bg-slate-700 hover:bg-slate-600 px-2.5 py-1 rounded-lg text-xs font-medium transition">a = 3 (接点)</button>
+                    <button onclick="setA(5)" class="bg-slate-700 hover:bg-slate-600 px-2.5 py-1 rounded-lg text-xs font-medium transition">a = 5</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Col: Info and Analytics Panel -->
+        <section class="flex flex-col gap-4">
+            
+            <!-- Intersection Status Card -->
+            <div id="statusCard" class="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-5 shadow-xl backdrop-blur-md transition-all duration-300">
+                <h2 class="text-xs uppercase tracking-wider text-slate-300 font-semibold mb-2">共有点の状況</h2>
+                <div id="intersectionCountText" class="text-2xl font-bold text-white">交点数: 計算中...</div>
+            </div>
+
+            <!-- Coordinate Counter & Details Card with expanded vertical height -->
+            <div class="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-5 shadow-xl backdrop-blur-md flex-grow flex flex-col justify-between">
+                <div>
+                    <h2 class="text-xs uppercase tracking-wider text-slate-300 font-semibold mb-3">座標と値の統計</h2>
+                    
+                    <div class="space-y-3 text-sm">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-700/50">
+                                <span class="block text-slate-300 text-[11px] mb-0.5">異なる $x$ の数</span>
+                                <span id="uniqueXCount" class="text-base font-bold text-blue-300">-</span>
+                            </div>
+                            <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-700/50">
+                                <span class="block text-slate-300 text-[11px] mb-0.5">異なる $y$ の数</span>
+                                <span id="uniqueYCount" class="text-base font-bold text-indigo-300">-</span>
+                            </div>
+                        </div>
+                        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700/50">
+                            <span class="block text-slate-300 text-xs mb-1.5">具体的な共有点の座標 $(x, y)$</span>
+                            <!-- Expanded max height for coordinate list container -->
+                            <div id="coordinatesList" class="font-mono text-xs text-slate-200 space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-t border-slate-700/60 text-xs text-slate-200 leading-relaxed font-medium space-y-1" id="hintBoxMath">
+                    <!-- Rendered via KaTeX -->
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <footer class="mt-6 text-xs text-slate-400 text-center">
+        数学可視化ツール &copy; 2026
+    </footer>
+
+    <script>
+        // Render KaTeX formulas on load
+        document.addEventListener("DOMContentLoaded", function() {
+            katex.render("y = x^2 + a \\text{ と } x^2 + y^2 = 9 \\text{ の共有点の変化}", document.getElementById('subtitleMath'), { throwOnError: false });
+            katex.render("\\text{パラメータ } a \\text{ の値:}", document.getElementById('paramLabelMath'), { throwOnError: false });
+            
+            const hintContainer = document.getElementById('hintBoxMath');
+            hintContainer.innerHTML = '';
+            
+            const p1 = document.createElement('div');
+            katex.render("x^2 = y - a \\text{ を代入すると } y^2 + y - (9 + a) = 0 \\text{ が得られます。}", p1, { throwOnError: false });
+            hintContainer.appendChild(p1);
+
+            const p2 = document.createElement('div');
+            katex.render("D = 1^2 - 4(1)(-(9+a)) = 0 \\text{ のとき } a = -9.25 \\text{ となり、}", p2, { throwOnError: false });
+            hintContainer.appendChild(p2);
+
+            const p3 = document.createElement('div');
+            katex.render("y = -\\frac{1}{2} \\text{ で } x = \\pm\\sqrt{-\\frac{1}{2}-(-9.25)} = \\pm 3 \\text{ (2点で接する)}", p3, { throwOnError: false });
+            hintContainer.appendChild(p3);
+        });
+
+        // Global variables for animation and chart instance
+        let chartInstance = null;
+        let isAnimating = false;
+        let animationId = null;
+
+        // Initialize Chart.js configuration with strict square aspect ratio and equal axis intervals
+        function initChart() {
+            const ctx = document.getElementById('mathChart').getContext('2d');
+            
+            chartInstance = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [
+                        {
+                            label: '放物線 y = x² + a',
+                            data: [],
+                            borderColor: '#3b82f6',
+                            borderWidth: 3,
+                            showLine: true,
+                            pointRadius: 0,
+                            fill: false
+                        },
+                        {
+                            label: '円 x² + y² = 9',
+                            data: [],
+                            borderColor: '#ec4899',
+                            borderWidth: 3,
+                            showLine: true,
+                            pointRadius: 0,
+                            fill: false
+                        },
+                        {
+                            label: '交点',
+                            data: [],
+                            backgroundColor: '#eab308',
+                            borderColor: '#ffffff',
+                            borderWidth: 2,
+                            pointRadius: 7,
+                            pointHoverRadius: 9,
+                            showLine: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    // Lock aspect ratio to 1 so that physical pixel dimensions per unit on X and Y are identical
+                    aspectRatio: 1,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'center',
+                            min: -10,
+                            max: 10,
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: '#94a3b8', font: { family: 'Inter' }, stepSize: 2 }
+                        },
+                        y: {
+                            type: 'linear',
+                            position: 'center',
+                            min: -10,
+                            max: 10,
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: '#94a3b8', font: { family: 'Inter' }, stepSize: 2 }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#e2e8f0', font: { family: 'Inter', size: 12 } }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    if (context.datasetIndex === 2) {
+                                        return `交点: (${context.parsed.x.toFixed(3)}, ${context.parsed.y.toFixed(3)})`;
+                                    }
+                                    return `${context.dataset.label}: (${context.parsed.x.toFixed(2)}, ${context.parsed.y.toFixed(2)})`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Helper function to set slider value from quick buttons
+        function setA(val) {
+            document.getElementById('aSlider').value = val;
+            updateVisualization();
+        }
+
+        // Core mathematical calculation and visualization update
+        function updateVisualization() {
+            const a = parseFloat(document.getElementById('aSlider').value);
+            document.getElementById('aValueDisplay').textContent = `a = ${a.toFixed(2)}`;
+
+            // 1. Generate Parabola data: y = x^2 + a
+            const parabolaData = [];
+            for (let x = -10; x <= 10; x += 0.05) {
+                let y = x * x + a;
+                if (y >= -10 && y <= 10) {
+                    parabolaData.push({ x: Number(x.toFixed(3)), y: Number(y.toFixed(3)) });
+                }
+            }
+
+            // 2. Generate Circle data: x^2 + y^2 = 9
+            const circleData = [];
+            for (let theta = 0; theta <= 2 * Math.PI + 0.05; theta += 0.05) {
+                let x = 3 * Math.cos(theta);
+                let y = 3 * Math.sin(theta);
+                circleData.push({ x: Number(x.toFixed(3)), y: Number(y.toFixed(3)) });
+            }
+
+            // 3. Compute Intersections analytically
+            const intersections = [];
+            const A_quad = 1;
+            const B_quad = 1;
+            const C_quad = -(9 + a);
+            const discriminant = B_quad * B_quad - 4 * A_quad * C_quad;
+
+            let isTangent = false;
+
+            if (discriminant >= 0) {
+                const y1 = (-B_quad + Math.sqrt(discriminant)) / (2 * A_quad);
+                const y2 = (-B_quad - Math.sqrt(discriminant)) / (2 * A_quad);
+
+                const candidateYs = [y1];
+                if (Math.abs(discriminant) > 1e-7) {
+                    candidateYs.push(y2);
+                } else {
+                    isTangent = true;
+                }
+
+                candidateYs.forEach(yVal => {
+                    const xSquared = yVal - a;
+                    if (xSquared >= -1e-7) {
+                        const xAbs = Math.sqrt(Math.max(0, xSquared));
+                        if (Math.abs(xAbs) < 1e-7) {
+                            if (Math.abs(0 + yVal*yVal - 9) < 0.1) {
+                                intersections.push({ x: 0, y: yVal });
+                            }
+                        } else {
+                            if (isPointValid(xAbs, yVal, a)) {
+                                intersections.push({ x: Number(xAbs.toFixed(4)), y: Number(yVal.toFixed(4)) });
+                            }
+                            if (isPointValid(-xAbs, yVal, a)) {
+                                intersections.push({ x: Number((-xAbs).toFixed(4)), y: Number(yVal.toFixed(4)) });
+                            }
+                        }
+                    }
+                });
+            }
+
+            const uniqueIntersections = [];
+            intersections.forEach(pt => {
+                const exists = uniqueIntersections.some(existing => 
+                    Math.abs(existing.x - pt.x) < 1e-3 && Math.abs(existing.y - pt.y) < 1e-3
+                );
+                if (!exists && pt.y >= -10 && pt.y <= 10 && Math.abs(pt.x) <= 10) {
+                    const onCircle = Math.abs((pt.x * pt.x + pt.y * pt.y) - 9) < 0.05;
+                    const onParabola = Math.abs((pt.x * pt.x + a) - pt.y) < 0.05;
+                    if (onCircle && onParabola) {
+                        uniqueIntersections.push(pt);
+                    }
+                }
+            });
+
+            if (Math.abs(a - (-3)) < 0.05 || Math.abs(a - 3) < 0.05 || Math.abs(discriminant) < 0.05) {
+                isTangent = true;
+            }
+
+            const uniqueXValues = new Set(uniqueIntersections.map(pt => Number(pt.x.toFixed(2))));
+            const uniqueYValues = new Set(uniqueIntersections.map(pt => Number(pt.y.toFixed(2))));
+
+            updateUIStats(uniqueIntersections.length, uniqueXValues.size, uniqueYValues.size, isTangent, uniqueIntersections);
+
+            // Update Chart datasets with brilliant glowing blue & thicker stroke for tangent state
+            chartInstance.data.datasets[0].data = parabolaData;
+            if (isTangent) {
+                chartInstance.data.datasets[0].borderColor = '#38bdf8'; // Glowing sky cyan-blue
+                chartInstance.data.datasets[0].borderWidth = 5.5;        // Thicker stroke
+            } else {
+                chartInstance.data.datasets[0].borderColor = '#3b82f6'; // Standard blue
+                chartInstance.data.datasets[0].borderWidth = 3;         // Standard width
+            }
+
+            chartInstance.data.datasets[1].data = circleData;
+            chartInstance.data.datasets[2].data = uniqueIntersections;
+            chartInstance.update('none');
+        }
+
+        function isPointValid(x, y, aVal) {
+            const circleCheck = Math.abs((x * x + y * y) - 9);
+            const parabolaCheck = Math.abs((x * x + aVal) - y);
+            return circleCheck < 0.1 && parabolaCheck < 0.1;
+        }
+
+        // Update UI text fields and assign distinct colors (avoiding red, blue, yellow) grouped by y value
+        function updateUIStats(count, xCount, yCount, isTangent, points) {
+            const countText = document.getElementById('intersectionCountText');
+            const tangentAlert = document.getElementById('tangentAlert');
+            const uniqueXCount = document.getElementById('uniqueXCount');
+            const uniqueYCount = document.getElementById('uniqueYCount');
+            const coordinatesList = document.getElementById('coordinatesList');
+
+            countText.textContent = `交点数: ${count} 個`;
+            uniqueXCount.textContent = `${xCount} 個`;
+            uniqueYCount.textContent = `${yCount} 個`;
+
+            if (isTangent || count === 1 || (count > 0 && count % 2 !== 0)) {
+                tangentAlert.classList.remove('hidden');
+            } else {
+                tangentAlert.classList.add('hidden');
+            }
+
+            if (points.length === 0) {
+                coordinatesList.innerHTML = `<span class="text-slate-500 italic text-xs">共有点はありません</span>`;
+            } else {
+                // Distinct color palette excluding red, blue, and yellow
+                const distinctColors = [
+                    'text-teal-300 bg-teal-950/50 border-teal-800/50',
+                    'text-purple-300 bg-purple-950/50 border-purple-800/50',
+                    'text-emerald-300 bg-emerald-950/50 border-emerald-800/50',
+                    'text-fuchsia-300 bg-fuchsia-950/50 border-fuchsia-800/50',
+                    'text-cyan-300 bg-cyan-950/50 border-cyan-800/50'
+                ];
+
+                const yColorMap = new Map();
+                let colorIndex = 0;
+
+                points.forEach(p => {
+                    const yKey = p.y.toFixed(2);
+                    if (!yColorMap.has(yKey)) {
+                        yColorMap.set(yKey, distinctColors[colorIndex % distinctColors.length]);
+                        colorIndex++;
+                    }
+                });
+
+                coordinatesList.innerHTML = points.map((p, idx) => {
+                    const yKey = p.y.toFixed(2);
+                    const colorClass = yColorMap.get(yKey);
+                    return `<div class="p-2 rounded-lg border ${colorClass} flex justify-between items-center text-xs shadow-sm">
+                        <span class="font-semibold">P${idx+1}: (${p.x.toFixed(3)}, ${p.y.toFixed(3)})</span>
+                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-black/30 opacity-80">y=${yKey}</span>
+                    </div>`;
+                }).join('');
+            }
+        }
+
+        // Play button control (Auto-starts animation on click)
+        document.getElementById('playBtn').addEventListener('click', function() {
+            const slider = document.getElementById('aSlider');
+            const btn = document.getElementById('playBtn');
+
+            if (isAnimating) {
+                isAnimating = false;
+                cancelAnimationFrame(animationId);
+                btn.textContent = '▶';
+                btn.classList.replace('bg-amber-600', 'bg-blue-600');
+                btn.classList.replace('hover:bg-amber-500', 'hover:bg-blue-500');
+            } else {
+                isAnimating = true;
+                btn.textContent = '⏸';
+                btn.classList.replace('bg-blue-600', 'bg-amber-600');
+                btn.classList.replace('hover:bg-blue-500', 'hover:bg-amber-500');
+
+                let direction = 0.04;
+                function step() {
+                    if (!isAnimating) return;
+                    let val = parseFloat(slider.value);
+                    val += direction;
+                    if (val >= 10) { val = 10; direction = -0.04; }
+                    if (val <= -10) { val = -10; direction = 0.04; }
+                    slider.value = val;
+                    updateVisualization();
+                    animationId = requestAnimationFrame(() => setTimeout(step, 30));
+                }
+                step();
+            }
+        });
+
+        // Event listener for slider input
+        document.getElementById('aSlider').addEventListener('input', updateVisualization);
+
+        // Run initialization on window load
+        window.onload = function() {
+            initChart();
+            updateVisualization();
+        };
+    </script>
+</body>
+</html>
