@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>放物線と直線の交点の中点の軌跡シミュレーター</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- KaTeX for math rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="initKaTeX()"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
+
+    <header class="bg-slate-800 border-b border-slate-700 py-4 px-6 shadow-md">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
+                    放物線と直線の交点の中点の軌跡シミュレーター
+                </h1>
+                <p class="text-slate-400 text-sm mt-1">
+                    $y = x^2$ と $y = m(x-4)$ の異なる2つの交点の中点 $P$ が描く軌跡を可視化します
+                </p>
+            </div>
+            <div class="flex items-center gap-3">
+                <button id="infoBtn" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    解説を読む
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Controls Panel -->
+        <div class="lg:col-span-1 flex flex-col gap-6">
+            
+            <!-- Parameter Control Card -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-lg flex flex-col gap-5">
+                <h2 class="text-lg font-semibold text-slate-200 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                    パラメータ操作
+                </h2>
+
+                <!-- m Slider & Play Button -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-center">
+                        <label for="mSlider" class="text-sm font-medium text-slate-300">パラメータ $m$:</label>
+                        <span id="mValue" class="px-2.5 py-1 bg-emerald-900/60 border border-emerald-500/30 text-emerald-300 rounded-lg text-sm font-mono font-bold">-4.00</span>
+                    </div>
+                    
+                    <div class="flex items-center gap-3">
+                        <input type="range" id="mSlider" min="-10" max="25" step="0.1" value="-4.0" class="flex-1 accent-emerald-500 bg-slate-700 rounded-lg h-2 cursor-pointer">
+                        
+                        <!-- Play/Pause Icon Button -->
+                        <button id="playBtn" title="再生/一時停止" class="p-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl transition shadow-lg shadow-emerald-600/20 shrink-0 flex items-center justify-center">
+                            <svg id="playIcon" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="flex justify-between text-xs text-slate-500 font-mono pr-12">
+                        <span>-10</span>
+                        <span>0</span>
+                        <span>16</span>
+                        <span>+25</span>
+                    </div>
+                </div>
+
+                <!-- Status Indicator Badge -->
+                <div id="statusBadge" class="p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 bg-emerald-950/60 border-emerald-500/40 text-emerald-300">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span id="statusText">実数解（異なる2交点）あり : $D > 0$</span>
+                </div>
+
+                <!-- Preset Jump Buttons -->
+                <div class="flex flex-col gap-1.5">
+                    <span class="text-xs text-slate-400 font-medium">プリセット指定:</span>
+                    <div class="grid grid-cols-4 gap-1.5">
+                        <button class="presetBtn px-2 py-1.5 bg-slate-700 hover:bg-slate-600 rounded text-xs text-slate-200 transition" data-m="-4">$m=-4$</button>
+                        <button class="presetBtn px-2 py-1.5 bg-slate-700 hover:bg-slate-600 rounded text-xs text-amber-300 transition" data-m="0">$m=0$</button>
+                        <button class="presetBtn px-2 py-1.5 bg-slate-700 hover:bg-slate-600 rounded text-xs text-amber-300 transition" data-m="16">$m=16$</button>
+                        <button class="presetBtn px-2 py-1.5 bg-slate-700 hover:bg-slate-600 rounded text-xs text-slate-200 transition" data-m="20">$m=20$</button>
+                    </div>
+                </div>
+
+                <!-- Speed Dropdown & Reset -->
+                <div class="flex items-center justify-between gap-4 pt-3 border-t border-slate-700">
+                    <div class="flex items-center gap-2">
+                        <label for="speedSelect" class="text-xs text-slate-400 font-medium">速度:</label>
+                        <select id="speedSelect" class="bg-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 border border-slate-600 focus:outline-none focus:border-emerald-500 cursor-pointer font-medium">
+                            <option value="1" selected>×1</option>
+                            <option value="2">×2</option>
+                            <option value="3">×3</option>
+                        </select>
+                    </div>
+
+                    <button id="resetBtn" class="py-1.5 px-3 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-medium rounded-lg transition">
+                        リセット
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mathematical Overview Card -->
+            <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 shadow-lg flex flex-col gap-3">
+                <h3 class="text-sm font-semibold text-emerald-400 uppercase tracking-wider">軌跡の要点</h3>
+                <div class="text-xs text-slate-300 space-y-2 leading-relaxed">
+                    <p>・直線 $y = m(x-4)$ は常に定点 $A(4,0)$ を通ります。</p>
+                    <p>・判別式 $D = m(m-16) > 0$ より、交点が存在するのは <span class="text-emerald-400 font-semibold">$m < 0$ または $m > 16$</span> のときです。</p>
+                    <p>・軌跡の方程式は放物線 <span class="text-teal-300 font-semibold">$y = 2x^2 - 8x$</span> です。</p>
+                    <p class="text-amber-400 font-medium">・$x = m/2$ より、軌跡は <span class="underline">$x < 0$ および $x > 8$ の部分</span> となり、$(0,0)$ と $(8,64)$ は除外点（白抜き）です。</p>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Canvas Display Area -->
+        <div class="lg:col-span-2 flex flex-col gap-4">
+            
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-xl flex-1 flex flex-col relative min-h-[480px]">
+                
+                <!-- Function Formula Legend Overlay -->
+                <div class="absolute top-6 left-6 z-10 flex flex-wrap gap-2 pointer-events-none">
+                    <div class="bg-slate-900/80 backdrop-blur border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-mono shadow text-slate-300">
+                        <span class="text-indigo-400 font-bold">放物線:</span> $y = x^2$
+                    </div>
+                    <div class="bg-slate-900/80 backdrop-blur border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-mono shadow text-slate-300">
+                        <span class="text-rose-400 font-bold">直線:</span> $y = m(x-4)$
+                    </div>
+                    <div class="bg-slate-900/80 backdrop-blur border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-mono shadow text-slate-300">
+                        <span class="text-emerald-400 font-bold">軌跡:</span> $y = 2x^2 - 8x$ $(x < 0, x > 8)$
+                    </div>
+                </div>
+
+                <div class="flex-1 w-full h-full relative rounded-xl overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center">
+                    <canvas id="canvas" class="w-full h-full cursor-grab active:cursor-grabbing"></canvas>
+                </div>
+
+                <div class="flex justify-between items-center text-xs text-slate-400 px-2 pt-2">
+                    <span>💡 マウスドラッグでキャンバス移動、スクロールで拡大縮小</span>
+                    <button id="resetZoomBtn" class="text-emerald-400 hover:text-emerald-300 underline">ビューをリセット</button>
+                </div>
+            </div>
+
+            <!-- Display Toggles Panel (Positioned Below Graph) -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-lg flex flex-wrap items-center justify-between gap-4">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">表示設定:</span>
+                <div class="flex flex-wrap items-center gap-6">
+                    <label class="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-300 hover:text-white">
+                        <input type="checkbox" id="showLocus" checked class="w-4 h-4 accent-emerald-500 rounded bg-slate-700 border-slate-600">
+                        <span>軌跡（放物線）</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-300 hover:text-white">
+                        <input type="checkbox" id="showParabola" checked class="w-4 h-4 accent-emerald-500 rounded bg-slate-700 border-slate-600">
+                        <span>放物線 $y=x^2$</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-300 hover:text-white">
+                        <input type="checkbox" id="showLine" checked class="w-4 h-4 accent-emerald-500 rounded bg-slate-700 border-slate-600">
+                        <span>直線 $y=m(x-4)$</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-300 hover:text-white">
+                        <input type="checkbox" id="showPoints" checked class="w-4 h-4 accent-emerald-500 rounded bg-slate-700 border-slate-600">
+                        <span>交点 $A,B$ と中点 $P$</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-300 hover:text-white">
+                        <input type="checkbox" id="showGrid" checked class="w-4 h-4 accent-emerald-500 rounded bg-slate-700 border-slate-600">
+                        <span>方眼グリッド</span>
+                    </label>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Comprehensive Math Solution Card at the bottom -->
+        <div class="lg:col-span-3 bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl flex flex-col gap-5 mt-2">
+            <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+                <h2 class="text-xl font-bold text-emerald-400 flex items-center gap-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    軌跡の求め方（動点 $P(x,y)$ の追跡）
+                </h2>
+                <span class="text-xs bg-emerald-950 text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-full font-medium">代数学的アプローチ</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-slate-300 leading-relaxed">
+                
+                <!-- Step 1 & Step 2 -->
+                <div class="flex flex-col gap-4">
+                    <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700/60 flex flex-col gap-2">
+                        <h3 class="font-bold text-slate-100 text-base flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-full bg-emerald-500 text-slate-900 font-bold text-xs flex items-center justify-center">1</span>
+                            動点 $P(x, y)$ の設定と交点の方程式
+                        </h3>
+                        <p class="text-xs text-slate-300">
+                            求める中点を **動点 $P(x, y)$** とおきます。<br>
+                            放物線 $y = x^2$ と直線 $y = m(x-4)$ を連立させると、交点の $x$ 座標は以下の2次方程式の解となります。
+                        </p>
+                        <div class="p-2.5 bg-slate-950 rounded-lg text-center font-mono text-emerald-300 text-xs border border-slate-800">
+                            $$x^2 - mx + 4m = 0$$
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700/60 flex flex-col gap-3">
+                        <h3 class="font-bold text-slate-100 text-base flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-full bg-emerald-500 text-slate-900 font-bold text-xs flex items-center justify-center">2</span>
+                            中点の $x$ 座標の導出（2つの方法）
+                        </h3>
+
+                        <!-- Method A -->
+                        <div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700/80 text-xs space-y-1.5">
+                            <span class="font-semibold text-rose-300 block">【方法A】解の公式で無理矢理計算する方法</span>
+                            <p>解の公式により2交点の $x$ 座標を求めると：</p>
+                            <p class="font-mono text-slate-200 text-center">$$x_1 = \frac{m - \sqrt{m^2-16m}}{2}, \quad x_2 = \frac{m + \sqrt{m^2-16m}}{2}$$</p>
+                            <p>これらの平均（中点の $x$ 座標）を計算すると：</p>
+                            <p class="font-mono text-slate-200 text-center">$$x = \frac{x_1 + x_2}{2} = \frac{\frac{m - \sqrt{D}}{2} + \frac{m + \sqrt{D}}{2}}{2} = \frac{2m}{4} = \frac{m}{2}$$</p>
+                            <span class="text-slate-400 italic text-[11px]">※計算できますが、ルートの計算が少し複雑になります。</span>
+                        </div>
+
+                        <!-- Method B -->
+                        <div class="bg-emerald-950/40 p-3 rounded-lg border border-emerald-500/30 text-xs space-y-1.5">
+                            <div class="flex items-center justify-between">
+                                <span class="font-bold text-emerald-300 block">【方法B】解と係数の関係で求める方法（簡単な方法★）</span>
+                                <span class="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded">推奨</span>
+                            </div>
+                            <p>2つの交点の $x$ 座標を $\alpha, \beta$ とおくと、解と係数の関係より：</p>
+                            <p class="font-mono text-emerald-200 text-center">$$\alpha + \beta = m$$</p>
+                            <p>これを用いると、中点 $P$ の $x$ 座標は一瞬で求まります：</p>
+                            <p class="font-mono text-emerald-300 font-bold text-center">$$x = \frac{\alpha + \beta}{2} = \frac{m}{2} \quad \implies \quad m = 2x$$</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3 & Step 4 -->
+                <div class="flex flex-col gap-4">
+                    <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700/60 flex flex-col gap-2">
+                        <h3 class="font-bold text-slate-100 text-base flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-full bg-emerald-500 text-slate-900 font-bold text-xs flex items-center justify-center">3</span>
+                            中点の $y$ 座標の導出（直線の式に代入）
+                        </h3>
+                        <p class="text-xs text-slate-300">
+                            中点 $P(x, y)$ は直線 $y = m(x - 4)$ 上の点でもあるため、直線の式に中点の $x$ 座標をそのまま代入します。
+                        </p>
+                        <div class="p-3 bg-slate-950 rounded-lg text-xs space-y-2 border border-slate-800">
+                            <p class="font-mono text-slate-300">$$y = m(x - 4)$$</p>
+                            <p class="text-slate-400 text-[11px]">ここに Step 2 で得られた $m = 2x$ を代入すると：</p>
+                            <p class="font-mono text-emerald-300 font-bold text-sm text-center">
+                                $$y = 2x(x - 4) = 2x^2 - 8x$$
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700/60 flex flex-col gap-2">
+                        <h3 class="font-bold text-slate-100 text-base flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-full bg-emerald-500 text-slate-900 font-bold text-xs flex items-center justify-center">4</span>
+                            実数解の条件（限界領域）と軌跡の結論
+                        </h3>
+                        <p class="text-xs text-slate-300">
+                            異なる2つの交点をもつ必要があるので、判別式 $D > 0$ でなければなりません。
+                        </p>
+                        <div class="p-2.5 bg-slate-950 rounded-lg text-xs font-mono text-amber-300 border border-slate-800 space-y-1">
+                            <div>$$D = m^2 - 16m = m(m - 16) > 0 \implies m < 0 \quad \text{または} \quad m > 16$$</div>
+                            <div>$x = \frac{m}{2}$ より、定義域は <span class="underline font-bold text-amber-400">$x < 0$ または $x > 8$</span> となります。</div>
+                        </div>
+
+                        <div class="mt-1 p-3 bg-emerald-950/80 border border-emerald-500/50 rounded-xl text-xs space-y-1">
+                            <div class="font-bold text-emerald-300 text-sm">【結論】</div>
+                            <div class="text-slate-100 font-semibold">
+                                求める軌跡は、<span class="text-emerald-400 underline font-bold">放物線 $y = 2x^2 - 8x$ の $x < 0, x > 8$ の部分</span>。
+                            </div>
+                            <div class="text-slate-400 text-[11px]">※境界点である $(0, 0)$ および $(8, 64)$ は除外点（白抜き）です。</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal for Explanation -->
+    <div id="infoModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-700 rounded-3xl max-w-2xl w-full p-6 md:p-8 shadow-2xl relative flex flex-col gap-6 max-h-[90vh] overflow-y-auto">
+            <button id="closeModal" class="absolute top-5 right-5 text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 transition">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+
+            <div>
+                <h2 class="text-2xl font-bold text-slate-100 flex items-center gap-3">
+                    <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
+                    軌跡の数学的導出と範囲（除外点）
+                </h2>
+                <p class="text-slate-400 text-sm mt-1">交点の中点 $P$ が描く放物線の範囲について詳しく解説します。</p>
+            </div>
+
+            <div class="space-y-4 text-slate-300 text-sm leading-relaxed">
+                <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700/60 space-y-2">
+                    <h3 class="font-semibold text-emerald-300">1. 交点の $x$ 座標と解と係数の関係</h3>
+                    <p>
+                        放物線 $y = x^2$ と直線 $y = m(x-4)$ の交点の $x$ 座標は、二次方程式
+                        $$x^2 - mx + 4m = 0$$
+                        の実数解です。2つの交点の $x$ 座標を $\alpha, \beta$ とおくと、解と係数の関係より
+                        $$\alpha + \beta = m, \quad \alpha\beta = 4m$$
+                    </p>
+                </div>
+
+                <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700/60 space-y-2">
+                    <h3 class="font-semibold text-emerald-300">2. 異なる2つの交点をもつ条件（判別式）</h3>
+                    <p>
+                        異なる2点で交わるため、判別式 $D > 0$ が必要です。
+                        $$D = (-m)^2 - 4 \cdot 1 \cdot 4m = m^2 - 16m = m(m-16) > 0$$
+                        よって、パラメータ $m$ の範囲は **$m < 0$ または $m > 16$** となります。
+                    </p>
+                </div>
+
+                <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700/60 space-y-2">
+                    <h3 class="font-semibold text-emerald-300">3. 中点 $P(X, Y)$ の軌跡</h3>
+                    <p>
+                        中点 $P$ の座標 $(X, Y)$ は以下の通りです。
+                        $$X = \frac{\alpha + \beta}{2} = \frac{m}{2} \implies m = 2X$$
+                        $$Y = \frac{y_1 + y_2}{2} = \frac{\alpha^2 + \beta^2}{2} = \frac{(\alpha+\beta)^2 - 2\alpha\beta}{2} = \frac{m^2 - 8m}{2}$$
+                        $m = 2X$ を $Y$ に代入すると、
+                        $$Y = \frac{(2X)^2 - 8(2X)}{2} = 2X^2 - 8X$$
+                    </p>
+                </div>
+
+                <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700/60 space-y-2">
+                    <h3 class="font-semibold text-emerald-300">4. 軌跡の限界と除外点</h3>
+                    <p>
+                        $m < 0$ または $m > 16$ であり、$X = \frac{m}{2}$ であるため、
+                        $$X < 0 \quad \text{または} \quad X > 8$$
+                    </p>
+                    <div class="p-3 bg-slate-900 rounded-lg font-mono text-xs text-emerald-300 mt-2 space-y-1">
+                        <div>軌跡の方程式: $y = 2x^2 - 8x$</div>
+                        <div>適応範囲: $x < 0$ または $x > 8$</div>
+                        <div class="text-amber-400 font-bold pt-1">除外点: $(0, 0)$ および $(8, 64)$（白抜き丸）</div>
+                    </div>
+                </div>
+            </div>
+
+            <button id="closeModalBtn" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 font-semibold text-white rounded-xl transition shadow-lg shadow-emerald-600/20">
+                閉じる
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        const mSlider = document.getElementById('mSlider');
+        const mValue = document.getElementById('mValue');
+        const playBtn = document.getElementById('playBtn');
+        const playIcon = document.getElementById('playIcon');
+        const resetBtn = document.getElementById('resetBtn');
+        const speedSelect = document.getElementById('speedSelect');
+        const statusBadge = document.getElementById('statusBadge');
+        const statusText = document.getElementById('statusText');
+
+        const showLocusCheckbox = document.getElementById('showLocus');
+        const showParabolaCheckbox = document.getElementById('showParabola');
+        const showLineCheckbox = document.getElementById('showLine');
+        const showPointsCheckbox = document.getElementById('showPoints');
+        const showGridCheckbox = document.getElementById('showGrid');
+
+        const infoBtn = document.getElementById('infoBtn');
+        const infoModal = document.getElementById('infoModal');
+        const closeModal = document.getElementById('closeModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const resetZoomBtn = document.getElementById('resetZoomBtn');
+        const presetBtns = document.querySelectorAll('.presetBtn');
+
+        // View coordinate state (origin shift and separate scales for X and Y)
+        // Default viewport set to fit y = -20 to y = 140 cleanly
+        let scale = 35; // base pixels per math unit (X axis)
+        let yAspect = 0.08; // Y-axis compression factor so y=-20 to 140 fits in canvas
+        let offsetX = -70;
+        let offsetY = 168; // Center y=60 in canvas
+        let isDragging = false;
+        let startX = 0, startY = 0;
+
+        let isPlaying = false;
+        let animationId = null;
+        let currentM = -4.0;
+        let animationSpeed = 1.0;
+
+        // Initialize KaTeX math rendering
+        function initKaTeX() {
+            if (typeof renderMathInElement === 'function') {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ],
+                    throwOnError: false
+                });
+            }
+        }
+
+        infoBtn.addEventListener('click', () => {
+            infoModal.classList.remove('hidden');
+            initKaTeX();
+        });
+        closeModal.addEventListener('click', () => infoModal.classList.add('hidden'));
+        closeModalBtn.addEventListener('click', () => infoModal.classList.add('hidden'));
+        infoModal.addEventListener('click', (e) => { if(e.target === infoModal) infoModal.classList.add('hidden'); });
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            draw();
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        function resetView() {
+            offsetX = -70;
+            offsetY = 168;
+            scale = 35;
+            yAspect = 0.08;
+            draw();
+        }
+        resetZoomBtn.addEventListener('click', resetView);
+
+        function toScreenX(x) {
+            return (canvas.width / (2 * window.devicePixelRatio)) + x * scale + offsetX;
+        }
+
+        function toScreenY(y) {
+            return (canvas.height / (2 * window.devicePixelRatio)) - y * scale * yAspect + offsetY;
+        }
+
+        function toMathX(screenX) {
+            const cx = canvas.width / (2 * window.devicePixelRatio);
+            return (screenX - cx - offsetX) / scale;
+        }
+
+        function toMathY(screenY) {
+            const cy = canvas.height / (2 * window.devicePixelRatio);
+            return (cy - screenY + offsetY) / (scale * yAspect);
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            offsetX += e.clientX - startX;
+            offsetY += e.clientY - startY;
+            startX = e.clientX;
+            startY = e.clientY;
+            draw();
+        });
+
+        window.addEventListener('mouseup', () => { isDragging = false; });
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomFactor = 1.1;
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const mathX = toMathX(mouseX);
+            const mathY = toMathY(mouseY);
+
+            if (e.deltaY < 0) scale *= zoomFactor;
+            else scale /= zoomFactor;
+            scale = Math.max(8, Math.min(200, scale));
+
+            offsetX += (mouseX - toScreenX(mathX));
+            offsetY += (mouseY - toScreenY(mathY));
+            draw();
+        }, { passive: false });
+
+        function drawGrid() {
+            if (!showGridCheckbox.checked) return;
+            const width = canvas.width / window.devicePixelRatio;
+            const height = canvas.height / window.devicePixelRatio;
+
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = '#1e293b';
+            ctx.fillStyle = '#64748b';
+            ctx.font = '10px Inter, sans-serif';
+
+            // X-axis step
+            let stepX = scale < 20 ? 5 : (scale > 80 ? 0.5 : 1);
+            const minX = toMathX(0), maxX = toMathX(width);
+            for (let x = Math.floor(minX / stepX) * stepX; x <= maxX; x += stepX) {
+                const sx = toScreenX(x);
+                ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, height); ctx.stroke();
+                if (Math.abs(x) > 0.001) ctx.fillText(x.toFixed(x < 1 && x > -1 ? 1 : 0), sx + 4, toScreenY(0) + 12);
+            }
+
+            // Y-axis step (adjusted for squashed Y scale)
+            const scaleY = scale * yAspect;
+            let stepY = scaleY < 3 ? 20 : (scaleY < 8 ? 10 : 5);
+            const minY = toMathY(height), maxY = toMathY(0);
+            for (let y = Math.floor(minY / stepY) * stepY; y <= maxY; y += stepY) {
+                const sy = toScreenY(y);
+                ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(width, sy); ctx.stroke();
+                if (Math.abs(y) > 0.001) ctx.fillText(y.toFixed(0), toScreenX(0) + 6, sy - 4);
+            }
+
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#475569';
+            const sy0 = toScreenY(0), sx0 = toScreenX(0);
+            ctx.beginPath(); ctx.moveTo(0, sy0); ctx.lineTo(width, sy0); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(sx0, 0); ctx.lineTo(sx0, height); ctx.stroke();
+            ctx.fillText('0', sx0 - 12, sy0 + 12);
+        }
+
+        function drawParabola() {
+            if (!showParabolaCheckbox.checked) return;
+            const width = canvas.width / window.devicePixelRatio;
+            const minX = toMathX(0);
+            const maxX = toMathX(width);
+
+            ctx.beginPath();
+            let first = true;
+            for (let x = minX; x <= maxX; x += 0.05) {
+                const y = x * x;
+                const sx = toScreenX(x);
+                const sy = toScreenY(y);
+                if (first) { ctx.moveTo(sx, sy); first = false; }
+                else { ctx.lineTo(sx, sy); }
+            }
+            ctx.strokeStyle = '#818cf8'; // Indigo
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        function drawLine(m) {
+            if (!showLineCheckbox.checked) return;
+            const width = canvas.width / window.devicePixelRatio;
+            const minX = toMathX(0);
+            const maxX = toMathX(width);
+
+            const y1 = m * (minX - 4);
+            const y2 = m * (maxX - 4);
+
+            ctx.beginPath();
+            ctx.moveTo(toScreenX(minX), toScreenY(y1));
+            ctx.lineTo(toScreenX(maxX), toScreenY(y2));
+            ctx.strokeStyle = '#fb7185'; // Rose
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Fixed point A(4, 0)
+            const ax = toScreenX(4);
+            const ay = toScreenY(0);
+            ctx.beginPath(); ctx.arc(ax, ay, 4, 0, 2 * Math.PI);
+            ctx.fillStyle = '#f43f5e'; ctx.fill();
+            ctx.fillStyle = '#fda4af'; ctx.font = 'bold 11px Inter, sans-serif';
+            ctx.fillText('定点 A(4,0)', ax - 25, ay + 16);
+        }
+
+        function drawLocus() {
+            if (!showLocusCheckbox.checked) return;
+            const width = canvas.width / window.devicePixelRatio;
+            const minX = toMathX(0);
+            const maxX = toMathX(width);
+
+            // 1. Solid valid locus branch for x < 0
+            ctx.beginPath();
+            let first = true;
+            for (let x = minX; x <= 0; x += 0.05) {
+                const y = 2 * x * x - 8 * x;
+                const sx = toScreenX(x);
+                const sy = toScreenY(y);
+                if (first) { ctx.moveTo(sx, sy); first = false; }
+                else { ctx.lineTo(sx, sy); }
+            }
+            ctx.strokeStyle = '#10b981'; // Emerald
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // 2. Solid valid locus branch for x > 8
+            if (maxX > 8) {
+                ctx.beginPath();
+                first = true;
+                for (let x = Math.max(8, minX); x <= maxX; x += 0.05) {
+                    const y = 2 * x * x - 8 * x;
+                    const sx = toScreenX(x);
+                    const sy = toScreenY(y);
+                    if (first) { ctx.moveTo(sx, sy); first = false; }
+                    else { ctx.lineTo(sx, sy); }
+                }
+                ctx.strokeStyle = '#10b981';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+            }
+
+            // 3. Excluded range (0 <= x <= 8) shown as light green dashed line
+            ctx.beginPath();
+            ctx.setLineDash([4, 4]);
+            first = true;
+            for (let x = 0; x <= 8; x += 0.1) {
+                const y = 2 * x * x - 8 * x;
+                const sx = toScreenX(x);
+                const sy = toScreenY(y);
+                if (first) { ctx.moveTo(sx, sy); first = false; }
+                else { ctx.lineTo(sx, sy); }
+            }
+            ctx.strokeStyle = 'rgba(52, 211, 153, 0.45)'; // Light green (emerald-400) dashed
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 4. Excluded points at (0, 0) and (8, 64) - Unfilled hollow circles
+            const ex1x = toScreenX(0), ex1y = toScreenY(0);
+            ctx.beginPath(); ctx.arc(ex1x, ex1y, 5, 0, 2 * Math.PI);
+            ctx.fillStyle = '#020617'; ctx.fill();
+            ctx.strokeStyle = '#34d399'; ctx.lineWidth = 2; ctx.stroke();
+            ctx.fillStyle = '#6ee7b7'; ctx.font = 'bold 10px Inter, sans-serif';
+            ctx.fillText('除外点 (0,0)', ex1x - 65, ex1y - 6);
+
+            const ex2x = toScreenX(8), ex2y = toScreenY(64);
+            ctx.beginPath(); ctx.arc(ex2x, ex2y, 5, 0, 2 * Math.PI);
+            ctx.fillStyle = '#020617'; ctx.fill();
+            ctx.strokeStyle = '#34d399'; ctx.lineWidth = 2; ctx.stroke();
+            ctx.fillStyle = '#6ee7b7'; ctx.font = 'bold 10px Inter, sans-serif';
+            ctx.fillText('除外点 (8,64)', ex2x + 10, ex2y + 4);
+        }
+
+        function drawIntersectionsAndMidpoint(m) {
+            if (!showPointsCheckbox.checked) return;
+
+            const D = m * m - 16 * m;
+
+            // Update badge UI status
+            if (D > 0) {
+                statusBadge.className = "p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 bg-emerald-950/60 border-emerald-500/40 text-emerald-300";
+                statusText.textContent = `実数解（異なる2交点）あり : D = ${D.toFixed(1)} > 0`;
+            } else if (Math.abs(D) < 0.001) {
+                statusBadge.className = "p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 bg-amber-950/60 border-amber-500/40 text-amber-300";
+                statusText.textContent = `1点で接する（重解） : D = 0`;
+            } else {
+                statusBadge.className = "p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 bg-rose-950/60 border-rose-500/40 text-rose-300";
+                statusText.textContent = `実数解なし（交点なし） : D = ${D.toFixed(1)} < 0`;
+            }
+
+            if (D < 0) return; // No real intersection points
+
+            const x1 = (m - Math.sqrt(D)) / 2;
+            const x2 = (m + Math.sqrt(D)) / 2;
+            const y1 = x1 * x1;
+            const y2 = x2 * x2;
+
+            const midX = m / 2;
+            const midY = (y1 + y2) / 2;
+
+            const sX1 = toScreenX(x1), sY1 = toScreenY(y1);
+            const sX2 = toScreenX(x2), sY2 = toScreenY(y2);
+            const sMx = toScreenX(midX), sMy = toScreenY(midY);
+
+            // Connecting line segment between intersection points
+            ctx.beginPath(); ctx.moveTo(sX1, sY1); ctx.lineTo(sX2, sY2);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'; ctx.lineWidth = 1.5; ctx.stroke();
+
+            // Point A (x1, y1)
+            ctx.beginPath(); ctx.arc(sX1, sY1, 5, 0, 2 * Math.PI);
+            ctx.fillStyle = '#60a5fa'; ctx.fill();
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
+            ctx.fillStyle = '#93c5fd'; ctx.font = '10px Inter, sans-serif';
+            ctx.fillText(`(${x1.toFixed(1)}, ${y1.toFixed(1)})`, sX1 - 30, sY1 - 8);
+
+            // Point B (x2, y2)
+            ctx.beginPath(); ctx.arc(sX2, sY2, 5, 0, 2 * Math.PI);
+            ctx.fillStyle = '#60a5fa'; ctx.fill();
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
+            ctx.fillStyle = '#93c5fd'; ctx.font = '10px Inter, sans-serif';
+            ctx.fillText(`(${x2.toFixed(1)}, ${y2.toFixed(1)})`, sX2 + 8, sY2 - 8);
+
+            // Midpoint P(midX, midY)
+            ctx.beginPath(); ctx.arc(sMx, sMy, 8, 0, 2 * Math.PI);
+            ctx.fillStyle = 'rgba(16, 185, 129, 0.3)'; ctx.fill();
+
+            ctx.beginPath(); ctx.arc(sMx, sMy, 5, 0, 2 * Math.PI);
+            ctx.fillStyle = '#10b981'; ctx.fill();
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.stroke();
+
+            ctx.fillStyle = '#34d399'; ctx.font = 'bold 12px Inter, sans-serif';
+            ctx.fillText(`P(${midX.toFixed(1)}, ${midY.toFixed(1)})`, sMx + 10, sMy + 4);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
+            drawGrid();
+            drawParabola();
+            drawLocus();
+            drawLine(currentM);
+            drawIntersectionsAndMidpoint(currentM);
+        }
+
+        mSlider.addEventListener('input', (e) => {
+            currentM = parseFloat(e.target.value);
+            mValue.textContent = currentM.toFixed(2);
+            draw();
+        });
+
+        speedSelect.addEventListener('change', (e) => {
+            animationSpeed = parseFloat(e.target.value);
+        });
+
+        presetBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentM = parseFloat(btn.dataset.m);
+                mSlider.value = currentM;
+                mValue.textContent = currentM.toFixed(2);
+                draw();
+            });
+        });
+
+        function animateLoop() {
+            if (!isPlaying) return;
+            currentM += 0.08 * animationSpeed;
+            if (currentM > 25) currentM = -10;
+            mSlider.value = currentM;
+            mValue.textContent = currentM.toFixed(2);
+            draw();
+            animationId = requestAnimationFrame(animateLoop);
+        }
+
+        playBtn.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            if (isPlaying) {
+                playIcon.innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
+                playBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+                playBtn.classList.add('bg-amber-600', 'hover:bg-amber-500');
+                animateLoop();
+            } else {
+                playIcon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+                playBtn.classList.remove('bg-amber-600', 'hover:bg-amber-500');
+                playBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+                if (animationId) cancelAnimationFrame(animationId);
+            }
+        });
+
+        resetBtn.addEventListener('click', () => {
+            if (isPlaying) playBtn.click();
+            currentM = -4.0;
+            mSlider.value = currentM;
+            mValue.textContent = currentM.toFixed(2);
+            resetView();
+        });
+
+        [showLocusCheckbox, showParabolaCheckbox, showLineCheckbox, showPointsCheckbox, showGridCheckbox].forEach(cb => {
+            cb.addEventListener('change', draw);
+        });
+
+        document.addEventListener('DOMContentLoaded', initKaTeX);
+
+        window.onload = function() {
+            resizeCanvas();
+            initKaTeX();
+        };
+    </script>
+</body>
+</html>
