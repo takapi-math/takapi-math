@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>単位円で理解する三角比の性質と公式</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        .custom-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #4f46e5;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen pb-12 font-sans">
+
+    <!-- Header -->
+    <header class="bg-indigo-700 text-white py-5 shadow-md">
+        <div class="max-w-4xl mx-auto px-4">
+            <h1 class="text-xl md:text-2xl font-bold">単位円と直角三角形で見る三角比の性質</h1>
+            <p class="text-indigo-100 mt-1 text-xs md:text-sm">
+                角度を選択し、$x$ 軸・$y$ 軸と作る直角三角形の合同関係と符号の変化を確認できます。
+            </p>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 mt-6 space-y-6">
+
+        <!-- Top Section: Angle Selection (Left ~35%) & Unit Circle Canvas (Right ~65%) -->
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-5 items-stretch">
+            
+            <!-- 1. Angle Selection (Narrower width, 4 rows x 2 cols) -->
+            <section class="md:col-span-4 bg-white p-3.5 md:p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-2">
+                    <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider">1. 角度を選択</h2>
+                </div>
+                
+                <div class="grid grid-cols-2 grid-rows-4 gap-2 text-sm md:text-base font-bold h-full">
+                    <!-- Row 1 (90 deg) -->
+                    <button id="btn-p90_minus" onclick="setAngleMode('p90_minus')" class="mode-btn py-2 px-1 rounded-xl border text-center transition-all bg-amber-50/70 border-amber-300 text-amber-900 hover:bg-amber-100 flex flex-col justify-center items-center leading-tight">
+                        <span class="text-base md:text-lg">$\frac{\pi}{2} - \theta$</span>
+                        <span class="text-[11px] text-amber-700 font-normal mt-0.5">($90^\circ - \theta$)</span>
+                    </button>
+                    <button id="btn-p90" onclick="setAngleMode('p90')" class="mode-btn py-2 px-1 rounded-xl border text-center transition-all bg-amber-50/70 border-amber-300 text-amber-900 hover:bg-amber-100 flex flex-col justify-center items-center leading-tight">
+                        <span class="text-base md:text-lg">$\theta + \frac{\pi}{2}$</span>
+                        <span class="text-[11px] text-amber-700 font-normal mt-0.5">($\theta + 90^\circ$)</span>
+                    </button>
+
+                    <!-- Row 2 (180 deg) -->
+                    <button id="btn-p180_minus" onclick="setAngleMode('p180_minus')" class="mode-btn relative py-1.5 px-1 rounded-xl border text-center transition-all bg-sky-50/70 border-sky-300 text-sky-900 hover:bg-sky-100 flex flex-col justify-center items-center leading-tight">
+                        <span class="text-[10px] font-bold bg-red-500 text-white px-1.5 py-0.2 rounded-full mb-0.5">重要</span>
+                        <span class="text-base md:text-lg">$\pi - \theta$</span>
+                        <span class="text-[11px] text-sky-700 font-normal mt-0.5">($180^\circ - \theta$)</span>
+                    </button>
+                    <button id="btn-p180" onclick="setAngleMode('p180')" class="mode-btn py-2 px-1 rounded-xl border text-center transition-all bg-sky-50/70 border-sky-300 text-sky-900 hover:bg-sky-100 flex flex-col justify-center items-center leading-tight">
+                        <span class="text-base md:text-lg">$\theta + \pi$</span>
+                        <span class="text-[11px] text-sky-700 font-normal mt-0.5">($\theta + 180^\circ$)</span>
+                    </button>
+
+                    <!-- Row 3 (270 deg) -->
+                    <button id="btn-p270_minus" onclick="setAngleMode('p270_minus')" class="mode-btn py-2 px-1 rounded-xl border text-center transition-all bg-amber-50/70 border-amber-300 text-amber-900 hover:bg-amber-100 flex flex-col justify-center items-center leading-tight">
+                        <span class="text-base md:text-lg">$\frac{3\pi}{2} - \theta$</span>
+                        <span class="text-[11px] text-amber-700 font-normal mt-0.5">($270^\circ - \theta$)</span>
+                    </button>
+                    <button id="btn-p270_plus" onclick="setAngleMode('p270_plus')" class="mode-btn py-2 px-1 rounded-xl border text-center transition-all bg-amber-50/70 border-amber-300 text-amber-900 hover:bg-amber-100 flex flex-col justify-center items-center leading-tight">
+                        <span class="text-base md:text-lg">$\theta + \frac{3\pi}{2}$</span>
+                        <span class="text-[11px] text-amber-700 font-normal mt-0.5">($\theta + 270^\circ$)</span>
+                    </button>
+
+                    <!-- Row 4 (Negative & Minus 90) -->
+                    <button id="btn-neg" onclick="setAngleMode('neg')" class="mode-btn py-2 px-1 rounded-xl border text-center transition-all bg-sky-50/70 border-sky-300 text-sky-900 hover:bg-sky-100 flex flex-col justify-center items-center leading-tight">
+                        <span class="text-base md:text-lg">$-\theta$</span>
+                        <span class="text-[11px] text-sky-700 font-normal mt-0.5">(負の角)</span>
+                    </button>
+                    <button id="btn-m90" onclick="setAngleMode('m90')" class="mode-btn py-2 px-1 rounded-xl border text-center transition-all bg-amber-50/70 border-amber-300 text-amber-900 hover:bg-amber-100 flex flex-col justify-center items-center leading-tight">
+                        <span class="text-base md:text-lg">$\theta - \frac{\pi}{2}$</span>
+                        <span class="text-[11px] text-amber-700 font-normal mt-0.5">($\theta - 90^\circ$)</span>
+                    </button>
+                </div>
+
+                <!-- Legend Badge -->
+                <div class="mt-3 pt-2 border-t border-slate-100 flex flex-col gap-1 text-[11px] font-bold">
+                    <span class="px-2 py-1 rounded bg-amber-100 text-amber-900 border border-amber-300 text-center">y軸基準: sin⇔cos 変化</span>
+                    <span class="px-2 py-1 rounded bg-sky-100 text-sky-900 border border-sky-300 text-center">x軸基準: 種類不変</span>
+                </div>
+            </section>
+
+            <!-- 2. Unit Circle Visual Canvas (Right side of buttons) -->
+            <section class="md:col-span-8 bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center justify-center">
+                <div class="flex flex-wrap items-center justify-between w-full mb-2 gap-2">
+                    <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider">2. 単位円と直角三角形の図解</h2>
+                    <div class="flex items-center gap-2 text-[11px] font-bold">
+                        <span class="px-2 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-300 flex items-center gap-1">
+                            <span class="w-2.5 h-1 bg-blue-600 rounded-full inline-block"></span> 基準の三角形 (θ)
+                        </span>
+                        <span class="px-2 py-0.5 rounded bg-red-100 text-red-700 border border-red-300 flex items-center gap-1">
+                            <span class="w-2.5 h-1 bg-red-600 rounded-full inline-block"></span> 変換後の三角形
+                        </span>
+                    </div>
+                </div>
+
+                <!-- SVG Unit Circle Canvas -->
+                <div class="relative w-full aspect-square max-w-[420px] bg-slate-900/5 rounded-2xl p-2 border border-slate-200 flex items-center justify-center">
+                    <svg id="unitCircle" viewBox="-1.5 -1.5 3.0 3.0" class="w-full h-full">
+                        <defs>
+                            <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8" />
+                            </marker>
+                        </defs>
+
+                        <!-- Axes -->
+                        <line x1="-1.38" y1="0" x2="1.38" y2="0" stroke="#94a3b8" stroke-width="0.012" marker-end="url(#arrow)" />
+                        <line x1="0" y1="1.38" x2="0" y2="-1.38" stroke="#94a3b8" stroke-width="0.012" marker-end="url(#arrow)" />
+                        
+                        <!-- Unit Circle -->
+                        <circle cx="0" cy="0" r="1" fill="none" stroke="#cbd5e1" stroke-width="0.015" />
+
+                        <!-- Axis Labels -->
+                        <text x="0.05" y="0.13" font-size="0.10" fill="#64748b" font-weight="bold">O</text>
+                        <text x="1.30" y="-0.04" font-size="0.10" fill="#64748b" font-weight="bold">x</text>
+                        <text x="0.05" y="-1.28" font-size="0.10" fill="#64748b" font-weight="bold">y</text>
+
+                        <!-- Triangle P (Base: θ with x-axis) -->
+                        <polygon id="tri-p" fill="rgba(59, 130, 246, 0.15)" stroke="none" />
+                        <line id="leg-p-cos" stroke="#2563eb" stroke-width="0.02" stroke-linecap="round" />
+                        <line id="leg-p-sin" stroke="#2563eb" stroke-width="0.02" stroke-linecap="round" />
+                        <line id="line-p-r" stroke="#1d4ed8" stroke-width="0.018" />
+                        <circle id="point-p" r="0.03" fill="#1d4ed8" />
+                        
+                        <!-- Theta Angle Arcs & Labels -->
+                        <path id="arc-theta-p" fill="none" stroke="#2563eb" stroke-width="0.012" />
+                        <text id="label-theta-p" font-size="0.08" fill="#1d4ed8" font-weight="bold">θ</text>
+
+                        <!-- Labels for P (All Blue) -->
+                        <text id="side-p-x" font-size="0.085" fill="#2563eb" text-anchor="middle" font-weight="bold">cosθ</text>
+                        <text id="side-p-y" font-size="0.085" fill="#2563eb" text-anchor="start" font-weight="bold">sinθ</text>
+                        <text id="label-p" font-size="0.09" fill="#1e40af" font-weight="bold">P(cosθ, sinθ)</text>
+
+                        <!-- Triangle Q (Target Angle) -->
+                        <polygon id="tri-q" fill="rgba(239, 68, 68, 0.15)" stroke="none" />
+                        <line id="leg-q-cos" stroke="#dc2626" stroke-width="0.02" stroke-linecap="round" />
+                        <line id="leg-q-sin" stroke="#dc2626" stroke-width="0.02" stroke-linecap="round" />
+                        <line id="line-q-r" stroke="#b91c1c" stroke-width="0.018" />
+                        <circle id="point-q" r="0.03" fill="#b91c1c" />
+                        
+                        <path id="arc-theta-q" fill="none" stroke="#dc2626" stroke-width="0.014" />
+                        <text id="label-theta-q" font-size="0.08" fill="#b91c1c" font-weight="bold">θ</text>
+
+                        <!-- Labels for Q (All Red) -->
+                        <text id="side-q-len1" font-size="0.085" fill="#dc2626" text-anchor="middle" font-weight="bold">sinθ</text>
+                        <text id="side-q-len2" font-size="0.085" fill="#dc2626" text-anchor="start" font-weight="bold">cosθ</text>
+                        <text id="label-q" font-size="0.09" fill="#991b1b" font-weight="bold">Q(sinθ, cosθ)</text>
+
+                        <!-- Target Angle Arc -->
+                        <path id="arc-target" fill="none" stroke="#dc2626" stroke-width="0.015" stroke-dasharray="0.02,0.01" />
+                    </svg>
+                </div>
+            </section>
+        </div>
+
+        <!-- 3. Result Formulas Display (Horizontal Layout below graph & options) -->
+        <section class="bg-indigo-950 text-white p-4 md:p-5 rounded-2xl shadow-md border border-indigo-900">
+            <h2 class="text-xs font-bold text-indigo-300 uppercase tracking-wider mb-3 pb-2 border-b border-indigo-800/80">
+                3. 三角比の公式結果
+            </h2>
+
+            <!-- Horizontal Formulas Grid (sin, cos, tan) -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 my-1">
+                <div class="bg-indigo-900/80 p-3 rounded-xl border border-indigo-700/50 flex items-center justify-center">
+                    <div id="res-sin" class="text-lg md:text-xl font-bold text-yellow-300 text-center">
+                        $\sin\left(\frac{\pi}{2} - \theta\right) = \cos\theta$
+                    </div>
+                </div>
+                <div class="bg-indigo-900/80 p-3 rounded-xl border border-indigo-700/50 flex items-center justify-center">
+                    <div id="res-cos" class="text-lg md:text-xl font-bold text-cyan-300 text-center">
+                        $\cos\left(\frac{\pi}{2} - \theta\right) = \sin\theta$
+                    </div>
+                </div>
+                <div class="bg-indigo-900/80 p-3 rounded-xl border border-indigo-700/50 flex items-center justify-center">
+                    <div id="res-tan" class="text-lg md:text-xl font-bold text-emerald-300 text-center">
+                        $\tan\left(\frac{\pi}{2} - \theta\right) = \frac{1}{\tan\theta}$
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Description -->
+            <p id="formula-summary-desc" class="text-xs text-indigo-200 mt-3 leading-relaxed text-center">
+                ※ $\pi/2$ 系の角度は $y$ 軸と直角三角形を作ると、$y$ 軸に沿った長さが $\cos\theta$、$x$ 軸に平行な長さが $\sin\theta$ になります。
+            </p>
+        </section>
+
+    </main>
+
+    <script>
+        const thetaDeg = 25; 
+        let currentAngleKey = 'p90_minus';
+
+        // Angle configurations object (with clean text for SVG + LaTeX for MathJax)
+        const angleConfigs = {
+            'p90_minus': {
+                name: '\\frac{\\pi}{2} - \\theta',
+                degText: '90° - θ',
+                calcAngle: (rad) => Math.PI / 2 - rad,
+                triangleType: 'y-axis',
+                hideTargetArc: true,
+                sinFormula: '\\sin\\left(\\frac{\\pi}{2} - \\theta\\right) = \\cos\\theta',
+                cosFormula: '\\cos\\left(\\frac{\\pi}{2} - \\theta\\right) = \\sin\\theta',
+                tanFormula: '\\tan\\left(\\frac{\\pi}{2} - \\theta\\right) = \\frac{1}{\\tan\\theta}',
+                qXExpr: '\\sin\\theta',
+                qYExpr: '\\cos\\theta',
+                qXText: 'sinθ',
+                qYText: 'cosθ',
+                sideHorizText: 'sinθ',
+                sideVertText: 'cosθ',
+                summary: '$\\pi/2 - \\theta$（余角）は $y$ 軸と直角三角形を作ると、第1象限内で縦の長さが $\\cos\\theta$、横の長さが $\\sin\\theta$ となります。'
+            },
+            'p90': {
+                name: '\\theta + \\frac{\\pi}{2}',
+                degText: 'θ + 90°',
+                calcAngle: (rad) => rad + Math.PI / 2,
+                triangleType: 'y-axis',
+                hideTargetArc: false,
+                sinFormula: '\\sin\\left(\\theta + \\frac{\\pi}{2}\\right) = \\cos\\theta',
+                cosFormula: '\\cos\\left(\\theta + \\frac{\\pi}{2}\\right) = -\\sin\\theta',
+                tanFormula: '\\tan\\left(\\theta + \\frac{\\pi}{2}\\right) = -\\frac{1}{\\tan\\theta}',
+                qXExpr: '-\\sin\\theta',
+                qYExpr: '\\cos\\theta',
+                qXText: '-sinθ',
+                qYText: 'cosθ',
+                sideHorizText: '-sinθ',
+                sideVertText: 'cosθ',
+                summary: '$\\theta + \\pi/2$ は $y$ 軸と直角三角形を作ると、$y$ 軸に沿った縦の長さが $\\cos\\theta$、$x$ 軸に平行な横の長さが $-\\sin\\theta$ となります。'
+            },
+            'p180_minus': {
+                name: '\\pi - \\theta',
+                degText: '180° - θ',
+                calcAngle: (rad) => Math.PI - rad,
+                triangleType: 'x-axis',
+                hideTargetArc: true,
+                sinFormula: '\\sin(\\pi - \\theta) = \\sin\\theta',
+                cosFormula: '\\cos(\\pi - \\theta) = -\\cos\\theta',
+                tanFormula: '\\tan(\\pi - \\theta) = -\\tan\\theta',
+                qXExpr: '-\\cos\\theta',
+                qYExpr: '\\sin\\theta',
+                qXText: '-cosθ',
+                qYText: 'sinθ',
+                sideHorizText: '-cosθ',
+                sideVertText: 'sinθ',
+                summary: '$\\pi - \\theta$ は $y$ 軸に関し線対称な位置（第2象限）です。$x$ 軸と直角三角形を作ると、横が $-\\cos\\theta$、縦が $\\sin\\theta$ です。'
+            },
+            'p180': {
+                name: '\\theta + \\pi',
+                degText: 'θ + 180°',
+                calcAngle: (rad) => rad + Math.PI,
+                triangleType: 'x-axis',
+                hideTargetArc: false,
+                sinFormula: '\\sin(\\theta + \\pi) = -\\sin\\theta',
+                cosFormula: '\\cos(\\theta + \\pi) = -\\cos\\theta',
+                tanFormula: '\\tan(\\theta + \\pi) = \\tan\\theta',
+                qXExpr: '-\\cos\\theta',
+                qYExpr: '-\\sin\\theta',
+                qXText: '-cosθ',
+                qYText: '-sinθ',
+                sideHorizText: '-cosθ',
+                sideVertText: '-sinθ',
+                summary: '$\\theta + \\pi$（180°回転）は原点対称な位置（第3象限）に移動します。符号は両方マイナスになります。'
+            },
+            'p270_minus': {
+                name: '\\frac{3\\pi}{2} - \\theta',
+                degText: '270° - θ',
+                calcAngle: (rad) => (3 * Math.PI) / 2 - rad,
+                triangleType: 'y-axis',
+                hideTargetArc: true,
+                sinFormula: '\\sin\\left(\\frac{3\\pi}{2} - \\theta\\right) = -\\cos\\theta',
+                cosFormula: '\\cos\\left(\\frac{3\\pi}{2} - \\theta\\right) = -\\sin\\theta',
+                tanFormula: '\\tan\\left(\\frac{3\\pi}{2} - \\theta\\right) = \\frac{1}{\\tan\\theta}',
+                qXExpr: '-\\sin\\theta',
+                qYExpr: '-\\cos\\theta',
+                qXText: '-sinθ',
+                qYText: '-cosθ',
+                sideHorizText: '-sinθ',
+                sideVertText: '-cosθ',
+                summary: '$3\\pi/2 - \\theta$ は 270° から $\\theta$ 戻った位置（第3象限）です。$y$ 軸に沿った縦が $-\\cos\\theta$、横が $-\\sin\\theta$ となります。'
+            },
+            'p270_plus': {
+                name: '\\theta + \\frac{3\\pi}{2}',
+                degText: 'θ + 270°',
+                calcAngle: (rad) => rad + (3 * Math.PI) / 2,
+                triangleType: 'y-axis',
+                hideTargetArc: false,
+                sinFormula: '\\sin\\left(\\theta + \\frac{3\\pi}{2}\\right) = -\\cos\\theta',
+                cosFormula: '\\cos\\left(\\theta + \\frac{3\\pi}{2}\\right) = \\sin\\theta',
+                tanFormula: '\\tan\\left(\\theta + \\frac{3\\pi}{2}\\right) = -\\frac{1}{\\tan\\theta}',
+                qXExpr: '\\sin\\theta',
+                qYExpr: '-\\cos\\theta',
+                qXText: 'sinθ',
+                qYText: '-cosθ',
+                sideHorizText: 'sinθ',
+                sideVertText: '-cosθ',
+                summary: '$\\theta + 3\\pi/2$ は 270° から $\\theta$ 進んだ位置（第4象限）です。$y$ 軸に沿った縦が $-\\cos\\theta$、横が $\\sin\\theta$ となります。'
+            },
+            'neg': {
+                name: '-\\theta',
+                degText: '-θ',
+                calcAngle: (rad) => -rad,
+                triangleType: 'x-axis',
+                hideTargetArc: false,
+                sinFormula: '\\sin(-\\theta) = -\\sin\\theta',
+                cosFormula: '\\cos(-\\theta) = \\cos\\theta',
+                tanFormula: '\\tan(-\\theta) = -\\tan\\theta',
+                qXExpr: '\\cos\\theta',
+                qYExpr: '-\\sin\\theta',
+                qXText: 'cosθ',
+                qYText: '-sinθ',
+                sideHorizText: 'cosθ',
+                sideVertText: '-sinθ',
+                summary: '$-\\theta$（負の角）は $x$ 軸に関し線対称な位置（第4象限）です。$x$ 座標は同じで $y$ 座標の符号のみ反転します。'
+            },
+            'm90': {
+                name: '\\theta - \\frac{\\pi}{2}',
+                degText: 'θ - 90°',
+                calcAngle: (rad) => rad - Math.PI / 2,
+                triangleType: 'y-axis',
+                hideTargetArc: false,
+                sinFormula: '\\sin\\left(\\theta - \\frac{\\pi}{2}\\right) = -\\cos\\theta',
+                cosFormula: '\\cos\\left(\\theta - \\frac{\\pi}{2}\\right) = \\sin\\theta',
+                tanFormula: '\\tan\\left(\\theta - \\frac{\\pi}{2}\\right) = -\\frac{1}{\\tan\\theta}',
+                qXExpr: '\\sin\\theta',
+                qYExpr: '-\\cos\\theta',
+                qXText: 'sinθ',
+                qYText: '-cosθ',
+                sideHorizText: 'sinθ',
+                sideVertText: '-cosθ',
+                summary: '$\\theta - \\pi/2$ は時計回りに 90° 回転した位置（第4象限）です。$y$ 軸に沿った縦の長さが $-\\cos\\theta$、横の長さが $\\sin\\theta$ となります。'
+            }
+        };
+
+        function setAngleMode(key) {
+            currentAngleKey = key;
+            const config = angleConfigs[key];
+
+            // Update Active Button Styling
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.remove('ring-2', 'ring-indigo-600', 'font-bold', 'shadow-md', 'scale-[1.02]');
+            });
+            const activeBtn = document.getElementById(`btn-${key}`);
+            if (activeBtn) {
+                activeBtn.classList.add('ring-2', 'ring-indigo-600', 'font-bold', 'shadow-md', 'scale-[1.02]');
+            }
+
+            // Update Formulas Display
+            document.getElementById('res-sin').innerHTML = `$${config.sinFormula}$`;
+            document.getElementById('res-cos').innerHTML = `$${config.cosFormula}$`;
+            document.getElementById('res-tan').innerHTML = `$${config.tanFormula}$`;
+            document.getElementById('formula-summary-desc').innerHTML = config.summary;
+
+            // MathJax Typeset
+            if (window.MathJax && MathJax.typesetPromise) {
+                MathJax.typesetPromise();
+            }
+
+            draw();
+        }
+
+        function draw() {
+            const config = angleConfigs[currentAngleKey];
+            const thetaRad = (thetaDeg * Math.PI) / 180;
+            const targetRad = config.calcAngle(thetaRad);
+
+            // Coordinates for Point P (SVG: inverted y)
+            const px = Math.cos(thetaRad);
+            const py = Math.sin(thetaRad);
+            const svgPx = px;
+            const svgPy = -py;
+
+            // Coordinates for Point Q
+            const qx = Math.cos(targetRad);
+            const qy = Math.sin(targetRad);
+            const svgQx = qx;
+            const svgQy = -qy;
+
+            // 1. Draw Base Triangle P (Attached to x-axis)
+            document.getElementById('tri-p').setAttribute('points', `0,0 ${svgPx},0 ${svgPx},${svgPy}`);
+            
+            // Leg Cos (horizontal - Blue)
+            const legPCos = document.getElementById('leg-p-cos');
+            legPCos.setAttribute('x1', '0'); legPCos.setAttribute('y1', '0');
+            legPCos.setAttribute('x2', svgPx); legPCos.setAttribute('y2', '0');
+
+            // Leg Sin (vertical - Blue)
+            const legPSin = document.getElementById('leg-p-sin');
+            legPSin.setAttribute('x1', svgPx); legPSin.setAttribute('y1', '0');
+            legPSin.setAttribute('x2', svgPx); legPSin.setAttribute('y2', svgPy);
+
+            const linePR = document.getElementById('line-p-r');
+            linePR.setAttribute('x1', '0'); linePR.setAttribute('y1', '0');
+            linePR.setAttribute('x2', svgPx); linePR.setAttribute('y2', svgPy);
+            
+            const pointP = document.getElementById('point-p');
+            pointP.setAttribute('cx', svgPx); pointP.setAttribute('cy', svgPy);
+
+            // Theta Arc for P
+            const rThetaP = 0.28;
+            const arcThetaP = document.getElementById('arc-theta-p');
+            arcThetaP.setAttribute('d', `M ${rThetaP} 0 A ${rThetaP} ${rThetaP} 0 0 0 ${rThetaP * Math.cos(thetaRad)} ${-rThetaP * Math.sin(thetaRad)}`);
+            const labelThetaP = document.getElementById('label-theta-p');
+            labelThetaP.setAttribute('x', (rThetaP + 0.08) * Math.cos(thetaRad / 2));
+            labelThetaP.setAttribute('y', -(rThetaP + 0.08) * Math.sin(thetaRad / 2));
+
+            // Side Labels for P (All Blue)
+            const sidePx = document.getElementById('side-p-x');
+            sidePx.setAttribute('x', svgPx / 2);
+            sidePx.setAttribute('y', 0.12);
+            sidePx.setAttribute('fill', '#2563eb');
+
+            const sidePy = document.getElementById('side-p-y');
+            sidePy.setAttribute('x', svgPx + 0.05);
+            sidePy.setAttribute('y', svgPy / 2);
+            sidePy.setAttribute('text-anchor', 'start');
+            sidePy.setAttribute('fill', '#2563eb');
+
+            const labelP = document.getElementById('label-p');
+            labelP.setAttribute('x', svgPx + 0.05);
+            labelP.setAttribute('y', svgPy - 0.05);
+            labelP.setAttribute('text-anchor', 'start');
+            labelP.textContent = `P(cosθ, sinθ)`;
+
+            // 2. Draw Target Triangle Q
+            const triQ = document.getElementById('tri-q');
+            const legQCos = document.getElementById('leg-q-cos');
+            const legQSin = document.getElementById('leg-q-sin');
+            const sideQHoriz = document.getElementById('side-q-len1');
+            const sideQVert = document.getElementById('side-q-len2');
+            const arcThetaQ = document.getElementById('arc-theta-q');
+            const labelThetaQ = document.getElementById('label-theta-q');
+
+            if (config.triangleType === 'y-axis') {
+                triQ.setAttribute('points', `0,0 0,${svgQy} ${svgQx},${svgQy}`);
+
+                // Leg for cos (vertical, along y-axis)
+                legQCos.setAttribute('x1', '0'); legQCos.setAttribute('y1', '0');
+                legQCos.setAttribute('x2', '0'); legQCos.setAttribute('y2', svgQy);
+
+                // Leg for sin (horizontal, parallel to x-axis)
+                legQSin.setAttribute('x1', '0'); legQSin.setAttribute('y1', svgQy);
+                legQSin.setAttribute('x2', svgQx); legQSin.setAttribute('y2', svgQy);
+
+                // Label positioning (All Red)
+                sideQHoriz.setAttribute('x', svgQx / 2);
+                sideQHoriz.setAttribute('y', svgQy + (svgQy >= 0 ? 0.11 : -0.06));
+                sideQHoriz.setAttribute('fill', '#dc2626');
+                sideQHoriz.textContent = config.sideHorizText;
+
+                sideQVert.setAttribute('x', svgQx >= 0 ? -0.06 : 0.06);
+                sideQVert.setAttribute('y', svgQy / 2);
+                sideQVert.setAttribute('text-anchor', svgQx >= 0 ? 'end' : 'start');
+                sideQVert.setAttribute('fill', '#dc2626');
+                sideQVert.textContent = config.sideVertText;
+
+                // Precision Arc for theta relative to nearest Y-axis pole
+                const rTQ = 0.32;
+                let svgQAngle = Math.atan2(svgQy, svgQx);
+                let svgYAngle = svgQy < 0 ? -Math.PI / 2 : Math.PI / 2;
+
+                let ax1 = rTQ * Math.cos(svgYAngle);
+                let ay1 = rTQ * Math.sin(svgYAngle);
+                let ax2 = rTQ * Math.cos(svgQAngle);
+                let ay2 = rTQ * Math.sin(svgQAngle);
+
+                let sweepQ = (svgQAngle > svgYAngle) ? 1 : 0;
+                arcThetaQ.setAttribute('d', `M ${ax1} ${ay1} A ${rTQ} ${rTQ} 0 0 ${sweepQ} ${ax2} ${ay2}`);
+                
+                let midA = (svgYAngle + svgQAngle) / 2;
+                labelThetaQ.setAttribute('x', (rTQ + 0.08) * Math.cos(midA));
+                labelThetaQ.setAttribute('y', (rTQ + 0.08) * Math.sin(midA));
+
+            } else {
+                triQ.setAttribute('points', `0,0 ${svgQx},0 ${svgQx},${svgQy}`);
+
+                // Leg for cos (horizontal, along x-axis)
+                legQCos.setAttribute('x1', '0'); legQCos.setAttribute('y1', '0');
+                legQCos.setAttribute('x2', svgQx); legQCos.setAttribute('y2', '0');
+
+                // Leg for sin (vertical, parallel to y-axis)
+                legQSin.setAttribute('x1', svgQx); legQSin.setAttribute('y1', '0');
+                legQSin.setAttribute('x2', svgQx); legQSin.setAttribute('y2', svgQy);
+
+                // Label positioning (All Red)
+                sideQHoriz.setAttribute('x', svgQx / 2);
+                sideQHoriz.setAttribute('y', svgQy >= 0 ? -0.06 : 0.11);
+                sideQHoriz.setAttribute('fill', '#dc2626');
+                sideQHoriz.textContent = config.sideHorizText;
+
+                sideQVert.setAttribute('x', svgQx + (svgQx >= 0 ? 0.06 : -0.06));
+                sideQVert.setAttribute('y', svgQy / 2);
+                sideQVert.setAttribute('text-anchor', svgQx >= 0 ? 'start' : 'end');
+                sideQVert.setAttribute('fill', '#dc2626');
+                sideQVert.textContent = config.sideVertText;
+
+                // Arc relative to X-axis pole
+                const rTQ = 0.32;
+                let startAngle = svgQx < 0 ? Math.PI : 0;
+                let endAngle = targetRad;
+                let ax1 = rTQ * Math.cos(startAngle);
+                let ay1 = -rTQ * Math.sin(startAngle);
+                let ax2 = rTQ * Math.cos(endAngle);
+                let ay2 = -rTQ * Math.sin(endAngle);
+                let sweepQ = (endAngle - startAngle > 0) ? 0 : 1;
+                arcThetaQ.setAttribute('d', `M ${ax1} ${ay1} A ${rTQ} ${rTQ} 0 0 ${sweepQ} ${ax2} ${ay2}`);
+
+                let midA = (startAngle + endAngle) / 2;
+                labelThetaQ.setAttribute('x', (rTQ + 0.08) * Math.cos(midA));
+                labelThetaQ.setAttribute('y', -(rTQ + 0.08) * Math.sin(midA));
+            }
+
+            const lineQR = document.getElementById('line-q-r');
+            lineQR.setAttribute('x1', '0'); lineQR.setAttribute('y1', '0');
+            lineQR.setAttribute('x2', svgQx); lineQR.setAttribute('y2', svgQy);
+
+            const pointQ = document.getElementById('point-q');
+            pointQ.setAttribute('cx', svgQx); pointQ.setAttribute('cy', svgQy);
+
+            // Point Q label positioning (Placed strictly OUTSIDE of triangle Q)
+            const labelQ = document.getElementById('label-q');
+            let qLabelX = svgQx;
+            let qLabelY = svgQy;
+            let qAnchor = 'start';
+
+            // Push label outwards along vector from origin
+            const offsetDist = 0.12;
+            qLabelX += (svgQx >= 0 ? offsetDist : -offsetDist);
+            qLabelY += (svgQy >= 0 ? offsetDist : -offsetDist);
+
+            if (svgQx < 0) {
+                qAnchor = 'end';
+            } else {
+                qAnchor = 'start';
+            }
+
+            labelQ.setAttribute('x', qLabelX);
+            labelQ.setAttribute('y', qLabelY);
+            labelQ.setAttribute('text-anchor', qAnchor);
+            labelQ.setAttribute('fill', '#991b1b');
+            labelQ.textContent = `Q(${config.qXText}, ${config.qYText})`;
+
+            // Target Angle Arc
+            const arcTarget = document.getElementById('arc-target');
+            if (config.hideTargetArc) {
+                arcTarget.setAttribute('d', '');
+            } else {
+                const r2 = 0.42;
+                const bx1 = r2 * Math.cos(thetaRad);
+                const by1 = -r2 * Math.sin(thetaRad);
+                const bx2 = r2 * Math.cos(targetRad);
+                const by2 = -r2 * Math.sin(targetRad);
+
+                let diff = targetRad - thetaRad;
+                let sweep = diff >= 0 ? 0 : 1;
+                let largeArc = Math.abs(diff) > Math.PI ? 1 : 0;
+
+                arcTarget.setAttribute('d', `M ${bx1} ${by1} A ${r2} ${r2} 0 ${largeArc} ${sweep} ${bx2} ${by2}`);
+            }
+        }
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            setAngleMode('p90_minus');
+        });
+    </script>
+</body>
+</html>
