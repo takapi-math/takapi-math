@@ -536,20 +536,46 @@
             const pointQ = document.getElementById('point-q');
             pointQ.setAttribute('cx', svgQx); pointQ.setAttribute('cy', svgQy);
 
-            // Point Q label positioning (Placed strictly OUTSIDE of triangle Q)
+            // Point Q label positioning (Placed strictly OUTSIDE of triangle Q and clear of side labels)
             const labelQ = document.getElementById('label-q');
             let qLabelX = svgQx;
             let qLabelY = svgQy;
             let qAnchor = 'start';
 
-            // Push label outwards along vector from origin
-            const offsetDist = 0.12;
-            qLabelX += (svgQx >= 0 ? offsetDist : -offsetDist);
-            qLabelY += (svgQy >= 0 ? offsetDist : -offsetDist);
-
-            if (svgQx < 0) {
+            if (currentAngleKey === 'p90') {
+                // θ + π/2: Q(-sinθ, cosθ) -> 左上方向にずらし、横辺(-sinθ)や縦辺(cosθ)との重なりを完全回避
+                qLabelX = svgQx - 0.06;
+                qLabelY = svgQy - 0.12;
+                qAnchor = 'end';
+            } else if (currentAngleKey === 'p270_minus') {
+                // 3π/2 - θ: Q(-sinθ, -cosθ) -> 左下方向にずらし、横辺(-sinθ)や縦辺(-cosθ)との重なりを完全回避
+                qLabelX = svgQx - 0.06;
+                qLabelY = svgQy + 0.14;
+                qAnchor = 'end';
+            } else if (currentAngleKey === 'p180_minus') {
+                // π - θ: Q(-cosθ, sinθ) -> 右寄りに配置して左端へのはみ出しを防止
+                qLabelX = svgQx + 0.04;
+                qLabelY = svgQy - 0.08;
+                qAnchor = 'start';
+            } else if (currentAngleKey === 'p90_minus') {
+                // π/2 - θ: Q(sinθ, cosθ) -> 右上方向へ回避
+                qLabelX = svgQx + 0.06;
+                qLabelY = svgQy - 0.12;
+                qAnchor = 'start';
+            } else if (currentAngleKey === 'p270_plus' || currentAngleKey === 'm90') {
+                // θ + 3π/2, θ - π/2: Q(sinθ, -cosθ) -> 右下方向へ回避
+                qLabelX = svgQx + 0.06;
+                qLabelY = svgQy + 0.14;
+                qAnchor = 'start';
+            } else if (svgQx < 0) {
+                // Qがy軸より左にある場合（π - θ, θ + π など）
+                qLabelX = svgQx - 0.06;
+                qLabelY += (svgQy >= 0 ? 0.12 : -0.06);
                 qAnchor = 'end';
             } else {
+                // Qがy軸より右にある場合（-θ など）
+                qLabelX = svgQx + 0.06;
+                qLabelY += (svgQy >= 0 ? 0.12 : -0.06);
                 qAnchor = 'start';
             }
 
