@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>立方体の切断面シミュレーター (Simple)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Three.js & OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Noto Sans JP', 'Inter', sans-serif;
+            user-select: none;
+            touch-action: manipulation;
+        }
+        .glass-card {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        input[type="range"] {
+            accent-color: #6366f1;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 h-screen w-screen overflow-hidden flex flex-col">
+
+    <!-- Simple Header Bar -->
+    <header class="h-14 bg-slate-900 border-b border-slate-800 px-4 flex items-center justify-between z-20 shrink-0">
+        <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-cube text-indigo-400 text-xl"></i>
+            <h1 class="font-bold text-sm sm:text-base text-white tracking-wide">立方体の切断面シミュレーター</h1>
+        </div>
+        
+        <!-- Big Result Shape Badge -->
+        <div class="flex items-center gap-2">
+            <span class="text-xs text-slate-400 hidden sm:inline">現在の断面:</span>
+            <div id="shapeBadge" class="bg-indigo-600/90 text-white font-bold text-xs sm:text-sm px-3 py-1 rounded-full shadow-lg border border-indigo-400/30 flex items-center gap-1.5">
+                <i class="fa-solid fa-draw-polygon text-indigo-200"></i>
+                <span id="shapeNameText">正三角形</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex-1 relative w-full h-full overflow-hidden flex flex-col md:flex-row">
+        
+        <!-- 3D Canvas Area -->
+        <div id="canvasContainer" class="flex-1 w-full h-full relative cursor-grab active:cursor-grabbing">
+            <!-- Canvas is attached here dynamically -->
+
+            <!-- Quick Gesture Tip -->
+            <div class="absolute top-3 left-3 pointer-events-none text-[11px] text-slate-400 bg-slate-900/60 px-2.5 py-1.5 rounded-lg border border-slate-800">
+                <i class="fa-solid fa-rotate text-indigo-400 mr-1"></i> ドラッグで3D視点を自由に回転
+            </div>
+
+            <!-- 2D Mini Section Preview (Bottom Left) -->
+            <div class="absolute bottom-4 left-4 z-10 glass-card p-2.5 rounded-xl flex flex-col items-center shadow-xl">
+                <div class="text-[10px] font-bold text-slate-400 mb-1 flex items-center gap-1">
+                    <i class="fa-solid fa-eye text-indigo-400"></i> 断面の真上図 (2D)
+                </div>
+                <div class="w-24 h-24 bg-slate-900/90 rounded-lg border border-slate-800 flex items-center justify-center">
+                    <canvas id="mini2DCanvas" width="96" height="96"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Control Panel (Compact & Intuitive) -->
+        <aside class="w-full md:w-80 bg-slate-900/95 border-t md:border-t-0 md:border-l border-slate-800 p-4 flex flex-col justify-between z-20 shrink-0 max-h-[45vh] md:max-h-none overflow-y-auto">
+            
+            <div class="space-y-4">
+                <!-- Preset Buttons -->
+                <div>
+                    <label class="text-xs font-bold text-slate-300 block mb-2">
+                        <i class="fa-solid fa-wand-magic-sparkles text-amber-400 mr-1"></i> 定番の切り方を選ぶ
+                    </label>
+                    <div class="grid grid-cols-3 gap-1.5">
+                        <button data-preset="triangle" class="btn-preset bg-slate-800 hover:bg-indigo-600 text-slate-200 text-xs py-2 px-1 rounded-lg border border-slate-700 transition">
+                            正三角形
+                        </button>
+                        <button data-preset="square" class="btn-preset bg-slate-800 hover:bg-indigo-600 text-slate-200 text-xs py-2 px-1 rounded-lg border border-slate-700 transition">
+                            正方形
+                        </button>
+                        <button data-preset="rectangle" class="btn-preset bg-slate-800 hover:bg-indigo-600 text-slate-200 text-xs py-2 px-1 rounded-lg border border-slate-700 transition">
+                            長方形
+                        </button>
+                        <button data-preset="trapezoid" class="btn-preset bg-slate-800 hover:bg-indigo-600 text-slate-200 text-xs py-2 px-1 rounded-lg border border-slate-700 transition">
+                            台形
+                        </button>
+                        <button data-preset="pentagon" class="btn-preset bg-slate-800 hover:bg-indigo-600 text-slate-200 text-xs py-2 px-1 rounded-lg border border-slate-700 transition">
+                            五角形
+                        </button>
+                        <button data-preset="hexagon" class="btn-preset bg-indigo-900/60 hover:bg-indigo-600 text-indigo-200 hover:text-white font-bold text-xs py-2 px-1 rounded-lg border border-indigo-500/50 transition">
+                            正六角形
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Easy Cut Sliders -->
+                <div class="space-y-3 pt-2 border-t border-slate-800">
+                    <label class="text-xs font-bold text-slate-300 block">
+                        <i class="fa-solid fa-sliders text-indigo-400 mr-1"></i> 切断角度と位置を調整
+                    </label>
+
+                    <!-- Pitch Slider -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400">前後傾き (X軸)</span>
+                            <span id="valPitch" class="font-mono text-indigo-300">55°</span>
+                        </div>
+                        <input type="range" id="sliderPitch" min="-90" max="90" value="55" class="w-full h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+                    </div>
+
+                    <!-- Yaw Slider -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400">左右回転 (Y軸)</span>
+                            <span id="valYaw" class="font-mono text-indigo-300">45°</span>
+                        </div>
+                        <input type="range" id="sliderYaw" min="-180" max="180" value="45" class="w-full h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+                    </div>
+
+                    <!-- Offset Slider -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400">切る位置 (中心からの距離)</span>
+                            <span id="valOffset" class="font-mono text-emerald-400">0.50</span>
+                        </div>
+                        <input type="range" id="sliderOffset" min="-0.85" max="0.85" value="0.5" step="0.01" class="w-full h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+                    </div>
+                </div>
+
+                <!-- Simple View Toggles -->
+                <div class="pt-2 border-t border-slate-800 space-y-2 text-xs">
+                    <label class="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
+                        <input type="checkbox" id="chkSeeThrough" class="rounded bg-slate-800 border-slate-700 text-indigo-600 focus:ring-0">
+                        <span>立方体を半透明化（中を透かす）</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
+                        <input type="checkbox" id="chkShowCutPlane" checked class="rounded bg-slate-800 border-slate-700 text-indigo-600 focus:ring-0">
+                        <span>切断ガイド（赤枠ガイド面）を表示</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Reset Button -->
+            <div class="pt-3 border-t border-slate-800 mt-2">
+                <button id="btnReset" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg border border-slate-700 transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-arrow-rotate-left"></i> 視点・位置を初期状態に戻す
+                </button>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        // State variables
+        const state = {
+            pitch: 55,
+            yaw: 45,
+            offset: 0.5,
+            seeThrough: false,
+            showCutPlane: true,
+            cubeSize: 2.0
+        };
+
+        // Three.js variables
+        let scene, camera, renderer, controls;
+        let cubeMesh, cubeWireframe, sectionMesh, planeFrameMesh;
+        let mini2DCanvas, ctx2D;
+
+        // Cube vertices and edges definitions
+        const h = state.cubeSize / 2; // 1.0
+        const CUBE_VERTICES = [
+            new THREE.Vector3(-h, -h, -h),
+            new THREE.Vector3( h, -h, -h),
+            new THREE.Vector3( h,  h, -h),
+            new THREE.Vector3(-h,  h, -h),
+            new THREE.Vector3(-h, -h,  h),
+            new THREE.Vector3( h, -h,  h),
+            new THREE.Vector3( h,  h,  h),
+            new THREE.Vector3(-h,  h,  h)
+        ];
+
+        const CUBE_EDGES = [
+            [0, 1], [1, 2], [2, 3], [3, 0], // Back face
+            [4, 5], [5, 6], [6, 7], [7, 4], // Front face
+            [0, 4], [1, 5], [2, 6], [3, 7]  // Connectors
+        ];
+
+        window.onload = function() {
+            initThree();
+            init2D();
+            bindEvents();
+            updateCut();
+            animate();
+        };
+
+        function initThree() {
+            const container = document.getElementById('canvasContainer');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x020617); // Slate-950
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
+            camera.position.set(4, 3, 5);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            // Orbit Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            // Lights
+            const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambient);
+
+            const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+            sun.position.set(5, 8, 5);
+            scene.add(sun);
+
+            // Base Outer Cube (Translucent)
+            const cubeGeo = new THREE.BoxGeometry(state.cubeSize, state.cubeSize, state.cubeSize);
+            const cubeMat = new THREE.MeshStandardMaterial({
+                color: 0x3b82f6,
+                transparent: true,
+                opacity: 0.35,
+                roughness: 0.2,
+                metalness: 0.1
+            });
+            cubeMesh = new THREE.Mesh(cubeGeo, cubeMat);
+            scene.add(cubeMesh);
+
+            // Cube Edges Wireframe
+            const edgesGeo = new THREE.EdgesGeometry(cubeGeo);
+            const edgesMat = new THREE.LineBasicMaterial({ color: 0x94a3b8, linewidth: 2 });
+            cubeWireframe = new THREE.LineSegments(edgesGeo, edgesMat);
+            scene.add(cubeWireframe);
+
+            // Cross-Section Mesh
+            sectionMesh = new THREE.Mesh(
+                new THREE.BufferGeometry(),
+                new THREE.MeshStandardMaterial({
+                    color: 0x10b981, // Emerald Green
+                    side: THREE.DoubleSide,
+                    roughness: 0.3,
+                    metalness: 0.1,
+                    emissive: 0x047857,
+                    emissiveIntensity: 0.4
+                })
+            );
+            scene.add(sectionMesh);
+
+            // Cutting Plane Red Guide
+            const planeGeo = new THREE.PlaneGeometry(3.0, 3.0);
+            const planeEdges = new THREE.EdgesGeometry(planeGeo);
+            const planeMat = new THREE.LineBasicMaterial({ color: 0xef4444, linewidth: 2 });
+            planeFrameMesh = new THREE.LineSegments(planeEdges, planeMat);
+            scene.add(planeFrameMesh);
+
+            window.addEventListener('resize', onResize);
+        }
+
+        function init2D() {
+            mini2DCanvas = document.getElementById('mini2DCanvas');
+            ctx2D = mini2DCanvas.getContext('2d');
+        }
+
+        function getPlane() {
+            const pitchRad = THREE.MathUtils.degToRad(state.pitch);
+            const yawRad = THREE.MathUtils.degToRad(state.yaw);
+
+            const euler = new THREE.Euler(pitchRad, yawRad, 0, 'YXZ');
+            const normal = new THREE.Vector3(0, 1, 0).applyEuler(euler).normalize();
+            const point = normal.clone().multiplyScalar(state.offset);
+
+            return { normal, point };
+        }
+
+        function computeIntersectionPolygon(normal, point) {
+            const intersections = [];
+            const d = normal.dot(point);
+
+            for (let edge of CUBE_EDGES) {
+                const p1 = CUBE_VERTICES[edge[0]];
+                const p2 = CUBE_VERTICES[edge[1]];
+
+                const d1 = normal.dot(p1) - d;
+                const d2 = normal.dot(p2) - d;
+
+                if (d1 * d2 < -1e-6) {
+                    const t = d1 / (d1 - d2);
+                    const intersectP = new THREE.Vector3().lerpVectors(p1, p2, t);
+                    intersections.push(intersectP);
+                } else if (Math.abs(d1) < 1e-6) {
+                    if (!intersections.some(p => p.distanceTo(p1) < 1e-5)) {
+                        intersections.push(p1.clone());
+                    }
+                }
+            }
+
+            if (intersections.length < 3) return [];
+
+            // Sort points counter-clockwise around centroid
+            const centroid = new THREE.Vector3();
+            intersections.forEach(p => centroid.add(p));
+            centroid.divideScalar(intersections.length);
+
+            let uVector = new THREE.Vector3(1, 0, 0).cross(normal);
+            if (uVector.lengthSq() < 1e-5) uVector = new THREE.Vector3(0, 0, 1).cross(normal);
+            uVector.normalize();
+            const vVector = new THREE.Vector3().crossVectors(normal, uVector).normalize();
+
+            return intersections.map(p => {
+                const rel = p.clone().sub(centroid);
+                const u = rel.dot(uVector);
+                const v = rel.dot(vVector);
+                const angle = Math.atan2(v, u);
+                return { point: p, u, v, angle };
+            }).sort((a, b) => a.angle - b.angle);
+        }
+
+        function updateCut() {
+            const { normal, point } = getPlane();
+
+            // Plane Red Guide
+            planeFrameMesh.position.copy(point);
+            planeFrameMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
+            planeFrameMesh.visible = state.showCutPlane;
+
+            // Material Opacity Toggle
+            cubeMesh.material.opacity = state.seeThrough ? 0.15 : 0.4;
+
+            // Intersection Polygon Calculation
+            const polygonData = computeIntersectionPolygon(normal, point);
+
+            if (polygonData.length >= 3) {
+                const geo = new THREE.BufferGeometry();
+                const verts = [];
+                const p0 = polygonData[0].point;
+
+                for (let i = 1; i < polygonData.length - 1; i++) {
+                    const p1 = polygonData[i].point;
+                    const p2 = polygonData[i + 1].point;
+
+                    verts.push(p0.x, p0.y, p0.z);
+                    verts.push(p1.x, p1.y, p1.z);
+                    verts.push(p2.x, p2.y, p2.z);
+                }
+
+                geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+                geo.computeVertexNormals();
+                sectionMesh.geometry.dispose();
+                sectionMesh.geometry = geo;
+                sectionMesh.visible = true;
+            } else {
+                sectionMesh.visible = false;
+            }
+
+            // Update UI & 2D Preview
+            updateShapeInfo(polygonData);
+            draw2DPreview(polygonData);
+        }
+
+        function updateShapeInfo(polygonData) {
+            const count = polygonData.length;
+            const textElem = document.getElementById('shapeNameText');
+
+            if (count < 3) {
+                textElem.innerText = "切断なし";
+                return;
+            }
+
+            // Calculate edges for shape naming
+            const edgeLens = [];
+            for (let i = 0; i < count; i++) {
+                const p1 = polygonData[i];
+                const p2 = polygonData[(i + 1) % count];
+                edgeLens.push(Math.hypot(p2.u - p1.u, p2.v - p1.v));
+            }
+
+            const isEqual = edgeLens.every(l => Math.abs(l - edgeLens[0]) < 1e-2);
+
+            if (count === 3) {
+                textElem.innerText = isEqual ? "正三角形" : "三角形";
+            } else if (count === 4) {
+                const d1 = Math.hypot(polygonData[2].u - polygonData[0].u, polygonData[2].v - polygonData[0].v);
+                const d2 = Math.hypot(polygonData[3].u - polygonData[1].u, polygonData[3].v - polygonData[1].v);
+
+                if (isEqual) {
+                    textElem.innerText = Math.abs(d1 - d2) < 1e-2 ? "正方形" : "菱形";
+                } else if (Math.abs(edgeLens[0] - edgeLens[2]) < 1e-2 && Math.abs(edgeLens[1] - edgeLens[3]) < 1e-2) {
+                    textElem.innerText = Math.abs(d1 - d2) < 1e-2 ? "長方形" : "平行四辺形";
+                } else {
+                    textElem.innerText = "台形";
+                }
+            } else if (count === 5) {
+                textElem.innerText = "五角形";
+            } else if (count === 6) {
+                textElem.innerText = isEqual ? "正六角形" : "六角形";
+            }
+        }
+
+        function draw2DPreview(polygonData) {
+            const w = mini2DCanvas.width;
+            const h = mini2DCanvas.height;
+
+            ctx2D.clearRect(0, 0, w, h);
+
+            if (polygonData.length < 3) return;
+
+            const pts = polygonData.map(d => ({ u: d.u, v: d.v }));
+            let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
+
+            pts.forEach(p => {
+                if (p.u < minU) minU = p.u;
+                if (p.u > maxU) maxU = p.u;
+                if (p.v < minV) minV = p.v;
+                if (p.v > maxV) maxV = p.v;
+            });
+
+            const span = Math.max(maxU - minU, maxV - minV, 0.4);
+            const scale = (w * 0.6) / span;
+            const centerU = (minU + maxU) / 2;
+            const centerV = (minV + maxV) / 2;
+
+            ctx2D.beginPath();
+            pts.forEach((p, i) => {
+                const x = w / 2 + (p.u - centerU) * scale;
+                const y = h / 2 - (p.v - centerV) * scale;
+                if (i === 0) ctx2D.moveTo(x, y);
+                else ctx2D.lineTo(x, y);
+            });
+            ctx2D.closePath();
+
+            ctx2D.fillStyle = 'rgba(16, 185, 129, 0.6)';
+            ctx2D.fill();
+            ctx2D.strokeStyle = '#34d399';
+            ctx2D.lineWidth = 2;
+            ctx2D.stroke();
+        }
+
+        function bindEvents() {
+            const pInput = document.getElementById('sliderPitch');
+            const yInput = document.getElementById('sliderYaw');
+            const oInput = document.getElementById('sliderOffset');
+
+            pInput.addEventListener('input', (e) => {
+                state.pitch = parseFloat(e.target.value);
+                document.getElementById('valPitch').innerText = `${state.pitch}°`;
+                updateCut();
+            });
+
+            yInput.addEventListener('input', (e) => {
+                state.yaw = parseFloat(e.target.value);
+                document.getElementById('valYaw').innerText = `${state.yaw}°`;
+                updateCut();
+            });
+
+            oInput.addEventListener('input', (e) => {
+                state.offset = parseFloat(e.target.value);
+                document.getElementById('valOffset').innerText = state.offset.toFixed(2);
+                updateCut();
+            });
+
+            document.getElementById('chkSeeThrough').addEventListener('change', (e) => {
+                state.seeThrough = e.target.checked;
+                updateCut();
+            });
+
+            document.getElementById('chkShowCutPlane').addEventListener('change', (e) => {
+                state.showCutPlane = e.target.checked;
+                updateCut();
+            });
+
+            // Presets
+            const presets = {
+                triangle: { pitch: 55, yaw: 45, offset: 0.5 },
+                square: { pitch: 0, yaw: 0, offset: 0.0 },
+                rectangle: { pitch: 45, yaw: 0, offset: 0.0 },
+                trapezoid: { pitch: 45, yaw: 20, offset: 0.4 },
+                pentagon: { pitch: 50, yaw: 25, offset: 0.2 },
+                hexagon: { pitch: 54.74, yaw: 45, offset: 0.0 }
+            };
+
+            document.querySelectorAll('.btn-preset').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const name = btn.getAttribute('data-preset');
+                    if (presets[name]) {
+                        applyPreset(presets[name].pitch, presets[name].yaw, presets[name].offset);
+                    }
+                });
+            });
+
+            document.getElementById('btnReset').addEventListener('click', () => {
+                applyPreset(55, 45, 0.5);
+                camera.position.set(4, 3, 5);
+                controls.target.set(0, 0, 0);
+                controls.update();
+            });
+        }
+
+        function applyPreset(pitch, yaw, offset) {
+            state.pitch = pitch;
+            state.yaw = yaw;
+            state.offset = offset;
+
+            document.getElementById('sliderPitch').value = pitch;
+            document.getElementById('sliderYaw').value = yaw;
+            document.getElementById('sliderOffset').value = offset;
+
+            document.getElementById('valPitch').innerText = `${Math.round(pitch)}°`;
+            document.getElementById('valYaw').innerText = `${Math.round(yaw)}°`;
+            document.getElementById('valOffset').innerText = offset.toFixed(2);
+
+            updateCut();
+        }
+
+        function onResize() {
+            const container = document.getElementById('canvasContainer');
+            if (!container) return;
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
