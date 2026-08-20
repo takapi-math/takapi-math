@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3次関数と導関数の関係 可視化ツール</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- KaTeX for math rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMath()"></script>
+    <style>
+        body {
+            font-family: 'Noto Sans JP', 'Inter', sans-serif;
+        }
+        canvas {
+            touch-action: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-start p-3 md:p-6">
+
+    <!-- Main Container - Narrow width for clean layout -->
+    <div class="w-full max-w-2xl flex flex-col gap-4">
+        
+        <!-- Header -->
+        <header class="text-center space-y-1">
+            <h1 class="text-xl md:text-2xl font-bold text-blue-400 tracking-wide">
+                3次関数と導関数の関係
+            </h1>
+            <p class="text-xs text-slate-400">
+                2次関数 $f'(x)$ の上下移動による3次関数 $f(x)$ の形状変化
+            </p>
+        </header>
+
+        <!-- Controls Bar -->
+        <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-3 shadow-lg flex flex-wrap items-center justify-between gap-3">
+            
+            <!-- Convexity Toggle -->
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-semibold text-slate-300">3次関数の向き:</span>
+                <div class="inline-flex rounded-lg p-1 bg-slate-950 border border-slate-800">
+                    <button id="btnConvexDown" onclick="setConvexity(1)" class="px-2.5 py-1 text-xs font-medium rounded-md transition-all duration-200 bg-blue-600 text-white shadow">
+                        右上がり ($a > 0$)
+                    </button>
+                    <button id="btnConvexUp" onclick="setConvexity(-1)" class="px-2.5 py-1 text-xs font-medium rounded-md transition-all duration-200 text-slate-400 hover:text-slate-200">
+                        右下がり ($a < 0$)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Y-shift Slider -->
+            <div class="flex-1 min-w-[200px] flex items-center gap-2">
+                <label for="sliderQ" class="text-xs font-semibold text-slate-300 whitespace-nowrap">
+                    2次関数の上下移動:
+                </label>
+                <input id="sliderQ" type="range" min="-3" max="3" step="0.02" value="-1.5" 
+                       class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                       oninput="onSliderInput(this.value)">
+                <button onclick="resetPosition()" class="px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 rounded transition whitespace-nowrap">
+                    リセット
+                </button>
+            </div>
+
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="flex flex-col gap-3 bg-slate-950/90 p-3 md:p-4 border border-slate-800 rounded-2xl shadow-inner">
+            
+            <!-- 1. TOP: 2nd-Degree Function f'(x) (Derivative) -->
+            <div class="relative w-full flex flex-col items-center">
+                <div class="w-full flex items-center justify-between bg-slate-900/90 border border-slate-700/80 px-3 py-1.5 rounded-t-xl text-xs z-10">
+                    <div class="font-bold text-slate-200">
+                        【上】 2次関数（導関数） $f'(x)$
+                    </div>
+                    <!-- Right status: Discriminant (正, 0, 負) -->
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-slate-400">判別式:</span>
+                        <span id="badgeD" class="px-2 py-0.5 rounded text-[11px] font-bold"></span>
+                    </div>
+                </div>
+                <canvas id="canvasFpx" class="w-full h-40 md:h-48 rounded-b-xl bg-slate-900 border-x border-b border-slate-800/80 cursor-ns-resize"></canvas>
+            </div>
+
+            <!-- 2. BOTTOM: 3rd-Degree Function f(x) (Original Function) -->
+            <div class="relative w-full flex flex-col items-center">
+                <div class="w-full flex items-center justify-between bg-slate-900/90 border border-slate-700/80 px-3 py-1.5 rounded-t-xl text-xs z-10">
+                    <div class="font-bold text-slate-200">
+                        【下】 3次関数 $f(x)$
+                    </div>
+                    <!-- Right status: Extreme Values / Monotonicity -->
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-slate-400">状態:</span>
+                        <span id="badgeFxStatus" class="px-2 py-0.5 rounded text-[11px] font-bold"></span>
+                    </div>
+                </div>
+                <canvas id="canvasFx" class="w-full h-44 md:h-52 rounded-b-xl bg-slate-900 border-x border-b border-slate-800/80"></canvas>
+            </div>
+
+            <!-- 3. VARIATION TABLE (増減表) directly below 3rd-Degree Function -->
+            <div class="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl p-3 shadow-md flex flex-col gap-1.5">
+                <div class="text-xs font-bold text-slate-400 border-b border-slate-800 pb-1 flex items-center justify-between">
+                    <span>増減表</span>
+                    <span class="text-[10px] font-normal text-slate-500">※各列の位置はグラフの $x$ 座標に連動</span>
+                </div>
+                
+                <!-- Dynamic aligned Variation Table -->
+                <div id="variationTableContainer" class="w-full relative py-1 min-h-[85px] font-mono text-xs select-none">
+                    <!-- Dynamic layout rendered in JS -->
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        // Mathematical Model State
+        // f'(x) = 3 * a * (x - p)^2 + q
+        // f(x)  = a * (x - p)^3 + q * (x - p)
+        let state = {
+            a: 1.0,      // 1.0 = Downward convex derivative (a > 0), -1.0 = Upward convex (a < 0)
+            p: 0.0,      // Inflection point x-coordinate
+            q: -1.5,     // Vertical shift of derivative graph
+            xRange: 3.2, // Viewport X bounds [-xRange, xRange]
+        };
+
+        // Canvas Elements & Contexts
+        const canvasFpx = document.getElementById('canvasFpx');
+        const ctxFpx = canvasFpx.getContext('2d');
+        const canvasFx = document.getElementById('canvasFx');
+        const ctxFx = canvasFx.getContext('2d');
+
+        // Drag state
+        let isDragging = false;
+        let lastMouseY = 0;
+
+        // On Load initialization
+        window.addEventListener('load', () => {
+            resizeCanvases();
+            window.addEventListener('resize', resizeCanvases);
+            setupDragEvents();
+            updateAndRender();
+        });
+
+        // KaTeX Math Renderer helper
+        function renderMath() {
+            if (window.renderMathInElement) {
+                window.renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: "$$", right: "$$", display: true},
+                        {left: "$", right: "$", display: false}
+                    ],
+                    throwOnError: false
+                });
+            }
+        }
+
+        // Resize Canvas smoothly
+        function resizeCanvases() {
+            [canvasFx, canvasFpx].forEach(canvas => {
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = rect.width * window.devicePixelRatio;
+                canvas.height = rect.height * window.devicePixelRatio;
+            });
+            updateAndRender();
+        }
+
+        // Toggle Convexity
+        function setConvexity(sign) {
+            state.a = sign * 1.0;
+            
+            const btnDown = document.getElementById('btnConvexDown');
+            const btnUp = document.getElementById('btnConvexUp');
+
+            if (sign > 0) {
+                btnDown.className = "px-2.5 py-1 text-xs font-medium rounded-md transition-all duration-200 bg-blue-600 text-white shadow";
+                btnUp.className = "px-2.5 py-1 text-xs font-medium rounded-md transition-all duration-200 text-slate-400 hover:text-slate-200";
+            } else {
+                btnUp.className = "px-2.5 py-1 text-xs font-medium rounded-md transition-all duration-200 bg-blue-600 text-white shadow";
+                btnDown.className = "px-2.5 py-1 text-xs font-medium rounded-md transition-all duration-200 text-slate-400 hover:text-slate-200";
+            }
+
+            updateAndRender();
+        }
+
+        // Slider Input
+        function onSliderInput(val) {
+            state.q = parseFloat(val);
+            updateAndRender();
+        }
+
+        // Reset Position
+        function resetPosition() {
+            state.q = -1.5;
+            document.getElementById('sliderQ').value = "-1.5";
+            updateAndRender();
+        }
+
+        // Drag Events on 2nd-Degree Function Canvas
+        function setupDragEvents() {
+            const startDrag = (clientY) => {
+                isDragging = true;
+                lastMouseY = clientY;
+            };
+
+            const moveDrag = (clientY) => {
+                if (!isDragging) return;
+                const deltaY = clientY - lastMouseY;
+                lastMouseY = clientY;
+
+                const sensitivity = 0.02;
+                state.q -= deltaY * sensitivity;
+                state.q = Math.max(-3.5, Math.min(3.5, state.q));
+
+                document.getElementById('sliderQ').value = state.q;
+                updateAndRender();
+            };
+
+            const stopDrag = () => { isDragging = false; };
+
+            canvasFpx.addEventListener('mousedown', (e) => startDrag(e.clientY));
+            window.addEventListener('mousemove', (e) => moveDrag(e.clientY));
+            window.addEventListener('mouseup', stopDrag);
+
+            canvasFpx.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) startDrag(e.touches[0].clientY);
+            }, { passive: true });
+            window.addEventListener('touchmove', (e) => {
+                if (isDragging && e.touches.length === 1) moveDrag(e.touches[0].clientY);
+            }, { passive: true });
+            window.addEventListener('touchend', stopDrag);
+        }
+
+        // Math Evaluation: Derivative f'(x)
+        function fPrime(x) {
+            const dx = x - state.p;
+            return 3 * state.a * dx * dx + state.q;
+        }
+
+        // Math Evaluation: Original f(x)
+        function f(x) {
+            const dx = x - state.p;
+            return state.a * Math.pow(dx, 3) + state.q * dx;
+        }
+
+        // Roots of f'(x) = 0
+        function getRoots() {
+            const val = -state.q / (3 * state.a);
+            if (val > 0.0001) {
+                const r = Math.sqrt(val);
+                return [state.p - r, state.p + r];
+            } else if (Math.abs(val) <= 0.0001) {
+                return [state.p];
+            } else {
+                return [];
+            }
+        }
+
+        // Main Update Loop
+        function updateAndRender() {
+            updateBadges();
+            drawDerivativeCanvas();
+            drawOriginalCanvas();
+            renderVariationTable();
+            renderMath();
+        }
+
+        // Update Right Badges on Header Bars
+        function updateBadges() {
+            const roots = getRoots();
+            const badgeD = document.getElementById('badgeD');
+            const badgeFxStatus = document.getElementById('badgeFxStatus');
+
+            if (roots.length === 2) {
+                badgeD.innerHTML = '$D > 0$（正）';
+                badgeD.className = 'px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+
+                badgeFxStatus.textContent = '極値を持つ（極大・極小）';
+                badgeFxStatus.className = 'px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+            } else if (roots.length === 1) {
+                badgeD.innerHTML = '$D = 0$（0）';
+                badgeD.className = 'px-2 py-0.5 rounded text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+
+                const dir = state.a > 0 ? '単調増加' : '単調減少';
+                badgeFxStatus.textContent = `${dir}（一瞬傾き0）`;
+                badgeFxStatus.className = 'px-2 py-0.5 rounded text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+            } else {
+                badgeD.innerHTML = '$D < 0$（負）';
+                badgeD.className = 'px-2 py-0.5 rounded text-[11px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30';
+
+                const dir = state.a > 0 ? '単調増加' : '単調減少';
+                badgeFxStatus.textContent = dir;
+                badgeFxStatus.className = 'px-2 py-0.5 rounded text-[11px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30';
+            }
+        }
+
+        // Convert Math X to Percentage
+        function getXPercent(x) {
+            return ((x + state.xRange) / (2 * state.xRange)) * 100;
+        }
+
+        function toScreenX(x, width) {
+            return (x + state.xRange) / (2 * state.xRange) * width;
+        }
+
+        // Draw Top Canvas: 2nd-Degree Function f'(x)
+        function drawDerivativeCanvas() {
+            const w = canvasFpx.width;
+            const h = canvasFpx.height;
+
+            ctxFpx.clearRect(0, 0, w, h);
+
+            const originY = h / 2;
+            const scaleY = h / 8;
+
+            // X-Axis
+            ctxFpx.strokeStyle = '#64748b'; // slate-500
+            ctxFpx.lineWidth = 1.5 * window.devicePixelRatio;
+            ctxFpx.beginPath();
+            ctxFpx.moveTo(0, originY);
+            ctxFpx.lineTo(w, originY);
+            ctxFpx.stroke();
+
+            // Axis Label
+            ctxFpx.fillStyle = '#94a3b8';
+            ctxFpx.font = `${11 * window.devicePixelRatio}px sans-serif`;
+            ctxFpx.fillText('x軸', w - (28 * window.devicePixelRatio), originY - (8 * window.devicePixelRatio));
+
+            const roots = getRoots();
+
+            // Parabola Segments (Blue for f'(x) > 0, Red for f'(x) < 0)
+            const steps = 300;
+            const dx = (2 * state.xRange) / steps;
+
+            let prevX = -state.xRange;
+            let prevY = fPrime(prevX);
+
+            for (let i = 1; i <= steps; i++) {
+                const currX = -state.xRange + i * dx;
+                const currY = fPrime(currX);
+
+                const px1 = toScreenX(prevX, w);
+                const py1 = originY - prevY * scaleY;
+                const px2 = toScreenX(currX, w);
+                const py2 = originY - currY * scaleY;
+
+                const midY = (prevY + currY) / 2;
+                ctxFpx.strokeStyle = midY >= 0 ? '#3b82f6' : '#ef4444'; // blue-500 : red-500
+                ctxFpx.lineWidth = 3.5 * window.devicePixelRatio;
+
+                ctxFpx.beginPath();
+                ctxFpx.moveTo(px1, py1);
+                ctxFpx.lineTo(px2, py2);
+                ctxFpx.stroke();
+
+                prevX = currX;
+                prevY = currY;
+            }
+
+            // Guidelines & Root markers
+            roots.forEach(r => {
+                const rx = toScreenX(r, w);
+                
+                ctxFpx.setLineDash([4 * window.devicePixelRatio, 4 * window.devicePixelRatio]);
+                ctxFpx.strokeStyle = '#f59e0b'; // amber-500
+                ctxFpx.lineWidth = 1.5 * window.devicePixelRatio;
+                ctxFpx.beginPath();
+                ctxFpx.moveTo(rx, 0);
+                ctxFpx.lineTo(rx, h);
+                ctxFpx.stroke();
+                ctxFpx.setLineDash([]);
+
+                // Root dot on X axis
+                ctxFpx.fillStyle = '#f59e0b';
+                ctxFpx.beginPath();
+                ctxFpx.arc(rx, originY, 4.5 * window.devicePixelRatio, 0, Math.PI * 2);
+                ctxFpx.fill();
+            });
+        }
+
+        // Draw Bottom Canvas: 3rd-Degree Function f(x)
+        function drawOriginalCanvas() {
+            const w = canvasFx.width;
+            const h = canvasFx.height;
+
+            ctxFx.clearRect(0, 0, w, h);
+
+            const originY = h / 2;
+            scaleY = h / 12;
+
+            // NOTE: X-Axis is HIDDEN on 3rd-Degree Function as requested
+
+            const roots = getRoots();
+
+            // Cubic Segments (Blue for increasing, Red for decreasing)
+            const steps = 300;
+            const dx = (2 * state.xRange) / steps;
+
+            let prevX = -state.xRange;
+            let prevY = f(prevX);
+
+            for (let i = 1; i <= steps; i++) {
+                const currX = -state.xRange + i * dx;
+                const currY = f(currX);
+
+                const px1 = toScreenX(prevX, w);
+                const py1 = originY - prevY * scaleY;
+                const px2 = toScreenX(currX, w);
+                const py2 = originY - currY * scaleY;
+
+                const midX = (prevX + currX) / 2;
+                const slope = fPrime(midX);
+                
+                ctxFx.strokeStyle = slope >= 0 ? '#3b82f6' : '#ef4444'; // blue-500 : red-500
+                ctxFx.lineWidth = 3.5 * window.devicePixelRatio;
+
+                ctxFx.beginPath();
+                ctxFx.moveTo(px1, py1);
+                ctxFx.lineTo(px2, py2);
+                ctxFx.stroke();
+
+                prevX = currX;
+                prevY = currY;
+            }
+
+            // Draw Short Tangent Line at Inflection Point (x = p)
+            const inflectionX = state.p;
+            const inflectionY = f(inflectionX);
+            const pxInf = toScreenX(inflectionX, w);
+            const pyInf = originY - inflectionY * scaleY;
+
+            // Tangent line slope = f'(p) = q
+            const tangentLengthMath = 0.55;
+            const x1T = inflectionX - tangentLengthMath;
+            const y1T = inflectionY - state.q * tangentLengthMath;
+            const x2T = inflectionX + tangentLengthMath;
+            const y2T = inflectionY + state.q * tangentLengthMath;
+
+            const px1T = toScreenX(x1T, w);
+            const py1T = originY - y1T * scaleY;
+            const px2T = toScreenX(x2T, w);
+            const py2T = originY - y2T * scaleY;
+
+            // Draw Tangent line segment
+            ctxFx.strokeStyle = '#38bdf8'; // sky blue
+            ctxFx.lineWidth = 2 * window.devicePixelRatio;
+            ctxFx.setLineDash([3 * window.devicePixelRatio, 3 * window.devicePixelRatio]);
+            ctxFx.beginPath();
+            ctxFx.moveTo(px1T, py1T);
+            ctxFx.lineTo(px2T, py2T);
+            ctxFx.stroke();
+            ctxFx.setLineDash([]);
+
+            // Label for Tangent
+            ctxFx.fillStyle = '#7dd3fc';
+            ctxFx.font = `${10 * window.devicePixelRatio}px sans-serif`;
+            ctxFx.fillText('変曲点の接線', px2T + (4 * window.devicePixelRatio), py2T + (4 * window.devicePixelRatio));
+
+            // Purple dot at Inflection Point
+            ctxFx.fillStyle = '#c084fc';
+            ctxFx.beginPath();
+            ctxFx.arc(pxInf, pyInf, 4.5 * window.devicePixelRatio, 0, Math.PI * 2);
+            ctxFx.fill();
+
+            // Guidelines aligned with f'(x) = 0 and Extreme point dots
+            roots.forEach(r => {
+                const rx = toScreenX(r, w);
+                const ry = originY - f(r) * scaleY;
+
+                ctxFx.setLineDash([4 * window.devicePixelRatio, 4 * window.devicePixelRatio]);
+                ctxFx.strokeStyle = '#f59e0b'; // amber-500
+                ctxFx.lineWidth = 1.5 * window.devicePixelRatio;
+                ctxFx.beginPath();
+                ctxFx.moveTo(rx, 0);
+                ctxFx.lineTo(rx, h);
+                ctxFx.stroke();
+                ctxFx.setLineDash([]);
+
+                if (roots.length === 2) {
+                    ctxFx.fillStyle = '#f59e0b';
+                    ctxFx.beginPath();
+                    ctxFx.arc(rx, ry, 5 * window.devicePixelRatio, 0, Math.PI * 2);
+                    ctxFx.fill();
+                }
+            });
+        }
+
+        // Render Variation Table with exact percentage alignment to graph X coordinates
+        function renderVariationTable() {
+            const container = document.getElementById('variationTableContainer');
+            const roots = getRoots();
+            const isPos = state.a > 0;
+
+            if (roots.length === 2) {
+                const [r1, r2] = roots;
+                const p1 = Math.max(8, Math.min(92, getXPercent(r1)));
+                const p2 = Math.max(8, Math.min(92, getXPercent(r2)));
+
+                const sign1 = isPos ? '+' : '-';
+                const sign2 = isPos ? '-' : '+';
+                const sign3 = isPos ? '+' : '-';
+                const arrow1 = isPos ? '↗' : '↘';
+                const arrow2 = isPos ? '↘' : '↗';
+                const arrow3 = isPos ? '↗' : '↘';
+                const label1 = isPos ? '極大' : '極小';
+                const label2 = isPos ? '極小' : '極大';
+
+                container.innerHTML = `
+                    <div class="grid grid-cols-12 text-center items-center border-b border-slate-800 pb-1 text-slate-400 font-bold">
+                        <div class="col-span-2 text-left pl-1">$x$</div>
+                        <div class="col-span-10 relative h-5">
+                            <span class="absolute transform -translate-x-1/2" style="left: ${p1/2}%">...</span>
+                            <span class="absolute transform -translate-x-1/2 font-bold text-amber-300" style="left: ${p1}%">$\\alpha$</span>
+                            <span class="absolute transform -translate-x-1/2" style="left: ${(p1+p2)/2}%">...</span>
+                            <span class="absolute transform -translate-x-1/2 font-bold text-amber-300" style="left: ${p2}%">$\\beta$</span>
+                            <span class="absolute transform -translate-x-1/2" style="left: ${(p2+100)/2}%">...</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-12 text-center items-center border-b border-slate-800 py-1 text-slate-300">
+                        <div class="col-span-2 text-left pl-1 font-bold text-slate-400">$f'(x)$</div>
+                        <div class="col-span-10 relative h-5">
+                            <span class="absolute transform -translate-x-1/2" style="left: ${p1/2}%">${sign1}</span>
+                            <span class="absolute transform -translate-x-1/2 font-bold text-slate-100" style="left: ${p1}%">0</span>
+                            <span class="absolute transform -translate-x-1/2" style="left: ${(p1+p2)/2}%">${sign2}</span>
+                            <span class="absolute transform -translate-x-1/2 font-bold text-slate-100" style="left: ${p2}%">0</span>
+                            <span class="absolute transform -translate-x-1/2" style="left: ${(p2+100)/2}%">${sign3}</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-12 text-center items-center pt-1 text-slate-300">
+                        <div class="col-span-2 text-left pl-1 font-bold text-slate-400">$f(x)$</div>
+                        <div class="col-span-10 relative h-5">
+                            <span class="absolute transform -translate-x-1/2 font-bold ${isPos ? 'text-blue-400' : 'text-red-400'}" style="left: ${p1/2}%">${arrow1}</span>
+                            <span class="absolute transform -translate-x-1/2 font-bold text-amber-300" style="left: ${p1}%">${label1}</span>
+                            <span class="absolute transform -translate-x-1/2 font-bold ${isPos ? 'text-red-400' : 'text-blue-400'}" style="left: ${(p1+p2)/2}%">${arrow2}</span>
+                            <span class="absolute transform -translate-x-1/2 font-bold text-amber-300" style="left: ${p2}%">${label2}</span>
+                            <span class="absolute transform -translate-x-1/2 font-bold ${isPos ? 'text-blue-400' : 'text-red-400'}" style="left: ${(p2+100)/2}%">${arrow3}</span>
+                        </div>
+                    </div>
+                `;
+            } else if (roots.length === 1) {
+                const pMid = Math.max(10, Math.min(90, getXPercent(roots[0])));
+                const sign = isPos ? '+' : '-';
+                const arrow = isPos ? '↗' : '↘';
+
+                container.innerHTML = `
+                    <div class="grid grid-cols-12 text-center items-center border-b border-slate-800 pb-1 text-slate-400 font-bold">
+                        <div class="col-span-2 text-left pl-1">$x$</div>
+                        <div class="col-span-10 relative h-5">
+                            <span class="absolute transform -translate-x-1/2" style="left: ${pMid/2}%">...</span>
+                            <span class="absolute transform -translate-x-1/2 font-bold text-amber-300" style="left: ${pMid}%">$p$</span>
+                            <span class="absolute transform -translate-x-1/2" style="left: ${(pMid+100)/2}%">...</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-12 text-center items-center border-b border-slate-800 py-1 text-slate-300">
+                        <div class="col-span-2 text-left pl-1 font-bold text-slate-400">$f'(x)$</div>
+                        <div class="col-span-10 relative h-5">
+                            <span class="absolute transform -translate-x-1/2" style="left: ${pMid/2}%">${sign}</span>
+                            <span class="absolute transform -translate-x-1/2 font-bold text-slate-100" style="left: ${pMid}%">0</span>
+                            <span class="absolute transform -translate-x-1/2" style="left: ${(pMid+100)/2}%">${sign}</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-12 text-center items-center pt-1 text-slate-300">
+                        <div class="col-span-2 text-left pl-1 font-bold text-slate-400">$f(x)$</div>
+                        <div class="col-span-10 relative h-5">
+                            <span class="absolute transform -translate-x-1/2 font-bold ${isPos ? 'text-blue-400' : 'text-red-400'}" style="left: ${pMid/2}%">${arrow}</span>
+                            <span class="absolute transform -translate-x-1/2 text-slate-500" style="left: ${pMid}%">―</span>
+                            <span class="absolute transform -translate-x-1/2 font-bold ${isPos ? 'text-blue-400' : 'text-red-400'}" style="left: ${(pMid+100)/2}%">${arrow}</span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                const sign = isPos ? '+' : '-';
+                const arrow = isPos ? '↗' : '↘';
+
+                container.innerHTML = `
+                    <div class="grid grid-cols-12 text-center items-center border-b border-slate-800 pb-1 text-slate-400 font-bold">
+                        <div class="col-span-2 text-left pl-1">$x$</div>
+                        <div class="col-span-10 text-center">すべての実数</div>
+                    </div>
+
+                    <div class="grid grid-cols-12 text-center items-center border-b border-slate-800 py-1 text-slate-300">
+                        <div class="col-span-2 text-left pl-1 font-bold text-slate-400">$f'(x)$</div>
+                        <div class="col-span-10 text-center font-bold">常に ${sign}</div>
+                    </div>
+
+                    <div class="grid grid-cols-12 text-center items-center pt-1 text-slate-300">
+                        <div class="col-span-2 text-left pl-1 font-bold text-slate-400">$f(x)$</div>
+                        <div class="col-span-10 text-center font-bold ${isPos ? 'text-blue-400' : 'text-red-400'}">
+                            常に ${arrow} (${isPos ? '単調増加' : '単調減少'})
+                        </div>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ベクトル OP = sOA + tOB の存在範囲可視化</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- KaTeX for rendering mathematical expressions -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: 480px;
+            min-height: 400px;
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 0.75rem;
+            cursor: crosshair;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between custom-scrollbar">
+
+    <!-- Header -->
+    <header class="bg-slate-900 border-b border-slate-800 p-3 sticky top-0 z-50 shadow-md">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2">
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-600 p-2 rounded-xl shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid me-1 fa-draw-polygon text-lg text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
+                        ベクトル $\vec{OP} = s\vec{OA} + t\vec{OB}$ の存在範囲
+                    </h1>
+                </div>
+            </div>
+
+            <!-- Global Quick Info -->
+            <div class="flex items-center gap-3 text-xs bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700">
+                <div>条件: <span id="current-condition-badge" class="font-mono text-cyan-300 font-bold">s + t = 1</span></div>
+                <div class="h-4 w-px bg-slate-600"></div>
+                <div>制限: <span id="non-negative-badge" class="font-bold text-emerald-400">s ≥ 0, t ≥ 0</span></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-7xl mx-auto w-full p-3 md:p-4 flex-grow flex flex-col gap-4">
+
+        <!-- Top Control Panel (Fixed Side-by-Side Layout) -->
+        <section class="grid grid-cols-12 gap-4 bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 shadow-xl backdrop-blur">
+            
+            <!-- Conditions / Presets Selection (Left Column) -->
+            <div class="col-span-7 md:col-span-7 lg:col-span-8 flex flex-col gap-2 border-r border-slate-800 pr-3 md:pr-4">
+                <h2 class="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="fa-solid fa-list-check text-indigo-400"></i> 条件プリセットを選択
+                </h2>
+
+                <!-- Preset Grid -->
+                <div class="grid grid-cols-2 gap-1.5 flex-grow" id="preset-buttons">
+                    <button data-preset="s+t=1" class="preset-btn py-1.5 px-2.5 text-xs md:text-sm text-center rounded-lg bg-indigo-600/30 border border-indigo-500 text-indigo-200 font-mono font-semibold hover:bg-indigo-600/50 transition">
+                        s + t = 1
+                    </button>
+                    <button data-preset="s+2t=1" class="preset-btn py-1.5 px-2.5 text-xs md:text-sm text-center rounded-lg bg-slate-800 border border-slate-700 text-slate-300 font-mono hover:bg-slate-700 transition">
+                        s + 2t = 1
+                    </button>
+                    <button data-preset="s+4t=2" class="preset-btn py-1.5 px-2.5 text-xs md:text-sm text-center rounded-lg bg-slate-800 border border-slate-700 text-slate-300 font-mono hover:bg-slate-700 transition">
+                        s + 4t = 2
+                    </button>
+                    <button data-preset="s+t<1" class="preset-btn py-1.5 px-2.5 text-xs md:text-sm text-center rounded-lg bg-slate-800 border border-slate-700 text-slate-300 font-mono hover:bg-slate-700 transition">
+                        s + t &lt; 1
+                    </button>
+                    <button data-preset="s+t<=1" class="preset-btn py-1.5 px-2.5 text-xs md:text-sm text-center rounded-lg bg-slate-800 border border-slate-700 text-slate-300 font-mono hover:bg-slate-700 transition">
+                        s + t ≤ 1
+                    </button>
+                    <button data-preset="1<=s+t<=2" class="preset-btn py-1.5 px-2.5 text-xs md:text-sm text-center rounded-lg bg-slate-800 border border-slate-700 text-slate-300 font-mono hover:bg-slate-700 transition">
+                        1 ≤ s + t ≤ 2
+                    </button>
+                    <!-- 2-column span preset -->
+                    <button data-preset="0<=s<=1,0<=t<=1" class="preset-btn col-span-2 py-1.5 px-2.5 text-xs md:text-sm text-center rounded-lg bg-slate-800 border border-slate-700 text-slate-300 font-mono hover:bg-slate-700 transition">
+                        0 ≤ s ≤ 1 , 0 ≤ t ≤ 1
+                    </button>
+                    <!-- k presets on bottom row side-by-side -->
+                    <button data-preset="s+t=k" class="preset-btn py-1.5 px-2.5 text-xs md:text-sm text-center rounded-lg bg-slate-800 border border-slate-700 text-slate-300 font-mono hover:bg-slate-700 transition">
+                        s + t = k
+                    </button>
+                    <button data-preset="s+2t=k" class="preset-btn py-1.5 px-2.5 text-xs md:text-sm text-center rounded-lg bg-slate-800 border border-slate-700 text-slate-300 font-mono hover:bg-slate-700 transition">
+                        s + 2t = k
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Vertical Control Stack (Non-neg limits + s, t, k sliders stacked vertically) -->
+            <div class="col-span-5 md:col-span-5 lg:col-span-4 flex flex-col gap-1.5 justify-start">
+                
+                <!-- Non-negative Independent Checkboxes -->
+                <div class="bg-slate-800/60 p-1.5 px-3 rounded-xl border border-slate-700/80 flex flex-col gap-0.5">
+                    <span class="text-[11px] font-bold text-slate-300 flex items-center gap-1 uppercase">
+                        <i class="fa-solid fa-filter text-emerald-400"></i> 非負制限設定
+                    </span>
+                    <div class="flex items-center gap-4 pl-1">
+                        <label class="flex items-center gap-1.5 cursor-pointer text-slate-200 hover:text-white text-xs">
+                            <input type="checkbox" id="check-non-neg-s" class="w-3.5 h-3.5 accent-emerald-500 rounded cursor-pointer" checked>
+                            <span class="font-mono font-bold text-emerald-400">s ≥ 0</span>
+                        </label>
+                        <label class="flex items-center gap-1.5 cursor-pointer text-slate-200 hover:text-white text-xs">
+                            <input type="checkbox" id="check-non-neg-t" class="w-3.5 h-3.5 accent-emerald-500 rounded cursor-pointer" checked>
+                            <span class="font-mono font-bold text-emerald-400">t ≥ 0</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Sliders for s and t (Stacked Vertically) -->
+                <div class="flex flex-col gap-1 bg-slate-800/40 p-1.5 px-3 rounded-xl border border-slate-800">
+                    
+                    <!-- Slider s -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-0.5">
+                            <span class="text-slate-200 font-mono text-xs font-medium">係数 s:</span>
+                            <span id="val-s" class="font-mono text-cyan-400 font-bold text-xs">0.50</span>
+                        </div>
+                        <input type="range" id="slider-s" min="-2.0" max="3.0" step="0.05" value="0.5" class="w-full accent-cyan-500 bg-slate-700 rounded-lg h-1.5 cursor-pointer">
+                    </div>
+
+                    <!-- Slider t -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-0.5">
+                            <span class="text-slate-200 font-mono text-xs font-medium">係数 t:</span>
+                            <span id="val-t" class="font-mono text-cyan-400 font-bold text-xs">0.50</span>
+                        </div>
+                        <input type="range" id="slider-t" min="-2.0" max="3.0" step="0.05" value="0.5" class="w-full accent-cyan-500 bg-slate-700 rounded-lg h-1.5 cursor-pointer">
+                    </div>
+
+                </div>
+
+                <!-- k Slider Container (Always occupies fixed space to prevent vertical layout jitter) -->
+                <div id="container-slider-k" class="w-full bg-amber-950/40 p-1.5 px-3 rounded-xl border border-amber-500/40 flex flex-col justify-center opacity-0 pointer-events-none invisible transition-all duration-200 shadow-inner h-[50px]">
+                    <div class="flex justify-between items-center text-xs mb-0.5">
+                        <span class="text-amber-300 font-mono font-bold text-xs">定数 k:</span>
+                        <span id="val-k" class="font-mono text-amber-400 font-bold text-xs">1.00</span>
+                    </div>
+                    <input type="range" id="slider-k" min="0.0" max="2.0" step="0.05" value="1.0" class="w-full accent-amber-500 bg-slate-700 rounded-lg h-1.5 cursor-pointer">
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- Visualization Display (Larger Canvases) -->
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-4 flex-grow">
+            
+            <!-- Canvas 1: Orthogonal Coordinate System (s-t Plane) -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex flex-col shadow-xl relative">
+                <div class="canvas-container flex-grow bg-slate-950 rounded-xl overflow-hidden border border-slate-800">
+                    <!-- Overlay Title inside Canvas -->
+                    <div class="absolute top-3 left-3 z-10 bg-slate-900/85 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-700/80 shadow-md flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-cyan-400 inline-block shadow-sm shadow-cyan-400/50"></span>
+                        <span class="text-sm font-bold text-cyan-300">① 直交座標系</span>
+                    </div>
+                    <canvas id="ortho-canvas"></canvas>
+                </div>
+            </div>
+
+            <!-- Canvas 2: Oblique Coordinate System (Real Vector Space) -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex flex-col shadow-xl relative">
+                <div class="canvas-container flex-grow bg-slate-950 rounded-xl overflow-hidden border border-slate-800">
+                    <!-- Overlay Title inside Canvas -->
+                    <div class="absolute top-3 left-3 z-10 bg-slate-900/85 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-700/80 shadow-md flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-purple-400 inline-block shadow-sm shadow-purple-400/50"></span>
+                        <span class="text-sm font-bold text-purple-300">② 斜交座標系</span>
+                    </div>
+                    <canvas id="oblique-canvas"></canvas>
+                </div>
+
+                <!-- Vector OA / OB Configuration below Oblique Canvas -->
+                <div class="mt-2.5 pt-2 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2">
+                    <div class="text-xs text-slate-400 flex items-center gap-1.5">
+                        <i class="fa-solid fa-arrows-up-down-left-right text-purple-400"></i>
+                        <span>基底ベクトル $\vec{OA}, \vec{OB}$（グラフ上で A, B をドラッグ可能）</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs font-mono">
+                        <div class="bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700">
+                            <span class="text-amber-400 font-bold">OA</span> = (<span id="oa-x">2.2</span>, <span id="oa-y">0.4</span>)
+                        </div>
+                        <div class="bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700">
+                            <span class="text-emerald-400 font-bold">OB</span> = (<span id="ob-x" class="font-bold">0.8</span>, <span id="ob-y">2.0</span>)
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Educational Section -->
+        <section class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl">
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm text-slate-300">
+                
+                <!-- Card 1 -->
+                <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700/60 flex flex-col gap-2">
+                    <div class="flex items-center gap-2 text-cyan-400 font-bold">
+                        <i class="fa-solid fa-chart-line text-lg"></i>
+                        <span>1. 複雑な斜め座標を「普通の直線」に変換</span>
+                    </div>
+                    <p class="text-xs leading-relaxed text-slate-400">
+                        斜交座標系では、$\vec{OA}$ や $\vec{OB}$ が斜めに交わるため、図形が歪んで見えます。
+                        しかし、$s$ を $x$、$t$ を $y$ と置き換えて **$s$-$t$ 直交座標系** を作ると、$s + 2t = 1$ は単なる直線 **$t = -\frac{1}{2}s + \frac{1}{2}$** になります。
+                    </p>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700/60 flex flex-col gap-2">
+                    <div class="flex items-center gap-2 text-emerald-400 font-bold">
+                        <i class="fa-solid fa-vector-square text-lg"></i>
+                        <span>2. 非負制限 $s \ge 0, t \ge 0$ は「第1象限」</span>
+                    </div>
+                    <p class="text-xs leading-relaxed text-slate-400">
+                        「$s \ge 0, t \ge 0$」という条件がつくと、直交座標系では単に **グラフの第1象限（右上のエリア）で切り取る** ことを意味します。
+                        これにより、直線は「線分」に、不等式領域は「三角形（または四角形）」に限定されることが一目瞭然になります。
+                    </p>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700/60 flex flex-col gap-2">
+                    <div class="flex items-center gap-2 text-purple-400 font-bold">
+                        <i class="fa-solid fa-object-group text-lg"></i>
+                        <span>3. 基底ベクトルの影響を受けない本質</span>
+                    </div>
+                    <p class="text-xs leading-relaxed text-slate-400">
+                        $\vec{OA}$ や $\vec{OB}$ がどんな向き・長さであっても、**$s$ と $t$ の関係式（代数的な条件）自体は変わりません**。
+                        $s$-$t$ 平面で図形を描いてから、最後に $\vec{OA}, \vec{OB}$ のなす格子に合わせて「引き伸ばしたり傾けたりする（線形変換）」と考えると極めて明快です。
+                    </p>
+                </div>
+
+            </div>
+
+            <!-- Math Summary Formula Table -->
+            <div class="mt-6 border-t border-slate-800 pt-4">
+                <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">代表的な条件と領域の対応表</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-left text-slate-300">
+                        <thead class="bg-slate-800/80 text-slate-400">
+                            <tr>
+                                <th class="p-2.5 rounded-l">条件式</th>
+                                <th class="p-2.5">直交座標系 ($s$-$t$ 平面) での図形</th>
+                                <th class="p-2.5 font-bold text-emerald-400">$s \ge 0, t \ge 0$ 制限あり</th>
+                                <th class="p-2.5 rounded-r">斜交座標系での図形</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800">
+                            <tr>
+                                <td class="p-2.5 font-mono text-cyan-300">s + t = 1</td>
+                                <td class="p-2.5">傾き -1, 切片 1 の直線</td>
+                                <td class="p-2.5 text-emerald-300 font-semibold">点 A(1,0) と 点 B(0,1) を結ぶ線分 AB</td>
+                                <td class="p-2.5">直線 AB / 線分 AB</td>
+                            </tr>
+                            <tr>
+                                <td class="p-2.5 font-mono text-cyan-300">s + 2t = 1</td>
+                                <td class="p-2.5">傾き -1/2, s切片 1, t切片 1/2 の直線</td>
+                                <td class="p-2.5 text-emerald-300 font-semibold">点 (1,0) と 点 (0, 1/2) を結ぶ線分</td>
+                                <td class="p-2.5">点 A と 点 B/2 を結ぶ直線/線分</td>
+                            </tr>
+                            <tr>
+                                <td class="p-2.5 font-mono text-cyan-300">s + 4t = 2</td>
+                                <td class="p-2.5">傾き -1/4, s切片 2, t切片 1/2 の直線</td>
+                                <td class="p-2.5 text-emerald-300 font-semibold">点 (2,0) と 点 (0, 1/2) を結ぶ線分</td>
+                                <td class="p-2.5">点 2A と 点 B/2 を結ぶ直線/線分</td>
+                            </tr>
+                            <tr>
+                                <td class="p-2.5 font-mono text-cyan-300">s + t &lt; 1</td>
+                                <td class="p-2.5">直線 s + t = 1 の下側の開領域</td>
+                                <td class="p-2.5 text-emerald-300 font-semibold">△OAB の内部（周は含まない）</td>
+                                <td class="p-2.5">半平面 / △OAB 内部</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // Global Application State
+        const state = {
+            preset: 's+t=1',
+            nonNegS: true,
+            nonNegT: true,
+            s: 0.5,
+            t: 0.5,
+            k: 1.0, // Constant k for s+t=k or s+2t=k
+            // Base Vectors OA and OB in Real World Space coordinates
+            vecOA: { x: 2.2, y: 0.4 },
+            vecOB: { x: 0.8, y: 2.0 },
+            // Interactive Dragging flags
+            dragging: null
+        };
+
+        // Canvas Setup
+        const orthoCanvas = document.getElementById('ortho-canvas');
+        const orthoCtx = orthoCanvas.getContext('2d');
+
+        const obliqueCanvas = document.getElementById('oblique-canvas');
+        const obliqueCtx = obliqueCanvas.getContext('2d');
+
+        // UI Element References
+        const sliderS = document.getElementById('slider-s');
+        const sliderT = document.getElementById('slider-t');
+        const sliderK = document.getElementById('slider-k');
+        const valS = document.getElementById('val-s');
+        const valT = document.getElementById('val-t');
+        const valK = document.getElementById('val-k');
+        const containerSliderK = document.getElementById('container-slider-k');
+
+        const checkNonNegS = document.getElementById('check-non-neg-s');
+        const checkNonNegT = document.getElementById('check-non-neg-t');
+        const presetButtons = document.querySelectorAll('.preset-btn');
+        const currentCondBadge = document.getElementById('current-condition-badge');
+        const nonNegBadge = document.getElementById('non-negative-badge');
+
+        const oaXLabel = document.getElementById('oa-x');
+        const oaYLabel = document.getElementById('oa-y');
+        const obXLabel = document.getElementById('ob-x');
+        const obYLabel = document.getElementById('ob-y');
+
+        // Coordinate Transformation Helpers (Ortho Plane: s-t)
+        function orthoToPixel(s, t, w, h) {
+            const scale = Math.min(w, h) / 4.6;
+            const cx = w * 0.22;
+            const cy = h * 0.78;
+            return { x: cx + s * scale, y: cy - t * scale };
+        }
+
+        function pixelToOrtho(px, py, w, h) {
+            const scale = Math.min(w, h) / 4.6;
+            const cx = w * 0.22;
+            const cy = h * 0.78;
+            return { s: (px - cx) / scale, t: (cy - py) / scale };
+        }
+
+        // Coordinate Transformation Helpers (Real Oblique Vector Space)
+        function realToPixel(rx, ry, w, h) {
+            const scale = Math.min(w, h) / 5.2;
+            const cx = w * 0.25;
+            const cy = h * 0.75;
+            return { x: cx + rx * scale, y: cy - ry * scale };
+        }
+
+        function pixelToReal(px, py, w, h) {
+            const scale = Math.min(w, h) / 5.2;
+            const cx = w * 0.25;
+            const cy = h * 0.75;
+            return { x: (px - cx) / scale, y: (cy - py) / scale };
+        }
+
+        // Arrow Drawing Utility Function
+        function drawArrow(ctx, from, to, color, lineWidth = 2) {
+            const headlen = 9;
+            const dx = to.x - from.x;
+            const dy = to.y - from.y;
+            const angle = Math.atan2(dy, dx);
+
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = lineWidth;
+
+            ctx.beginPath();
+            ctx.moveTo(from.x, from.y);
+            ctx.lineTo(to.x, to.y);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(to.x, to.y);
+            ctx.lineTo(to.x - headlen * Math.cos(angle - Math.PI / 6), to.y - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(to.x - headlen * Math.cos(angle + Math.PI / 6), to.y - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // Check if a point (s, t) satisfies the condition
+        function checkCondition(s, t, preset, nonNegS, nonNegT, k) {
+            if (nonNegS && s < -1e-5) return false;
+            if (nonNegT && t < -1e-5) return false;
+
+            const eps = 0.04;
+            switch (preset) {
+                case 's+t=1':
+                    return Math.abs(s + t - 1) < eps;
+                case 's+t=k':
+                    return Math.abs(s + t - k) < eps;
+                case 's+2t=1':
+                    return Math.abs(s + 2 * t - 1) < eps;
+                case 's+2t=k':
+                    return Math.abs(s + 2 * t - k) < eps;
+                case 's+4t=2':
+                    return Math.abs(s + 4 * t - 2) < eps;
+                case 's+t<1':
+                    return (s + t) < 1;
+                case 's+t<=1':
+                    return (s + t) <= 1 + 1e-4;
+                case '1<=s+t<=2':
+                    return (s + t) >= 1 - 1e-4 && (s + t) <= 2 + 1e-4;
+                case '0<=s<=1,0<=t<=1':
+                    return s >= -1e-5 && s <= 1 + 1e-5 && t >= -1e-5 && t <= 1 + 1e-5;
+                default:
+                    return false;
+            }
+        }
+
+        function drawOrthoCanvas() {
+            const w = orthoCanvas.width;
+            const h = orthoCanvas.height;
+            orthoCtx.clearRect(0, 0, w, h);
+
+            // Key Points O(0,0), A(1,0), B(0,1)
+            const pO = orthoToPixel(0, 0, w, h);
+            const pA = orthoToPixel(1, 0, w, h);
+            const pB = orthoToPixel(0, 1, w, h);
+
+            // Background Grid (-1 to 3.5)
+            orthoCtx.lineWidth = 1;
+            for (let i = -1; i <= 3.5; i += 0.5) {
+                const isMajor = Math.abs(i - Math.round(i)) < 1e-4;
+                const intI = Math.round(i);
+
+                // Vertical grid (s)
+                let p1 = orthoToPixel(i, -1, w, h);
+                let p2 = orthoToPixel(i, 3.5, w, h);
+                orthoCtx.strokeStyle = (isMajor && intI === 0) ? '#64748b' : (isMajor ? '#334155' : '#1e293b');
+                orthoCtx.lineWidth = (isMajor && intI === 0) ? 2 : (isMajor ? 1 : 0.5);
+                orthoCtx.beginPath();
+                orthoCtx.moveTo(p1.x, p1.y);
+                orthoCtx.lineTo(p2.x, p2.y);
+                orthoCtx.stroke();
+
+                // Horizontal grid (t)
+                p1 = orthoToPixel(-1, i, w, h);
+                p2 = orthoToPixel(3.5, i, w, h);
+                orthoCtx.strokeStyle = (isMajor && intI === 0) ? '#64748b' : (isMajor ? '#334155' : '#1e293b');
+                orthoCtx.lineWidth = (isMajor && intI === 0) ? 2 : (isMajor ? 1 : 0.5);
+                orthoCtx.beginPath();
+                orthoCtx.moveTo(p1.x, p1.y);
+                orthoCtx.lineTo(p2.x, p2.y);
+                orthoCtx.stroke();
+            }
+
+            // Draw Axis Numbers (1, 2, 3) on s and t axes
+            orthoCtx.fillStyle = '#94a3b8';
+            orthoCtx.font = '11px monospace';
+
+            // Numbers on s-axis (1, 2, 3)
+            for (let sVal = 1; sVal <= 3; sVal++) {
+                const pt = orthoToPixel(sVal, 0, w, h);
+                orthoCtx.fillText(sVal.toString(), pt.x - 3, pO.y + 16);
+                // Tick mark
+                orthoCtx.strokeStyle = '#64748b';
+                orthoCtx.lineWidth = 1.5;
+                orthoCtx.beginPath();
+                orthoCtx.moveTo(pt.x, pO.y - 3);
+                orthoCtx.lineTo(pt.x, pO.y + 3);
+                orthoCtx.stroke();
+            }
+
+            // Numbers on t-axis (1, 2, 3)
+            for (let tVal = 1; tVal <= 3; tVal++) {
+                const pt = orthoToPixel(0, tVal, w, h);
+                orthoCtx.fillText(tVal.toString(), pO.x - 16, pt.y + 4);
+                // Tick mark
+                orthoCtx.strokeStyle = '#64748b';
+                orthoCtx.lineWidth = 1.5;
+                orthoCtx.beginPath();
+                orthoCtx.moveTo(pO.x - 3, pt.y);
+                orthoCtx.lineTo(pO.x + 3, pt.y);
+                orthoCtx.stroke();
+            }
+
+            orthoCtx.fillStyle = '#38bdf8';
+            orthoCtx.font = 'bold 12px monospace';
+            orthoCtx.fillText('s軸 (最大3)', w - 75, pO.y - 8);
+            orthoCtx.fillText('t軸 (最大3)', pO.x + 8, 22);
+
+            // Draw Non-Negative Mask Shadings
+            if (state.nonNegS) {
+                let topL = orthoToPixel(-1, 3.5, w, h);
+                let botR = orthoToPixel(0, -1, w, h);
+                orthoCtx.fillStyle = 'rgba(239, 68, 68, 0.08)';
+                orthoCtx.fillRect(topL.x, topL.y, botR.x - topL.x, botR.y - topL.y);
+            }
+            if (state.nonNegT) {
+                let topL = orthoToPixel(-1, 0, w, h);
+                let botR = orthoToPixel(3.5, -1, w, h);
+                orthoCtx.fillStyle = 'rgba(239, 68, 68, 0.08)';
+                orthoCtx.fillRect(topL.x, topL.y, botR.x - topL.x, botR.y - topL.y);
+            }
+
+            // Draw Locus Region
+            drawLocusOrtho(w, h);
+
+            // Draw Prominent Key Points O(0,0), A(1,0), B(0,1)
+            const pointsToMark = [
+                { pt: pO, label: 'O(0,0)', color: '#94a3b8', dx: -35, dy: 15 },
+                { pt: pA, label: 'A(1,0)', color: '#f59e0b', dx: -5, dy: 18 },
+                { pt: pB, label: 'B(0,1)', color: '#10b981', dx: -42, dy: 4 }
+            ];
+
+            pointsToMark.forEach(p => {
+                orthoCtx.fillStyle = p.color;
+                orthoCtx.beginPath();
+                orthoCtx.arc(p.pt.x, p.pt.y, 4.5, 0, Math.PI * 2);
+                orthoCtx.fill();
+                orthoCtx.font = 'bold 11px sans-serif';
+                orthoCtx.fillText(p.label, p.pt.x + p.dx, p.pt.y + p.dy);
+            });
+
+            // Draw Current Point P (Smaller Dot)
+            const ptP = orthoToPixel(state.s, state.t, w, h);
+            
+            orthoCtx.setLineDash([3, 3]);
+            orthoCtx.strokeStyle = '#38bdf8';
+            orthoCtx.lineWidth = 1;
+
+            const projS = orthoToPixel(state.s, 0, w, h);
+            const projT = orthoToPixel(0, state.t, w, h);
+
+            orthoCtx.beginPath();
+            orthoCtx.moveTo(ptP.x, ptP.y);
+            orthoCtx.lineTo(projS.x, projS.y);
+            orthoCtx.moveTo(ptP.x, ptP.y);
+            orthoCtx.lineTo(projT.x, projT.y);
+            orthoCtx.stroke();
+            orthoCtx.setLineDash([]);
+
+            const isInside = checkCondition(state.s, state.t, state.preset, state.nonNegS, state.nonNegT, state.k);
+            orthoCtx.fillStyle = isInside ? '#38bdf8' : '#f43f5e';
+            orthoCtx.beginPath();
+            // Point P marker made smaller (radius 4 instead of 7)
+            orthoCtx.arc(ptP.x, ptP.y, 4, 0, Math.PI * 2);
+            orthoCtx.fill();
+            orthoCtx.strokeStyle = '#ffffff';
+            orthoCtx.lineWidth = 1.5;
+            orthoCtx.stroke();
+
+            // Label P
+            orthoCtx.fillStyle = '#f8fafc';
+            orthoCtx.font = 'bold 11px sans-serif';
+            orthoCtx.fillText(`P (${state.s.toFixed(2)}, ${state.t.toFixed(2)})`, ptP.x + 8, ptP.y - 8);
+        }
+
+        function drawLocusOrtho(w, h) {
+            const nonNegS = state.nonNegS;
+            const nonNegT = state.nonNegT;
+            orthoCtx.lineWidth = 2.5;
+
+            const getSegmentRangeS = (interceptK, slope) => {
+                let sMin = -1.5, sMax = 3.0;
+                if (nonNegS) sMin = Math.max(sMin, 0);
+                if (nonNegT) {
+                    // t = slope * s + interceptK >= 0
+                    if (slope < 0) sMax = Math.min(sMax, -interceptK / slope);
+                    else if (slope > 0) sMin = Math.max(sMin, -interceptK / slope);
+                }
+                return { sMin, sMax };
+            };
+
+            if (state.preset === 's+t=1' || state.preset === 's+t=k') {
+                const targetK = (state.preset === 's+t=k') ? state.k : 1.0;
+                const { sMin, sMax } = getSegmentRangeS(targetK, -1);
+
+                if (sMin <= sMax) {
+                    const p1 = orthoToPixel(sMin, targetK - sMin, w, h);
+                    const p2 = orthoToPixel(sMax, targetK - sMax, w, h);
+
+                    orthoCtx.strokeStyle = '#06b6d4';
+                    orthoCtx.beginPath();
+                    orthoCtx.moveTo(p1.x, p1.y);
+                    orthoCtx.lineTo(p2.x, p2.y);
+                    orthoCtx.stroke();
+                }
+            } else if (state.preset === 's+2t=1' || state.preset === 's+2t=k') {
+                const targetK = (state.preset === 's+2t=k') ? state.k : 1.0;
+                const { sMin, sMax } = getSegmentRangeS(targetK / 2, -0.5);
+
+                if (sMin <= sMax) {
+                    const p1 = orthoToPixel(sMin, (targetK - sMin) / 2, w, h);
+                    const p2 = orthoToPixel(sMax, (targetK - sMax) / 2, w, h);
+
+                    orthoCtx.strokeStyle = '#06b6d4';
+                    orthoCtx.beginPath();
+                    orthoCtx.moveTo(p1.x, p1.y);
+                    orthoCtx.lineTo(p2.x, p2.y);
+                    orthoCtx.stroke();
+                }
+            } else if (state.preset === 's+4t=2') {
+                const { sMin, sMax } = getSegmentRangeS(0.5, -0.25);
+                if (sMin <= sMax) {
+                    const p1 = orthoToPixel(sMin, (2 - sMin) / 4, w, h);
+                    const p2 = orthoToPixel(sMax, (2 - sMax) / 4, w, h);
+
+                    orthoCtx.strokeStyle = '#06b6d4';
+                    orthoCtx.beginPath();
+                    orthoCtx.moveTo(p1.x, p1.y);
+                    orthoCtx.lineTo(p2.x, p2.y);
+                    orthoCtx.stroke();
+                }
+            } else if (state.preset === 's+t<1' || state.preset === 's+t<=1') {
+                orthoCtx.fillStyle = 'rgba(6, 182, 212, 0.25)';
+                orthoCtx.strokeStyle = '#06b6d4';
+
+                if (state.preset === 's+t<1') {
+                    orthoCtx.setLineDash([5, 4]);
+                }
+
+                orthoCtx.beginPath();
+                if (nonNegS && nonNegT) {
+                    const pO = orthoToPixel(0, 0, w, h);
+                    const pA = orthoToPixel(1, 0, w, h);
+                    const pB = orthoToPixel(0, 1, w, h);
+                    orthoCtx.moveTo(pO.x, pO.y);
+                    orthoCtx.lineTo(pA.x, pA.y);
+                    orthoCtx.lineTo(pB.x, pB.y);
+                    orthoCtx.closePath();
+                } else {
+                    const p1 = orthoToPixel(-1.5, 2.5, w, h);
+                    const p2 = orthoToPixel(3.0, -2.0, w, h);
+                    const p3 = orthoToPixel(-1.5, -2.0, w, h);
+                    orthoCtx.moveTo(p1.x, p1.y);
+                    orthoCtx.lineTo(p2.x, p2.y);
+                    orthoCtx.lineTo(p3.x, p3.y);
+                    orthoCtx.closePath();
+                }
+                orthoCtx.fill();
+                orthoCtx.stroke();
+                orthoCtx.setLineDash([]);
+            } else if (state.preset === '1<=s+t<=2') {
+                orthoCtx.fillStyle = 'rgba(6, 182, 212, 0.25)';
+                orthoCtx.strokeStyle = '#06b6d4';
+
+                orthoCtx.beginPath();
+                if (nonNegS && nonNegT) {
+                    const p1 = orthoToPixel(1, 0, w, h);
+                    const p2 = orthoToPixel(2, 0, w, h);
+                    const p3 = orthoToPixel(0, 2, w, h);
+                    const p4 = orthoToPixel(0, 1, w, h);
+                    orthoCtx.moveTo(p1.x, p1.y);
+                    orthoCtx.lineTo(p2.x, p2.y);
+                    orthoCtx.lineTo(p3.x, p3.y);
+                    orthoCtx.lineTo(p4.x, p4.y);
+                    orthoCtx.closePath();
+                } else {
+                    const p1 = orthoToPixel(-1.0, 2.0, w, h);
+                    const p2 = orthoToPixel(3.0, -2.0, w, h);
+                    const p3 = orthoToPixel(3.0, -1.0, w, h);
+                    const p4 = orthoToPixel(-1.0, 3.0, w, h);
+                    orthoCtx.moveTo(p1.x, p1.y);
+                    orthoCtx.lineTo(p2.x, p2.y);
+                    orthoCtx.lineTo(p3.x, p3.y);
+                    orthoCtx.lineTo(p4.x, p4.y);
+                    orthoCtx.closePath();
+                }
+                orthoCtx.fill();
+                orthoCtx.stroke();
+            } else if (state.preset === '0<=s<=1,0<=t<=1') {
+                orthoCtx.fillStyle = 'rgba(6, 182, 212, 0.25)';
+                orthoCtx.strokeStyle = '#06b6d4';
+
+                const p1 = orthoToPixel(0, 0, w, h);
+                const p2 = orthoToPixel(1, 0, w, h);
+                const p3 = orthoToPixel(1, 1, w, h);
+                const p4 = orthoToPixel(0, 1, w, h);
+
+                orthoCtx.beginPath();
+                orthoCtx.moveTo(p1.x, p1.y);
+                orthoCtx.lineTo(p2.x, p2.y);
+                orthoCtx.lineTo(p3.x, p3.y);
+                orthoCtx.lineTo(p4.x, p4.y);
+                orthoCtx.closePath();
+                orthoCtx.fill();
+                orthoCtx.stroke();
+            }
+        }
+
+        function drawObliqueCanvas() {
+            const w = obliqueCanvas.width;
+            const h = obliqueCanvas.height;
+            obliqueCtx.clearRect(0, 0, w, h);
+
+            const oa = state.vecOA;
+            const ob = state.vecOB;
+
+            // Oblique Grid
+            obliqueCtx.lineWidth = 1;
+            for (let i = -2; i <= 4; i++) {
+                for (let j = -2; j <= 4; j++) {
+                    let p1 = realToPixel(i * oa.x + (-2) * ob.x, i * oa.y + (-2) * ob.y, w, h);
+                    let p2 = realToPixel(i * oa.x + 4 * ob.x, i * oa.y + 4 * ob.y, w, h);
+                    obliqueCtx.strokeStyle = (i === 0) ? '#475569' : '#1e293b';
+                    obliqueCtx.lineWidth = (i === 0) ? 2 : 1;
+                    obliqueCtx.beginPath();
+                    obliqueCtx.moveTo(p1.x, p1.y);
+                    obliqueCtx.lineTo(p2.x, p2.y);
+                    obliqueCtx.stroke();
+
+                    p1 = realToPixel((-2) * oa.x + j * ob.x, (-2) * oa.y + j * ob.y, w, h);
+                    p2 = realToPixel(4 * oa.x + j * ob.x, 4 * oa.y + j * ob.y, w, h);
+                    obliqueCtx.strokeStyle = (j === 0) ? '#475569' : '#1e293b';
+                    obliqueCtx.lineWidth = (j === 0) ? 2 : 1;
+                    obliqueCtx.beginPath();
+                    obliqueCtx.moveTo(p1.x, p1.y);
+                    obliqueCtx.lineTo(p2.x, p2.y);
+                    obliqueCtx.stroke();
+                }
+            }
+
+            // Draw Base Vectors OA and OB
+            const pO = realToPixel(0, 0, w, h);
+            const pA = realToPixel(oa.x, oa.y, w, h);
+            const pB = realToPixel(ob.x, ob.y, w, h);
+
+            drawArrow(obliqueCtx, pO, pA, '#f59e0b', 2.5);
+            drawArrow(obliqueCtx, pO, pB, '#10b981', 2.5);
+
+            // Labels for O, A, B
+            obliqueCtx.fillStyle = '#f8fafc';
+            obliqueCtx.font = 'bold 11px sans-serif';
+            
+            // O
+            obliqueCtx.fillStyle = '#94a3b8';
+            obliqueCtx.beginPath();
+            obliqueCtx.arc(pO.x, pO.y, 4.5, 0, Math.PI * 2);
+            obliqueCtx.fill();
+            obliqueCtx.fillText('O(0,0)', pO.x - 20, pO.y + 15);
+
+            // Handle Circles & Clear Labels for A and B
+            obliqueCtx.fillStyle = '#f59e0b';
+            obliqueCtx.beginPath();
+            obliqueCtx.arc(pA.x, pA.y, 6, 0, Math.PI * 2);
+            obliqueCtx.fill();
+            obliqueCtx.fillText('A(1,0)', pA.x + 8, pA.y - 4);
+
+            obliqueCtx.fillStyle = '#10b981';
+            obliqueCtx.beginPath();
+            obliqueCtx.arc(pB.x, pB.y, 6, 0, Math.PI * 2);
+            obliqueCtx.fill();
+            obliqueCtx.fillText('B(0,1)', pB.x + 8, pB.y - 4);
+
+            // Draw Locus in Real Oblique Space
+            drawLocusOblique(w, h, oa, ob);
+
+            // Position P
+            const pxReal = state.s * oa.x + state.t * ob.x;
+            const pyReal = state.s * oa.y + state.t * ob.y;
+            const pP = realToPixel(pxReal, pyReal, w, h);
+
+            const projS_Real = { x: state.s * oa.x, y: state.s * oa.y };
+            const projT_Real = { x: state.t * ob.x, y: state.t * ob.y };
+
+            const pProjS = realToPixel(projS_Real.x, projS_Real.y, w, h);
+            const pProjT = realToPixel(projT_Real.x, projT_Real.y, w, h);
+
+            obliqueCtx.setLineDash([3, 3]);
+            obliqueCtx.strokeStyle = '#c084fc';
+            obliqueCtx.lineWidth = 1;
+
+            obliqueCtx.beginPath();
+            obliqueCtx.moveTo(pP.x, pP.y);
+            obliqueCtx.lineTo(pProjS.x, pProjS.y);
+            obliqueCtx.moveTo(pP.x, pP.y);
+            obliqueCtx.lineTo(pProjT.x, pProjT.y);
+            obliqueCtx.stroke();
+            obliqueCtx.setLineDash([]);
+
+            drawArrow(obliqueCtx, pO, pP, 'rgba(192, 132, 252, 0.7)', 1.5);
+
+            const isInside = checkCondition(state.s, state.t, state.preset, state.nonNegS, state.nonNegT, state.k);
+            obliqueCtx.fillStyle = isInside ? '#c084fc' : '#f43f5e';
+            obliqueCtx.beginPath();
+            // Point P marker made smaller (radius 4 instead of 7)
+            obliqueCtx.arc(pP.x, pP.y, 4, 0, Math.PI * 2);
+            obliqueCtx.fill();
+            obliqueCtx.strokeStyle = '#ffffff';
+            obliqueCtx.lineWidth = 1.5;
+            obliqueCtx.stroke();
+
+            // Label P
+            obliqueCtx.fillStyle = '#f8fafc';
+            obliqueCtx.font = 'bold 11px sans-serif';
+            obliqueCtx.fillText(`P`, pP.x + 8, pP.y - 8);
+        }
+
+        function drawLocusOblique(w, h, oa, ob) {
+            const nonNegS = state.nonNegS;
+            const nonNegT = state.nonNegT;
+            obliqueCtx.lineWidth = 2.5;
+
+            const mapPt = (s, t) => {
+                const rx = s * oa.x + t * ob.x;
+                const ry = s * oa.y + t * ob.y;
+                return realToPixel(rx, ry, w, h);
+            };
+
+            const getSegmentRangeS = (interceptK, slope) => {
+                let sMin = -1.5, sMax = 3.0;
+                if (nonNegS) sMin = Math.max(sMin, 0);
+                if (nonNegT) {
+                    if (slope < 0) sMax = Math.min(sMax, -interceptK / slope);
+                    else if (slope > 0) sMin = Math.max(sMin, -interceptK / slope);
+                }
+                return { sMin, sMax };
+            };
+
+            if (state.preset === 's+t=1' || state.preset === 's+t=k') {
+                const targetK = (state.preset === 's+t=k') ? state.k : 1.0;
+                const { sMin, sMax } = getSegmentRangeS(targetK, -1);
+
+                if (sMin <= sMax) {
+                    const p1 = mapPt(sMin, targetK - sMin);
+                    const p2 = mapPt(sMax, targetK - sMax);
+
+                    obliqueCtx.strokeStyle = '#a855f7';
+                    obliqueCtx.beginPath();
+                    obliqueCtx.moveTo(p1.x, p1.y);
+                    obliqueCtx.lineTo(p2.x, p2.y);
+                    obliqueCtx.stroke();
+                }
+            } else if (state.preset === 's+2t=1' || state.preset === 's+2t=k') {
+                const targetK = (state.preset === 's+2t=k') ? state.k : 1.0;
+                const { sMin, sMax } = getSegmentRangeS(targetK / 2, -0.5);
+
+                if (sMin <= sMax) {
+                    const p1 = mapPt(sMin, (targetK - sMin) / 2);
+                    const p2 = mapPt(sMax, (targetK - sMax) / 2);
+
+                    obliqueCtx.strokeStyle = '#a855f7';
+                    obliqueCtx.beginPath();
+                    obliqueCtx.moveTo(p1.x, p1.y);
+                    obliqueCtx.lineTo(p2.x, p2.y);
+                    obliqueCtx.stroke();
+                }
+            } else if (state.preset === 's+4t=2') {
+                const { sMin, sMax } = getSegmentRangeS(0.5, -0.25);
+                if (sMin <= sMax) {
+                    const p1 = mapPt(sMin, (2 - sMin) / 4);
+                    const p2 = mapPt(sMax, (2 - sMax) / 4);
+
+                    obliqueCtx.strokeStyle = '#a855f7';
+                    obliqueCtx.beginPath();
+                    obliqueCtx.moveTo(p1.x, p1.y);
+                    obliqueCtx.lineTo(p2.x, p2.y);
+                    obliqueCtx.stroke();
+                }
+            } else if (state.preset === 's+t<1' || state.preset === 's+t<=1') {
+                obliqueCtx.fillStyle = 'rgba(168, 85, 247, 0.25)';
+                obliqueCtx.strokeStyle = '#a855f7';
+
+                if (state.preset === 's+t<1') {
+                    obliqueCtx.setLineDash([5, 4]);
+                }
+
+                obliqueCtx.beginPath();
+                if (nonNegS && nonNegT) {
+                    const pO = mapPt(0, 0);
+                    const pA = mapPt(1, 0);
+                    const pB = mapPt(0, 1);
+                    obliqueCtx.moveTo(pO.x, pO.y);
+                    obliqueCtx.lineTo(pA.x, pA.y);
+                    obliqueCtx.lineTo(pB.x, pB.y);
+                    obliqueCtx.closePath();
+                } else {
+                    const p1 = mapPt(-1.5, 2.5);
+                    const p2 = mapPt(3.0, -2.0);
+                    const p3 = mapPt(-1.5, -2.0);
+                    obliqueCtx.moveTo(p1.x, p1.y);
+                    obliqueCtx.lineTo(p2.x, p2.y);
+                    obliqueCtx.lineTo(p3.x, p3.y);
+                    obliqueCtx.closePath();
+                }
+                obliqueCtx.fill();
+                obliqueCtx.stroke();
+                obliqueCtx.setLineDash([]);
+            } else if (state.preset === '1<=s+t<=2') {
+                obliqueCtx.fillStyle = 'rgba(168, 85, 247, 0.25)';
+                obliqueCtx.strokeStyle = '#a855f7';
+
+                obliqueCtx.beginPath();
+                if (nonNegS && nonNegT) {
+                    const p1 = mapPt(1, 0);
+                    const p2 = mapPt(2, 0);
+                    const p3 = mapPt(0, 2);
+                    const p4 = mapPt(0, 1);
+                    obliqueCtx.moveTo(p1.x, p1.y);
+                    obliqueCtx.lineTo(p2.x, p2.y);
+                    obliqueCtx.lineTo(p3.x, p3.y);
+                    obliqueCtx.lineTo(p4.x, p4.y);
+                    obliqueCtx.closePath();
+                } else {
+                    const p1 = mapPt(-1.0, 2.0);
+                    const p2 = mapPt(3.0, -2.0);
+                    const p3 = mapPt(3.0, -1.0);
+                    const p4 = mapPt(-1.0, 3.0);
+                    obliqueCtx.moveTo(p1.x, p1.y);
+                    obliqueCtx.lineTo(p2.x, p2.y);
+                    obliqueCtx.lineTo(p3.x, p3.y);
+                    obliqueCtx.lineTo(p4.x, p4.y);
+                    obliqueCtx.closePath();
+                }
+                obliqueCtx.fill();
+                obliqueCtx.stroke();
+            } else if (state.preset === '0<=s<=1,0<=t<=1') {
+                obliqueCtx.fillStyle = 'rgba(168, 85, 247, 0.25)';
+                obliqueCtx.strokeStyle = '#a855f7';
+
+                const p1 = mapPt(0, 0);
+                const p2 = mapPt(1, 0);
+                const p3 = mapPt(1, 1);
+                const p4 = mapPt(0, 1);
+
+                obliqueCtx.beginPath();
+                obliqueCtx.moveTo(p1.x, p1.y);
+                obliqueCtx.lineTo(p2.x, p2.y);
+                obliqueCtx.lineTo(p3.x, p3.y);
+                obliqueCtx.lineTo(p4.x, p4.y);
+                obliqueCtx.closePath();
+                obliqueCtx.fill();
+                obliqueCtx.stroke();
+            }
+        }
+
+        function renderAll() {
+            // Resize canvas to match display size
+            [orthoCanvas, obliqueCanvas].forEach(canvas => {
+                const rect = canvas.parentElement.getBoundingClientRect();
+                if (canvas.width !== rect.width || canvas.height !== rect.height) {
+                    canvas.width = rect.width;
+                    canvas.height = rect.height;
+                }
+            });
+
+            // Update UI Numerical Displays
+            valS.textContent = state.s.toFixed(2);
+            valT.textContent = state.t.toFixed(2);
+            valK.textContent = state.k.toFixed(2);
+            sliderS.value = state.s;
+            sliderT.value = state.t;
+            sliderK.value = state.k;
+
+            oaXLabel.textContent = state.vecOA.x.toFixed(1);
+            oaYLabel.textContent = state.vecOA.y.toFixed(1);
+            obXLabel.textContent = state.vecOB.x.toFixed(1);
+            obYLabel.textContent = state.vecOB.y.toFixed(1);
+
+            // Update badge text for non-negative limits
+            const limits = [];
+            if (state.nonNegS) limits.push("s ≥ 0");
+            if (state.nonNegT) limits.push("t ≥ 0");
+            nonNegBadge.textContent = limits.length > 0 ? limits.join(", ") : "制限なし";
+
+            drawOrthoCanvas();
+            drawObliqueCanvas();
+        }
+
+        // Slider Control Events
+        sliderS.addEventListener('input', (e) => {
+            state.s = parseFloat(e.target.value);
+            renderAll();
+        });
+
+        sliderT.addEventListener('input', (e) => {
+            state.t = parseFloat(e.target.value);
+            renderAll();
+        });
+
+        sliderK.addEventListener('input', (e) => {
+            state.k = parseFloat(e.target.value);
+            if (state.preset === 's+t=k') currentCondBadge.textContent = `s + t = ${state.k.toFixed(2)}`;
+            if (state.preset === 's+2t=k') currentCondBadge.textContent = `s + 2t = ${state.k.toFixed(2)}`;
+            renderAll();
+        });
+
+        // Toggle Non-Negative Checkboxes
+        checkNonNegS.addEventListener('change', (e) => {
+            state.nonNegS = e.target.checked;
+            renderAll();
+        });
+
+        checkNonNegT.addEventListener('change', (e) => {
+            state.nonNegT = e.target.checked;
+            renderAll();
+        });
+
+        // Preset Button Clicks
+        presetButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                presetButtons.forEach(b => {
+                    b.classList.remove('bg-indigo-600/30', 'border-indigo-500', 'text-indigo-200', 'font-semibold');
+                    b.classList.add('bg-slate-800', 'border-slate-700', 'text-slate-300');
+                });
+                btn.classList.remove('bg-slate-800', 'border-slate-700', 'text-slate-300');
+                btn.classList.add('bg-indigo-600/30', 'border-indigo-500', 'text-indigo-200', 'font-semibold');
+                
+                state.preset = btn.dataset.preset;
+
+                if (state.preset === 's+t=k' || state.preset === 's+2t=k') {
+                    containerSliderK.classList.remove('opacity-0', 'pointer-events-none', 'invisible');
+                    containerSliderK.classList.add('opacity-100', 'pointer-events-auto', 'visible');
+                    const labelStr = state.preset === 's+t=k' ? `s + t = ${state.k.toFixed(2)}` : `s + 2t = ${state.k.toFixed(2)}`;
+                    currentCondBadge.textContent = labelStr;
+                } else {
+                    containerSliderK.classList.add('opacity-0', 'pointer-events-none', 'invisible');
+                    containerSliderK.classList.remove('opacity-100', 'pointer-events-auto', 'visible');
+                    currentCondBadge.textContent = state.preset;
+                }
+
+                renderAll();
+            });
+        });
+
+        // Interaction with Orthogonal Canvas (s-t Plane)
+        orthoCanvas.addEventListener('mousedown', (e) => {
+            const rect = orthoCanvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const st = pixelToOrtho(mouseX, mouseY, orthoCanvas.width, orthoCanvas.height);
+            state.s = Math.max(-1.5, Math.min(3.0, Math.round(st.s * 20) / 20));
+            state.t = Math.max(-1.5, Math.min(3.0, Math.round(st.t * 20) / 20));
+            state.dragging = 'P_ortho';
+            renderAll();
+        });
+
+        orthoCanvas.addEventListener('mousemove', (e) => {
+            if (state.dragging === 'P_ortho') {
+                const rect = orthoCanvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                const st = pixelToOrtho(mouseX, mouseY, orthoCanvas.width, orthoCanvas.height);
+                state.s = Math.max(-1.5, Math.min(3.0, Math.round(st.s * 20) / 20));
+                state.t = Math.max(-1.5, Math.min(3.0, Math.round(st.t * 20) / 20));
+                renderAll();
+            }
+        });
+
+        // Interaction with Oblique Canvas (Real Space)
+        obliqueCanvas.addEventListener('mousedown', (e) => {
+            const rect = obliqueCanvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const w = obliqueCanvas.width;
+            const h = obliqueCanvas.height;
+
+            const pA = realToPixel(state.vecOA.x, state.vecOA.y, w, h);
+            const pB = realToPixel(state.vecOB.x, state.vecOB.y, w, h);
+
+            const distA = Math.hypot(mouseX - pA.x, mouseY - pA.y);
+            const distB = Math.hypot(mouseX - pB.x, mouseY - pB.y);
+
+            if (distA < 15) {
+                state.dragging = 'A';
+            } else if (distB < 15) {
+                state.dragging = 'B';
+            } else {
+                state.dragging = 'P_oblique';
+                updatePFromObliqueMouse(mouseX, mouseY, w, h);
+            }
+        });
+
+        obliqueCanvas.addEventListener('mousemove', (e) => {
+            const rect = obliqueCanvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            const w = obliqueCanvas.width;
+            const h = obliqueCanvas.height;
+
+            if (state.dragging === 'A') {
+                const real = pixelToReal(mouseX, mouseY, w, h);
+                state.vecOA.x = Math.round(real.x * 10) / 10;
+                state.vecOA.y = Math.round(real.y * 10) / 10;
+                renderAll();
+            } else if (state.dragging === 'B') {
+                const real = pixelToReal(mouseX, mouseY, w, h);
+                state.vecOB.x = Math.round(real.x * 10) / 10;
+                state.vecOB.y = Math.round(real.y * 10) / 10;
+                renderAll();
+            } else if (state.dragging === 'P_oblique') {
+                updatePFromObliqueMouse(mouseX, mouseY, w, h);
+            }
+        });
+
+        function updatePFromObliqueMouse(mx, my, w, h) {
+            const real = pixelToReal(mx, my, w, h);
+            // Solve 2x2 linear system for s, t:
+            // s * ax + t * bx = rx
+            // s * ay + t * by = ry
+            const ax = state.vecOA.x, ay = state.vecOA.y;
+            const bx = state.vecOB.x, by = state.vecOB.y;
+            const det = ax * by - ay * bx;
+
+            if (Math.abs(det) > 1e-4) {
+                const s = (real.x * by - real.y * bx) / det;
+                const t = (ax * real.y - ay * real.x) / det;
+                state.s = Math.max(-2.0, Math.min(3.0, Math.round(s * 20) / 20));
+                state.t = Math.max(-2.0, Math.min(3.0, Math.round(t * 20) / 20));
+                renderAll();
+            }
+        }
+
+        // Global Mouse Up Listener
+        window.addEventListener('mouseup', () => {
+            state.dragging = null;
+        });
+
+        // Window Resize Handling
+        window.addEventListener('resize', renderAll);
+
+        window.onload = () => {
+            // Render Math Equations with KaTeX
+            renderMathInElement(document.body, {
+                delimiters: [
+                    { left: '$$', right: '$$', display: true },
+                    { left: '$', right: '$', display: false }
+                ]
+            });
+
+            // Initial Canvas Render
+            renderAll();
+        };
+    </script>
+</body>
+</html>

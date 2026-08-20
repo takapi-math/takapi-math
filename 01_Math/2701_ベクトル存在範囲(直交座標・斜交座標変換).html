@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ベクトル OP⃗ = sOA⃗ + tOB⃗ の存在範囲可視化</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- KaTeX for rendering mathematical expressions -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: 480px;
+            min-height: 400px;
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 0.75rem;
+            cursor: crosshair;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between custom-scrollbar">
+
+    <!-- Header -->
+    <header class="bg-slate-900 border-b border-slate-800 p-3 sticky top-0 z-50 shadow-md">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2">
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-600 p-2 rounded-xl shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid me-1 fa-draw-polygon text-lg text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
+                        ベクトル $\overrightarrow{OP} = s\overrightarrow{OA} + t\overrightarrow{OB}$ の存在範囲
+                    </h1>
+                </div>
+            </div>
+
+            <!-- Global Quick Info -->
+            <div class="flex items-center gap-3 text-xs bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700">
+                <div>条件: <span id="current-condition-badge" class="font-mono text-cyan-300 font-bold">s + t = 1</span></div>
+                <div class="h-4 w-px bg-slate-600"></div>
+                <div>制限: <span id="non-negative-badge" class="font-bold text-emerald-400">s ≥ 0, t ≥ 0</span></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-7xl mx-auto w-full p-3 md:p-4 flex-grow flex flex-col gap-4">
+
+        <!-- Top Control Panel (Fixed Side-by-Side Layout) -->
+        <section class="grid grid-cols-12 gap-4 bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 shadow-xl backdrop-blur">
+            
+            <!-- Conditions / Presets Selection (Left Column) -->
+            <div class="col-span-7 md:col-span-7 lg:col-span-8 flex flex-col gap-2 border-r border-slate-800 pr-3 md:pr-4">
+                <h2 class="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="fa-solid fa-list-check text-indigo-400"></i> 条件プリセットを選択
+                </h2>
+
+                <!-- Preset Grid -->
+                <div class="grid grid-cols-2 gap-1.5 flex-grow" id="preset-buttons">
+                    <button data-preset="s+t=1" class="preset-btn py-1.5 px-2.5 text-xs md:text-sm text-center rounded-lg bg-indigo-600/30 border border-indigo-500 text-indigo-200 font-mono font-semibold hover:bg-indigo-600/50 transition">
+                        s + t = 1
+                    </button>
+                    <button data-preset="s+2t=1" class="preset-btn py-1.5 px-2.5 text-xs md:text-sm text-center rounded-lg bg-slate-800 border border-slate-700 text-slate-300 font-mono hover:bg-slate-700 transition">
+                        s + 2t = 1
+                    </button>
+                    <button data-preset="s+4t=2" class="preset-btn py-1.5 px-2.5 text-xs md:text-sm text-center rounded-lg bg-slate-800 border border-slate-700 text-slate-300 font-mono hover:bg-slate-700 transition">
+                        s + 4t = 2
+                    </button>
+                    <button data-preset="s+t<1" class="preset-btn py-1.5 px-2.5 text-xs md:text-sm text-center rounded-lg bg-slate-800 border border-slate-700 text-slate-300 font-mono hover:bg-slate-700 transition">
+                        s + t &lt; 1
+                    </button>
+                    <button data-preset="s+t<=1" class="preset-btn py-1.5 px-2.5 text-xs md:text-sm text-center rounded-lg bg-slate-800 border border-slate-700 text-slate-300 font-mono hover:bg-slate-700 transition">
+                        s + t ≤ 1
+                    </button>
+                    <button data-preset="1<=s+t<=2" class="preset-btn py-1.5 px-2.5 text-xs md:text-sm text-center rounded-lg bg-slate-800 border border-slate-700 text-slate-300 font-mono hover:bg-slate-700 transition">
+                        1 ≤ s + t ≤ 2
+                    </button>
+                    <!-- 2-column span preset -->
+                    <button data-preset="0<=s<=1,0<=t<=1" class="preset-btn col-span-2 py-1.5 px-2.5 text-xs md:text-sm text-center rounded-lg bg-slate-800 border border-slate-700 text-slate-300 font-mono hover:bg-slate-700 transition">
+                        0 ≤ s ≤ 1 , 0 ≤ t ≤ 1
+                    </button>
+                    <!-- k presets on bottom row side-by-side -->
+                    <button data-preset="s+t=k" class="preset-btn py-1.5 px-2.5 text-xs md:text-sm text-center rounded-lg bg-slate-800 border border-slate-700 text-slate-300 font-mono hover:bg-slate-700 transition">
+                        s + t = k
+                    </button>
+                    <button data-preset="s+2t=k" class="preset-btn py-1.5 px-2.5 text-xs md:text-sm text-center rounded-lg bg-slate-800 border border-slate-700 text-slate-300 font-mono hover:bg-slate-700 transition">
+                        s + 2t = k
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Vertical Control Stack (Non-neg limits + s, t, k sliders stacked vertically) -->
+            <div class="col-span-5 md:col-span-5 lg:col-span-4 flex flex-col gap-1.5 justify-start">
+                
+                <!-- Non-negative Independent Checkboxes -->
+                <div class="bg-slate-800/60 p-1.5 px-3 rounded-xl border border-slate-700/80 flex flex-col gap-0.5">
+                    <span class="text-[11px] font-bold text-slate-300 flex items-center gap-1 uppercase">
+                        <i class="fa-solid fa-filter text-emerald-400"></i> 非負制限設定
+                    </span>
+                    <div class="flex items-center gap-4 pl-1">
+                        <label class="flex items-center gap-1.5 cursor-pointer text-slate-200 hover:text-white text-xs">
+                            <input type="checkbox" id="check-non-neg-s" class="w-3.5 h-3.5 accent-emerald-500 rounded cursor-pointer" checked>
+                            <span class="font-mono font-bold text-emerald-400">s ≥ 0</span>
+                        </label>
+                        <label class="flex items-center gap-1.5 cursor-pointer text-slate-200 hover:text-white text-xs">
+                            <input type="checkbox" id="check-non-neg-t" class="w-3.5 h-3.5 accent-emerald-500 rounded cursor-pointer" checked>
+                            <span class="font-mono font-bold text-emerald-400">t ≥ 0</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Sliders for s and t (Stacked Vertically) -->
+                <div class="flex flex-col gap-1 bg-slate-800/40 p-1.5 px-3 rounded-xl border border-slate-800">
+                    
+                    <!-- Slider s -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-0.5">
+                            <span class="text-slate-200 font-mono text-xs font-medium">係数 s:</span>
+                            <span id="val-s" class="font-mono text-cyan-400 font-bold text-xs">0.50</span>
+                        </div>
+                        <input type="range" id="slider-s" min="-2.0" max="3.0" step="0.05" value="0.5" class="w-full accent-cyan-500 bg-slate-700 rounded-lg h-1.5 cursor-pointer">
+                    </div>
+
+                    <!-- Slider t -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-0.5">
+                            <span class="text-slate-200 font-mono text-xs font-medium">係数 t:</span>
+                            <span id="val-t" class="font-mono text-cyan-400 font-bold text-xs">0.50</span>
+                        </div>
+                        <input type="range" id="slider-t" min="-2.0" max="3.0" step="0.05" value="0.5" class="w-full accent-cyan-500 bg-slate-700 rounded-lg h-1.5 cursor-pointer">
+                    </div>
+
+                </div>
+
+                <!-- k Slider Container (Always occupies fixed space to prevent vertical layout jitter) -->
+                <div id="container-slider-k" class="w-full bg-amber-950/40 p-1.5 px-3 rounded-xl border border-amber-500/40 flex flex-col justify-center opacity-0 pointer-events-none invisible transition-all duration-200 shadow-inner h-[50px]">
+                    <div class="flex justify-between items-center text-xs mb-0.5">
+                        <span class="text-amber-300 font-mono font-bold text-xs">定数 k:</span>
+                        <span id="val-k" class="font-mono text-amber-400 font-bold text-xs">1.00</span>
+                    </div>
+                    <input type="range" id="slider-k" min="0.0" max="2.0" step="0.05" value="1.0" class="w-full accent-amber-500 bg-slate-700 rounded-lg h-1.5 cursor-pointer">
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- Visualization Display (Larger Canvases) -->
+        <section class="grid grid-cols-12 gap-3 md:gap-4 flex-grow">
+            
+            <!-- Canvas: Dynamic Coordinate System Graph (3/4 Width) -->
+            <div class="col-span-9 bg-slate-900 border border-slate-800 rounded-2xl p-2.5 md:p-3 flex flex-col shadow-xl relative min-w-0">
+                <div class="canvas-container flex-grow bg-slate-950 rounded-xl overflow-hidden border border-slate-800 h-full min-h-[400px]">
+                    <canvas id="main-canvas"></canvas>
+                </div>
+            </div>
+
+            <!-- Axis Angle & Unit Length Control Sidebar (1/4 Width, Always on the Right) -->
+            <div class="col-span-3 bg-slate-900 border border-slate-800 rounded-2xl p-2.5 md:p-3.5 flex flex-col justify-between shadow-xl gap-2 md:gap-3 min-w-0">
+                <div class="flex flex-col gap-2 md:gap-3">
+                    <div class="border-b border-slate-800 pb-1.5 md:pb-2">
+                        <h3 class="text-xs md:text-sm font-bold text-slate-200 flex items-center gap-1.5 leading-tight">
+                            <i class="fa-solid fa-compass-drafting text-cyan-400 shrink-0"></i>
+                            <span>軸・基底ベクトルの設定</span>
+                        </h3>
+                        <p class="text-[10px] md:text-xs text-slate-400 mt-1 leading-normal hidden sm:block">
+                            x軸とy軸のなす角や単位長さを変更しても、$(s, t)$ の関係領域の図形構造は変化しません。
+                        </p>
+                    </div>
+
+                    <!-- x-y Axis Angle Slider -->
+                    <div class="bg-slate-800/60 p-2 md:p-2.5 rounded-xl border border-slate-700/80 flex flex-col gap-1">
+                        <div class="flex justify-between items-center text-[11px] md:text-xs">
+                            <span class="text-slate-200 font-semibold truncate flex items-center gap-1">
+                                <i class="fa-solid fa-angle-left text-amber-400 shrink-0"></i>
+                                <span>軸のなす角 ($\theta$)</span>
+                            </span>
+                            <span id="val-angle" class="font-mono text-amber-400 font-bold text-xs md:text-sm shrink-0 ml-1">90°</span>
+                        </div>
+                        <input type="range" id="slider-angle" min="30" max="120" step="5" value="90" class="w-full accent-amber-500 bg-slate-700 rounded-lg h-1.5 md:h-2 cursor-pointer">
+                        <div class="flex justify-between text-[9px] md:text-[10px] text-slate-500 font-mono">
+                            <span>30°</span>
+                            <span>90°</span>
+                            <span>120°</span>
+                        </div>
+                    </div>
+
+                    <!-- x-Axis Unit Length Slider -->
+                    <div class="bg-slate-800/60 p-2 md:p-2.5 rounded-xl border border-slate-700/80 flex flex-col gap-1">
+                        <div class="flex justify-between items-center text-[11px] md:text-xs">
+                            <span class="text-slate-200 font-semibold truncate flex items-center gap-1">
+                                <i class="fa-solid fa-ruler-horizontal text-cyan-400 shrink-0"></i>
+                                <span>x軸目盛り ($L_x$)</span>
+                            </span>
+                            <span id="val-scale-x" class="font-mono text-cyan-400 font-bold text-xs md:text-sm shrink-0 ml-1">1.0</span>
+                        </div>
+                        <input type="range" id="slider-scale-x" min="0.5" max="2.0" step="0.1" value="1.0" class="w-full accent-cyan-500 bg-slate-700 rounded-lg h-1.5 md:h-2 cursor-pointer">
+                        <div class="flex justify-between text-[9px] md:text-[10px] text-slate-500 font-mono">
+                            <span>0.5</span>
+                            <span>1.0</span>
+                            <span>2.0</span>
+                        </div>
+                    </div>
+
+                    <!-- y-Axis Unit Length Slider -->
+                    <div class="bg-slate-800/60 p-2 md:p-2.5 rounded-xl border border-slate-700/80 flex flex-col gap-1">
+                        <div class="flex justify-between items-center text-[11px] md:text-xs">
+                            <span class="text-slate-200 font-semibold truncate flex items-center gap-1">
+                                <i class="fa-solid fa-ruler-vertical text-emerald-400 shrink-0"></i>
+                                <span>y軸目盛り ($L_y$)</span>
+                            </span>
+                            <span id="val-scale-y" class="font-mono text-emerald-400 font-bold text-xs md:text-sm shrink-0 ml-1">1.0</span>
+                        </div>
+                        <input type="range" id="slider-scale-y" min="0.5" max="2.0" step="0.1" value="1.0" class="w-full accent-emerald-500 bg-slate-700 rounded-lg h-1.5 md:h-2 cursor-pointer">
+                        <div class="flex justify-between text-[9px] md:text-[10px] text-slate-500 font-mono">
+                            <span>0.5</span>
+                            <span>1.0</span>
+                            <span>2.0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reset Axes Button -->
+                <button id="btn-reset-axes" class="w-full py-1.5 md:py-2 px-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-semibold text-[10px] md:text-xs transition flex items-center justify-center gap-1.5 leading-tight mt-1">
+                    <i class="fa-solid fa-rotate-left shrink-0"></i>
+                    <span>直交座標系にリセット</span>
+                </button>
+            </div>
+
+        </section>
+
+        <!-- Educational Section -->
+        <section class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl">
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm text-slate-300">
+                
+                <!-- Card 1 -->
+                <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700/60 flex flex-col gap-2">
+                    <div class="flex items-center gap-2 text-cyan-400 font-bold">
+                        <i class="fa-solid fa-chart-line text-lg"></i>
+                        <span>1. 軸角度・目盛長さの可変表示</span>
+                    </div>
+                    <p class="text-xs leading-relaxed text-slate-400">
+                        x軸とy軸のなす角 $\theta$ や目盛り幅を変更することで、**「直交座標系」**から**「斜交座標系」**への連続的な変化を同じ画面上で直接視認できます。
+                    </p>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700/60 flex flex-col gap-2">
+                    <div class="flex items-center gap-2 text-emerald-400 font-bold">
+                        <i class="fa-solid fa-vector-square text-lg"></i>
+                        <span>2. 非負制限 $s \ge 0, t \ge 0$ の切り取り</span>
+                    </div>
+                    <p class="text-xs leading-relaxed text-slate-400">
+                        「$s \ge 0, t \ge 0$」という条件がつくと、グラフ上の第1象限（$s$-軸・$t$-軸の正のエリア）で領域が切り取られます。
+                        軸の角度が変わっても、常に格子に沿った線分や領域として切り取られることがわかります。
+                    </p>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700/60 flex flex-col gap-2">
+                    <div class="flex items-center gap-2 text-purple-400 font-bold">
+                        <i class="fa-solid fa-object-group text-lg"></i>
+                        <span>3. 数式（代数条件）の不変性</span>
+                    </div>
+                    <p class="text-xs leading-relaxed text-slate-400">
+                        基底ベクトルのなす角や長さがどう変化しても、**$s$ と $t$ の関係式（$s + 2t = 1$ など）自体は一切変わりません**。
+                        まず直交座標系で直線・領域をとらえてから、最後に空間の傾きに合わせて引き伸ばす考え方が最も明快です。
+                    </p>
+                </div>
+
+            </div>
+
+            <!-- Math Summary Formula Table -->
+            <div class="mt-6 border-t border-slate-800 pt-4">
+                <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">代表的な条件と領域の対応表</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-left text-slate-300">
+                        <thead class="bg-slate-800/80 text-slate-400">
+                            <tr>
+                                <th class="p-2.5 rounded-l">条件式</th>
+                                <th class="p-2.5">直交座標系 ($\theta=90^\circ$) での図形</th>
+                                <th class="p-2.5 font-bold text-emerald-400">$s \ge 0, t \ge 0$ 制限あり</th>
+                                <th class="p-2.5 rounded-r">一般の斜交座標系での図形</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800">
+                            <tr>
+                                <td class="p-2.5 font-mono text-cyan-300">s + t = 1</td>
+                                <td class="p-2.5">傾き -1, 切片 1 の直線</td>
+                                <td class="p-2.5 text-emerald-300 font-semibold">点 A(1,0) と 点 B(0,1) を結ぶ線分 AB</td>
+                                <td class="p-2.5">直線 AB / 線分 AB</td>
+                            </tr>
+                            <tr>
+                                <td class="p-2.5 font-mono text-cyan-300">s + 2t = 1</td>
+                                <td class="p-2.5">傾き -1/2, s切片 1, t切片 1/2 の直線</td>
+                                <td class="p-2.5 text-emerald-300 font-semibold">点 (1,0) と 点 (0, 1/2) を結ぶ線分</td>
+                                <td class="p-2.5">点 A と 点 B/2 を結ぶ直線/線分</td>
+                            </tr>
+                            <tr>
+                                <td class="p-2.5 font-mono text-cyan-300">s + 4t = 2</td>
+                                <td class="p-2.5">傾き -1/4, s切片 2, t切片 1/2 の直線</td>
+                                <td class="p-2.5 text-emerald-300 font-semibold">点 (2,0) と 点 (0, 1/2) を結ぶ線分</td>
+                                <td class="p-2.5">点 2A と 点 B/2 を結ぶ直線/線分</td>
+                            </tr>
+                            <tr>
+                                <td class="p-2.5 font-mono text-cyan-300">s + t &lt; 1</td>
+                                <td class="p-2.5">直線 s + t = 1 の下側の開領域</td>
+                                <td class="p-2.5 text-emerald-300 font-semibold">△OAB の内部（周は含まない）</td>
+                                <td class="p-2.5">半平面 / △OAB 内部</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // Global Application State
+        const state = {
+            preset: 's+t=1',
+            nonNegS: true,
+            nonNegT: true,
+            s: 0.5,
+            t: 0.5,
+            k: 1.0, // Constant k for s+t=k or s+2t=k
+            // Axis configuration
+            angle: 90,    // Angle between x and y axes in degrees (30 - 120)
+            scaleX: 1.0,  // x-axis unit length scale (0.5 - 2.0)
+            scaleY: 1.0,  // y-axis unit length scale (0.5 - 2.0)
+            // Interactive Dragging flags
+            dragging: null
+        };
+
+        // Canvas Setup
+        const mainCanvas = document.getElementById('main-canvas');
+        const mainCtx = mainCanvas.getContext('2d');
+
+        // UI Element References
+        const sliderS = document.getElementById('slider-s');
+        const sliderT = document.getElementById('slider-t');
+        const sliderK = document.getElementById('slider-k');
+        const valS = document.getElementById('val-s');
+        const valT = document.getElementById('val-t');
+        const valK = document.getElementById('val-k');
+        const containerSliderK = document.getElementById('container-slider-k');
+
+        const sliderAngle = document.getElementById('slider-angle');
+        const sliderScaleX = document.getElementById('slider-scale-x');
+        const sliderScaleY = document.getElementById('slider-scale-y');
+        const valAngle = document.getElementById('val-angle');
+        const valScaleX = document.getElementById('val-scale-x');
+        const valScaleY = document.getElementById('val-scale-y');
+        const btnResetAxes = document.getElementById('btn-reset-axes');
+
+        const checkNonNegS = document.getElementById('check-non-neg-s');
+        const checkNonNegT = document.getElementById('check-non-neg-t');
+        const presetButtons = document.querySelectorAll('.preset-btn');
+        const currentCondBadge = document.getElementById('current-condition-badge');
+        const nonNegBadge = document.getElementById('non-negative-badge');
+
+        // Coordinate Transformation Helper
+        function coordToPixel(s, t, w, h) {
+            const baseScale = Math.min(w, h) / 5.2;
+            const cx = w * 0.22;
+            const cy = h * 0.78;
+
+            const rad = (state.angle * Math.PI) / 180;
+            const rx = s * state.scaleX + t * state.scaleY * Math.cos(rad);
+            const ry = t * state.scaleY * Math.sin(rad);
+
+            return {
+                x: cx + rx * baseScale,
+                y: cy - ry * baseScale
+            };
+        }
+
+        function pixelToCoord(px, py, w, h) {
+            const baseScale = Math.min(w, h) / 5.2;
+            const cx = w * 0.22;
+            const cy = h * 0.78;
+
+            const dx = (px - cx) / baseScale;
+            const dy = (cy - py) / baseScale;
+
+            const rad = (state.angle * Math.PI) / 180;
+            const sinVal = Math.sin(rad);
+            const cosVal = Math.cos(rad);
+
+            const t = dy / (state.scaleY * sinVal);
+            const s = (dx - t * state.scaleY * cosVal) / state.scaleX;
+
+            return { s, t };
+        }
+
+        // Arrow Drawing Utility Function
+        function drawArrow(ctx, from, to, color, lineWidth = 2) {
+            const headlen = 9;
+            const dx = to.x - from.x;
+            const dy = to.y - from.y;
+            const angle = Math.atan2(dy, dx);
+
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = lineWidth;
+
+            ctx.beginPath();
+            ctx.moveTo(from.x, from.y);
+            ctx.lineTo(to.x, to.y);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(to.x, to.y);
+            ctx.lineTo(to.x - headlen * Math.cos(angle - Math.PI / 6), to.y - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(to.x - headlen * Math.cos(angle + Math.PI / 6), to.y - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // Check if a point (s, t) satisfies the condition
+        function checkCondition(s, t, preset, nonNegS, nonNegT, k) {
+            if (nonNegS && s < -1e-5) return false;
+            if (nonNegT && t < -1e-5) return false;
+
+            const eps = 0.04;
+            switch (preset) {
+                case 's+t=1':
+                    return Math.abs(s + t - 1) < eps;
+                case 's+t=k':
+                    return Math.abs(s + t - k) < eps;
+                case 's+2t=1':
+                    return Math.abs(s + 2 * t - 1) < eps;
+                case 's+2t=k':
+                    return Math.abs(s + 2 * t - k) < eps;
+                case 's+4t=2':
+                    return Math.abs(s + 4 * t - 2) < eps;
+                case 's+t<1':
+                    return (s + t) < 1;
+                case 's+t<=1':
+                    return (s + t) <= 1 + 1e-4;
+                case '1<=s+t<=2':
+                    return (s + t) >= 1 - 1e-4 && (s + t) <= 2 + 1e-4;
+                case '0<=s<=1,0<=t<=1':
+                    return s >= -1e-5 && s <= 1 + 1e-5 && t >= -1e-5 && t <= 1 + 1e-5;
+                default:
+                    return false;
+            }
+        }
+
+        function drawMainCanvas() {
+            const w = mainCanvas.width;
+            const h = mainCanvas.height;
+            mainCtx.clearRect(0, 0, w, h);
+
+            const pO = coordToPixel(0, 0, w, h);
+            const pA = coordToPixel(1, 0, w, h);
+            const pB = coordToPixel(0, 1, w, h);
+
+            // Draw Background Grid along s and t axis directions
+            mainCtx.lineWidth = 1;
+            for (let i = -1; i <= 3.5; i += 0.5) {
+                const isMajor = Math.abs(i - Math.round(i)) < 1e-4;
+                const intI = Math.round(i);
+
+                // Lines parallel to t-axis (constant s = i)
+                let p1 = coordToPixel(i, -1, w, h);
+                let p2 = coordToPixel(i, 3.5, w, h);
+                mainCtx.strokeStyle = (isMajor && intI === 0) ? '#64748b' : (isMajor ? '#334155' : '#1e293b');
+                mainCtx.lineWidth = (isMajor && intI === 0) ? 2 : (isMajor ? 1 : 0.5);
+                mainCtx.beginPath();
+                mainCtx.moveTo(p1.x, p1.y);
+                mainCtx.lineTo(p2.x, p2.y);
+                mainCtx.stroke();
+
+                // Lines parallel to s-axis (constant t = i)
+                p1 = coordToPixel(-1, i, w, h);
+                p2 = coordToPixel(3.5, i, w, h);
+                mainCtx.strokeStyle = (isMajor && intI === 0) ? '#64748b' : (isMajor ? '#334155' : '#1e293b');
+                mainCtx.lineWidth = (isMajor && intI === 0) ? 2 : (isMajor ? 1 : 0.5);
+                mainCtx.beginPath();
+                mainCtx.moveTo(p1.x, p1.y);
+                mainCtx.lineTo(p2.x, p2.y);
+                mainCtx.stroke();
+            }
+
+            // Axis Number Ticks (1, 2, 3) on s and t axes
+            mainCtx.fillStyle = '#94a3b8';
+            mainCtx.font = '11px monospace';
+
+            for (let sVal = 1; sVal <= 3; sVal++) {
+                const pt = coordToPixel(sVal, 0, w, h);
+                mainCtx.fillText(sVal.toString(), pt.x - 3, pt.y + 16);
+                mainCtx.strokeStyle = '#64748b';
+                mainCtx.lineWidth = 1.5;
+                mainCtx.beginPath();
+                mainCtx.moveTo(pt.x, pt.y - 3);
+                mainCtx.lineTo(pt.x, pt.y + 3);
+                mainCtx.stroke();
+            }
+
+            for (let tVal = 1; tVal <= 3; tVal++) {
+                const pt = coordToPixel(0, tVal, w, h);
+                mainCtx.fillText(tVal.toString(), pt.x - 16, pt.y + 4);
+                mainCtx.strokeStyle = '#64748b';
+                mainCtx.lineWidth = 1.5;
+                mainCtx.beginPath();
+                mainCtx.moveTo(pt.x - 3, pt.y);
+                mainCtx.lineTo(pt.x + 3, pt.y);
+                mainCtx.stroke();
+            }
+
+            // Draw Axis Arrows (OA and OB direction)
+            drawArrow(mainCtx, pO, coordToPixel(3.3, 0, w, h), '#64748b', 2);
+            drawArrow(mainCtx, pO, coordToPixel(0, 3.3, w, h), '#64748b', 2);
+
+            const pLabelS = coordToPixel(3.4, 0, w, h);
+            const pLabelT = coordToPixel(0, 3.4, w, h);
+            mainCtx.fillStyle = '#94a3b8';
+            mainCtx.font = 'bold 12px monospace';
+            mainCtx.fillText('s軸', pLabelS.x - 10, pLabelS.y + 18);
+            mainCtx.fillText('t軸', pLabelT.x + 8, pLabelT.y + 4);
+
+            // Draw Locus Region
+            drawLocus(w, h);
+
+            // Mark Key Points O(0,0), A(1,0), B(0,1)
+            const pointsToMark = [
+                { pt: pO, label: 'O(0,0)', color: '#94a3b8', dx: -35, dy: 15 },
+                { pt: pA, label: 'A(1,0)', color: '#f59e0b', dx: -5, dy: 18 },
+                { pt: pB, label: 'B(0,1)', color: '#10b981', dx: -42, dy: 4 }
+            ];
+
+            pointsToMark.forEach(p => {
+                mainCtx.fillStyle = p.color;
+                mainCtx.beginPath();
+                mainCtx.arc(p.pt.x, p.pt.y, 5, 0, Math.PI * 2);
+                mainCtx.fill();
+                mainCtx.font = 'bold 11px sans-serif';
+                mainCtx.fillText(p.label, p.pt.x + p.dx, p.pt.y + p.dy);
+            });
+
+            // Draw Base Vectors OA and OB
+            drawArrow(mainCtx, pO, pA, '#f59e0b', 2.5);
+            drawArrow(mainCtx, pO, pB, '#10b981', 2.5);
+
+            // Draw Current Point P
+            const ptP = coordToPixel(state.s, state.t, w, h);
+            
+            mainCtx.setLineDash([3, 3]);
+            mainCtx.strokeStyle = '#38bdf8';
+            mainCtx.lineWidth = 1;
+
+            const projS = coordToPixel(state.s, 0, w, h);
+            const projT = coordToPixel(0, state.t, w, h);
+
+            mainCtx.beginPath();
+            mainCtx.moveTo(ptP.x, ptP.y);
+            mainCtx.lineTo(projS.x, projS.y);
+            mainCtx.moveTo(ptP.x, ptP.y);
+            mainCtx.lineTo(projT.x, projT.y);
+            mainCtx.stroke();
+            mainCtx.setLineDash([]);
+
+            drawArrow(mainCtx, pO, ptP, 'rgba(56, 189, 248, 0.6)', 1.5);
+
+            const isInside = checkCondition(state.s, state.t, state.preset, state.nonNegS, state.nonNegT, state.k);
+            mainCtx.fillStyle = isInside ? '#38bdf8' : '#f43f5e';
+            mainCtx.beginPath();
+            mainCtx.arc(ptP.x, ptP.y, 4, 0, Math.PI * 2);
+            mainCtx.fill();
+            mainCtx.strokeStyle = '#ffffff';
+            mainCtx.lineWidth = 1.5;
+            mainCtx.stroke();
+
+            // Label P
+            mainCtx.fillStyle = '#f8fafc';
+            mainCtx.font = 'bold 11px sans-serif';
+            mainCtx.fillText(`P (${state.s.toFixed(2)}, ${state.t.toFixed(2)})`, ptP.x + 8, ptP.y - 8);
+        }
+
+        function drawLocus(w, h) {
+            const nonNegS = state.nonNegS;
+            const nonNegT = state.nonNegT;
+            mainCtx.lineWidth = 2.5;
+
+            const getSegmentRangeS = (interceptK, slope) => {
+                let sMin = -1.5, sMax = 3.0;
+                if (nonNegS) sMin = Math.max(sMin, 0);
+                if (nonNegT) {
+                    if (slope < 0) sMax = Math.min(sMax, -interceptK / slope);
+                    else if (slope > 0) sMin = Math.max(sMin, -interceptK / slope);
+                }
+                return { sMin, sMax };
+            };
+
+            if (state.preset === 's+t=1' || state.preset === 's+t=k') {
+                const targetK = (state.preset === 's+t=k') ? state.k : 1.0;
+                const { sMin, sMax } = getSegmentRangeS(targetK, -1);
+
+                if (sMin <= sMax) {
+                    const p1 = coordToPixel(sMin, targetK - sMin, w, h);
+                    const p2 = coordToPixel(sMax, targetK - sMax, w, h);
+
+                    mainCtx.strokeStyle = '#06b6d4';
+                    mainCtx.beginPath();
+                    mainCtx.moveTo(p1.x, p1.y);
+                    mainCtx.lineTo(p2.x, p2.y);
+                    mainCtx.stroke();
+                }
+            } else if (state.preset === 's+2t=1' || state.preset === 's+2t=k') {
+                const targetK = (state.preset === 's+2t=k') ? state.k : 1.0;
+                const { sMin, sMax } = getSegmentRangeS(targetK / 2, -0.5);
+
+                if (sMin <= sMax) {
+                    const p1 = coordToPixel(sMin, (targetK - sMin) / 2, w, h);
+                    const p2 = coordToPixel(sMax, (targetK - sMax) / 2, w, h);
+
+                    mainCtx.strokeStyle = '#06b6d4';
+                    mainCtx.beginPath();
+                    mainCtx.moveTo(p1.x, p1.y);
+                    mainCtx.lineTo(p2.x, p2.y);
+                    mainCtx.stroke();
+                }
+            } else if (state.preset === 's+4t=2') {
+                const { sMin, sMax } = getSegmentRangeS(0.5, -0.25);
+                if (sMin <= sMax) {
+                    const p1 = coordToPixel(sMin, (2 - sMin) / 4, w, h);
+                    const p2 = coordToPixel(sMax, (2 - sMax) / 4, w, h);
+
+                    mainCtx.strokeStyle = '#06b6d4';
+                    mainCtx.beginPath();
+                    mainCtx.moveTo(p1.x, p1.y);
+                    mainCtx.lineTo(p2.x, p2.y);
+                    mainCtx.stroke();
+                }
+            } else if (state.preset === 's+t<1' || state.preset === 's+t<=1') {
+                mainCtx.fillStyle = 'rgba(6, 182, 212, 0.25)';
+                mainCtx.strokeStyle = '#06b6d4';
+
+                if (state.preset === 's+t<1') {
+                    mainCtx.setLineDash([5, 4]);
+                }
+
+                mainCtx.beginPath();
+                if (nonNegS && nonNegT) {
+                    const pO = coordToPixel(0, 0, w, h);
+                    const pA = coordToPixel(1, 0, w, h);
+                    const pB = coordToPixel(0, 1, w, h);
+                    mainCtx.moveTo(pO.x, pO.y);
+                    mainCtx.lineTo(pA.x, pA.y);
+                    mainCtx.lineTo(pB.x, pB.y);
+                    mainCtx.closePath();
+                } else {
+                    const p1 = coordToPixel(-1.5, 2.5, w, h);
+                    const p2 = coordToPixel(3.0, -2.0, w, h);
+                    const p3 = coordToPixel(-1.5, -2.0, w, h);
+                    mainCtx.moveTo(p1.x, p1.y);
+                    mainCtx.lineTo(p2.x, p2.y);
+                    mainCtx.lineTo(p3.x, p3.y);
+                    mainCtx.closePath();
+                }
+                mainCtx.fill();
+                mainCtx.stroke();
+                mainCtx.setLineDash([]);
+            } else if (state.preset === '1<=s+t<=2') {
+                mainCtx.fillStyle = 'rgba(6, 182, 212, 0.25)';
+                mainCtx.strokeStyle = '#06b6d4';
+
+                mainCtx.beginPath();
+                if (nonNegS && nonNegT) {
+                    const p1 = coordToPixel(1, 0, w, h);
+                    const p2 = coordToPixel(2, 0, w, h);
+                    const p3 = coordToPixel(0, 2, w, h);
+                    const p4 = coordToPixel(0, 1, w, h);
+                    mainCtx.moveTo(p1.x, p1.y);
+                    mainCtx.lineTo(p2.x, p2.y);
+                    mainCtx.lineTo(p3.x, p3.y);
+                    mainCtx.lineTo(p4.x, p4.y);
+                    mainCtx.closePath();
+                } else {
+                    const p1 = coordToPixel(-1.0, 2.0, w, h);
+                    const p2 = coordToPixel(3.0, -2.0, w, h);
+                    const p3 = coordToPixel(3.0, -1.0, w, h);
+                    const p4 = coordToPixel(-1.0, 3.0, w, h);
+                    mainCtx.moveTo(p1.x, p1.y);
+                    mainCtx.lineTo(p2.x, p2.y);
+                    mainCtx.lineTo(p3.x, p3.y);
+                    mainCtx.lineTo(p4.x, p4.y);
+                    mainCtx.closePath();
+                }
+                mainCtx.fill();
+                mainCtx.stroke();
+            } else if (state.preset === '0<=s<=1,0<=t<=1') {
+                mainCtx.fillStyle = 'rgba(6, 182, 212, 0.25)';
+                mainCtx.strokeStyle = '#06b6d4';
+
+                const p1 = coordToPixel(0, 0, w, h);
+                const p2 = coordToPixel(1, 0, w, h);
+                const p3 = coordToPixel(1, 1, w, h);
+                const p4 = coordToPixel(0, 1, w, h);
+
+                mainCtx.beginPath();
+                mainCtx.moveTo(p1.x, p1.y);
+                mainCtx.lineTo(p2.x, p2.y);
+                mainCtx.lineTo(p3.x, p3.y);
+                mainCtx.lineTo(p4.x, p4.y);
+                mainCtx.closePath();
+                mainCtx.fill();
+                mainCtx.stroke();
+            }
+        }
+
+        function renderAll() {
+            // Resize canvas to match display size
+            const rect = mainCanvas.parentElement.getBoundingClientRect();
+            if (mainCanvas.width !== rect.width || mainCanvas.height !== rect.height) {
+                mainCanvas.width = rect.width;
+                mainCanvas.height = rect.height;
+            }
+
+            // Update UI Numerical Displays
+            valS.textContent = state.s.toFixed(2);
+            valT.textContent = state.t.toFixed(2);
+            valK.textContent = state.k.toFixed(2);
+            sliderS.value = state.s;
+            sliderT.value = state.t;
+            sliderK.value = state.k;
+
+            valAngle.textContent = `${state.angle}°`;
+            valScaleX.textContent = state.scaleX.toFixed(1);
+            valScaleY.textContent = state.scaleY.toFixed(1);
+            sliderAngle.value = state.angle;
+            sliderScaleX.value = state.scaleX;
+            sliderScaleY.value = state.scaleY;
+
+            // Update badge text for non-negative limits
+            const limits = [];
+            if (state.nonNegS) limits.push("s ≥ 0");
+            if (state.nonNegT) limits.push("t ≥ 0");
+            nonNegBadge.textContent = limits.length > 0 ? limits.join(", ") : "制限なし";
+
+            drawMainCanvas();
+        }
+
+        // Slider Control Events
+        sliderS.addEventListener('input', (e) => {
+            state.s = parseFloat(e.target.value);
+            renderAll();
+        });
+
+        sliderT.addEventListener('input', (e) => {
+            state.t = parseFloat(e.target.value);
+            renderAll();
+        });
+
+        sliderK.addEventListener('input', (e) => {
+            state.k = parseFloat(e.target.value);
+            if (state.preset === 's+t=k') currentCondBadge.textContent = `s + t = ${state.k.toFixed(2)}`;
+            if (state.preset === 's+2t=k') currentCondBadge.textContent = `s + 2t = ${state.k.toFixed(2)}`;
+            renderAll();
+        });
+
+        // Axis Angle and Scale Sliders
+        sliderAngle.addEventListener('input', (e) => {
+            state.angle = parseInt(e.target.value, 10);
+            renderAll();
+        });
+
+        sliderScaleX.addEventListener('input', (e) => {
+            state.scaleX = parseFloat(e.target.value);
+            renderAll();
+        });
+
+        sliderScaleY.addEventListener('input', (e) => {
+            state.scaleY = parseFloat(e.target.value);
+            renderAll();
+        });
+
+        btnResetAxes.addEventListener('click', () => {
+            state.angle = 90;
+            state.scaleX = 1.0;
+            state.scaleY = 1.0;
+            renderAll();
+        });
+
+        // Toggle Non-Negative Checkboxes
+        checkNonNegS.addEventListener('change', (e) => {
+            state.nonNegS = e.target.checked;
+            renderAll();
+        });
+
+        checkNonNegT.addEventListener('change', (e) => {
+            state.nonNegT = e.target.checked;
+            renderAll();
+        });
+
+        // Preset Button Clicks
+        presetButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                presetButtons.forEach(b => {
+                    b.classList.remove('bg-indigo-600/30', 'border-indigo-500', 'text-indigo-200', 'font-semibold');
+                    b.classList.add('bg-slate-800', 'border-slate-700', 'text-slate-300');
+                });
+                btn.classList.remove('bg-slate-800', 'border-slate-700', 'text-slate-300');
+                btn.classList.add('bg-indigo-600/30', 'border-indigo-500', 'text-indigo-200', 'font-semibold');
+                
+                state.preset = btn.dataset.preset;
+
+                if (state.preset === 's+t=k' || state.preset === 's+2t=k') {
+                    containerSliderK.classList.remove('opacity-0', 'pointer-events-none', 'invisible');
+                    containerSliderK.classList.add('opacity-100', 'pointer-events-auto', 'visible');
+                    const labelStr = state.preset === 's+t=k' ? `s + t = ${state.k.toFixed(2)}` : `s + 2t = ${state.k.toFixed(2)}`;
+                    currentCondBadge.textContent = labelStr;
+                } else {
+                    containerSliderK.classList.add('opacity-0', 'pointer-events-none', 'invisible');
+                    containerSliderK.classList.remove('opacity-100', 'pointer-events-auto', 'visible');
+                    currentCondBadge.textContent = state.preset;
+                }
+
+                renderAll();
+            });
+        });
+
+        // Interaction with Canvas
+        mainCanvas.addEventListener('mousedown', (e) => {
+            const rect = mainCanvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const st = pixelToCoord(mouseX, mouseY, mainCanvas.width, mainCanvas.height);
+            state.s = Math.max(-1.5, Math.min(3.0, Math.round(st.s * 20) / 20));
+            state.t = Math.max(-1.5, Math.min(3.0, Math.round(st.t * 20) / 20));
+            state.dragging = 'P';
+            renderAll();
+        });
+
+        mainCanvas.addEventListener('mousemove', (e) => {
+            if (state.dragging === 'P') {
+                const rect = mainCanvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                const st = pixelToCoord(mouseX, mouseY, mainCanvas.width, mainCanvas.height);
+                state.s = Math.max(-1.5, Math.min(3.0, Math.round(st.s * 20) / 20));
+                state.t = Math.max(-1.5, Math.min(3.0, Math.round(st.t * 20) / 20));
+                renderAll();
+            }
+        });
+
+        // Global Mouse Up Listener
+        window.addEventListener('mouseup', () => {
+            state.dragging = null;
+        });
+
+        // Window Resize Handling
+        window.addEventListener('resize', renderAll);
+
+        window.onload = () => {
+            // Render Math Equations with KaTeX
+            renderMathInElement(document.body, {
+                delimiters: [
+                    { left: '$$', right: '$$', display: true },
+                    { left: '$', right: '$', display: false }
+                ]
+            });
+
+            // Initial Canvas Render
+            renderAll();
+        };
+    </script>
+</body>
+</html>
