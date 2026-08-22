@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>長方形ABCDの動点P・Qと面積推移シミュレーター</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        canvas {
+            touch-action: none;
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between bg-slate-950 text-slate-100 font-sans">
+
+    <header class="bg-slate-900/90 border-b border-slate-800 px-4 py-2 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <div class="bg-indigo-600 text-white p-1.5 rounded-lg">
+                <i class="fa-solid fa-shapes text-sm"></i>
+            </div>
+            <h1 class="text-sm font-bold text-white tracking-tight">長方形ABCDの動点P・Q 面積推移シミュレーター</h1>
+        </div>
+        <div class="text-[11px] text-slate-400 font-mono bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+            長方形ABCD: AB = 4cm, BC = 8cm
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-2 sm:p-3 flex flex-col gap-2.5">
+
+        <!-- 1. 動点P・Qの移動条件設定 (ぎゅっと縦幅縮小) -->
+        <div class="glass-panel rounded-xl p-2.5 flex flex-col gap-2 shadow-lg">
+            <div class="flex items-center justify-between border-b border-slate-700/60 pb-1.5">
+                <span class="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+                    <i class="fa-solid fa-sliders text-indigo-400"></i> 動点P・Qの移動条件設定
+                </span>
+                <!-- Q Enable Toggle -->
+                <label class="flex items-center gap-1.5 cursor-pointer bg-slate-800 px-2 py-0.5 rounded border border-slate-700 hover:border-slate-600 transition">
+                    <input type="checkbox" id="includeQToggle" class="w-3.5 h-3.5 rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-cyan-500">
+                    <span class="text-[11px] font-semibold text-cyan-300">点Qを含める</span>
+                </label>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <!-- Point P Controls -->
+                <div class="bg-slate-900/90 px-2.5 py-1.5 rounded-lg border border-pink-500/30 flex items-center justify-between gap-2">
+                    <span class="text-xs font-bold text-pink-400 shrink-0 flex items-center gap-1">
+                        <span class="w-2 h-2 rounded-full bg-pink-500 inline-block"></span> P:
+                    </span>
+                    <div class="grid grid-cols-3 gap-1.5 flex-1 text-xs">
+                        <select id="pSpeedSelect" class="bg-slate-800 text-slate-200 border border-slate-700 rounded px-1.5 py-0.5 text-[11px] focus:ring-pink-500">
+                            <option value="1">1 cm/s</option>
+                            <option value="2">2 cm/s</option>
+                        </select>
+                        <select id="pStartSelect" class="bg-slate-800 text-slate-200 border border-slate-700 rounded px-1.5 py-0.5 text-[11px] focus:ring-pink-500">
+                            <option value="A" selected>始点: A</option>
+                            <option value="B">始点: B</option>
+                            <option value="C">始点: C</option>
+                            <option value="D">始点: D</option>
+                        </select>
+                        <select id="pDirSelect" class="bg-slate-800 text-slate-200 border border-slate-700 rounded px-1.5 py-0.5 text-[11px] focus:ring-pink-500">
+                            <option value="CCW" selected>反時計(A→B)</option>
+                            <option value="CW">時計(A→D)</option>
+                        </select>
+                    </div>
+                    <span class="text-[10px] text-slate-400 font-mono shrink-0 hidden sm:inline" id="pPosText">位置: A</span>
+                </div>
+
+                <!-- Point Q Controls -->
+                <div id="qControlContainer" class="bg-slate-900/90 px-2.5 py-1.5 rounded-lg border border-cyan-500/30 flex items-center justify-between gap-2 opacity-50 pointer-events-none transition-all">
+                    <span class="text-xs font-bold text-cyan-400 shrink-0 flex items-center gap-1">
+                        <span class="w-2 h-2 rounded-full bg-cyan-400 inline-block"></span> Q:
+                    </span>
+                    <div class="grid grid-cols-3 gap-1.5 flex-1 text-xs">
+                        <select id="qSpeedSelect" class="bg-slate-800 text-slate-200 border border-slate-700 rounded px-1.5 py-0.5 text-[11px] focus:ring-cyan-500">
+                            <option value="1">1 cm/s</option>
+                            <option value="2" selected>2 cm/s</option>
+                        </select>
+                        <select id="qStartSelect" class="bg-slate-800 text-slate-200 border border-slate-700 rounded px-1.5 py-0.5 text-[11px] focus:ring-cyan-500">
+                            <option value="A">始点: A</option>
+                            <option value="B">始点: B</option>
+                            <option value="C" selected>始点: C</option>
+                            <option value="D">始点: D</option>
+                        </select>
+                        <select id="qDirSelect" class="bg-slate-800 text-slate-200 border border-slate-700 rounded px-1.5 py-0.5 text-[11px] focus:ring-cyan-500">
+                            <option value="CW" selected>時計(A→D)</option>
+                            <option value="CCW">反時計(A→B)</option>
+                        </select>
+                    </div>
+                    <span class="text-[10px] text-slate-400 font-mono shrink-0 hidden sm:inline" id="qPosText">位置: C</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. 時間のスライダー (コンパクト配置) -->
+        <div class="glass-panel rounded-xl px-3 py-1.5 flex items-center gap-2.5 shadow-lg">
+            <button id="playBtn" class="w-7 h-7 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center shadow transition shrink-0">
+                <i class="fa-solid fa-play text-xs"></i>
+            </button>
+            <button id="resetBtn" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition border border-slate-700 shrink-0">
+                <i class="fa-solid fa-rotate-left text-xs"></i>
+            </button>
+            
+            <!-- Time Slider -->
+            <div class="flex-1 flex items-center gap-3">
+                <input type="range" id="timeSlider" min="0" max="24" step="0.1" value="0" class="flex-1 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                <div class="text-xs font-mono shrink-0 flex gap-2">
+                    <span class="text-slate-300">t = <strong id="timeVal" class="text-indigo-400 text-xs">0.00</strong> s</span>
+                    <span class="text-slate-500">/ <span id="maxTimeVal">24.0</span>s</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. 四角形(左) と グラフ(右) の横並び配置 (タイトルインライン化) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 flex-1 min-h-0">
+            
+            <!-- 左: 図形表示 (長方形 ABCD) -->
+            <div class="glass-panel rounded-xl p-1.5 flex flex-col shadow-lg relative overflow-hidden h-[300px] sm:h-[340px] lg:h-auto">
+                <!-- Overlay Header Inside Canvas -->
+                <div class="absolute top-3 left-3 z-10 flex items-center gap-2 bg-slate-900/80 backdrop-blur-md px-2.5 py-1 rounded-lg border border-slate-700/80 shadow">
+                    <span class="text-xs font-semibold text-indigo-300 flex items-center gap-1.5">
+                        <i class="fa-solid fa-vector-square"></i> 図形表示 (長方形 ABCD)
+                    </span>
+                    <span id="targetShapeBadge" class="text-[10px] bg-indigo-950 text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-800/50 font-medium">
+                        対象: △ADP
+                    </span>
+                </div>
+
+                <!-- Canvas -->
+                <div class="relative w-full h-full bg-slate-950/80 rounded-lg border border-slate-800/80 overflow-hidden flex items-center justify-center">
+                    <canvas id="geometryCanvas" class="w-full h-full"></canvas>
+                </div>
+            </div>
+
+            <!-- 右: 面積推移グラフ (t - y) -->
+            <div class="glass-panel rounded-xl p-1.5 flex flex-col shadow-lg relative overflow-hidden h-[300px] sm:h-[340px] lg:h-auto">
+                <!-- Overlay Header Inside Graph -->
+                <div class="absolute top-3 left-3 z-10 flex items-center justify-between bg-slate-900/80 backdrop-blur-md px-2.5 py-1 rounded-lg border border-slate-700/80 shadow">
+                    <span class="text-xs font-semibold text-emerald-300 flex items-center gap-1.5">
+                        <i class="fa-solid fa-chart-line"></i> 面積推移グラフ (t - y)
+                    </span>
+                </div>
+
+                <!-- Chart Canvas Container -->
+                <div class="w-full h-full bg-slate-950/80 rounded-lg border border-slate-800/80 p-2 relative pt-8">
+                    <canvas id="graphCanvas"></canvas>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 4. リアルタイム計算値 & 説明ノート (コンパクト化) -->
+        <div class="glass-panel rounded-xl p-2 flex flex-col gap-1.5 shadow-lg text-xs">
+            <div class="grid grid-cols-3 gap-2">
+                <div class="bg-slate-900/80 px-2.5 py-1 rounded-lg border border-slate-800 flex items-center justify-between">
+                    <span class="text-[10px] text-slate-400">時間 (t):</span>
+                    <span class="text-xs font-bold font-mono text-indigo-400" id="metricT">0.00 s</span>
+                </div>
+                <div class="bg-slate-900/80 px-2.5 py-1 rounded-lg border border-slate-800 flex items-center justify-between">
+                    <span class="text-[10px] text-slate-400" id="metricAreaTitle">△ADP 面積 (y):</span>
+                    <span class="text-xs font-bold font-mono text-emerald-400" id="metricY">0.00 cm²</span>
+                </div>
+                <div class="bg-slate-900/80 px-2.5 py-1 rounded-lg border border-slate-800 flex items-center justify-between">
+                    <span class="text-[10px] text-slate-400">点位置:</span>
+                    <span class="text-[11px] font-bold font-mono text-slate-200" id="metricPoints">P: A | Q: -</span>
+                </div>
+            </div>
+
+            <!-- Explanation Note -->
+            <div class="bg-slate-900/60 px-2.5 py-1 rounded-lg border border-slate-800/80 text-[11px] text-slate-400 flex items-center gap-2">
+                <span class="text-indigo-300 font-semibold shrink-0">
+                    <i class="fa-solid fa-circle-info"></i> ルール:
+                </span>
+                <p id="explanationText" class="truncate">
+                    固定底辺AD（8cm）と点Pの高さ（AB・CD上では時間変化、BC上では4cm固定、AD上では0cm）から面積を計算。
+                </p>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center py-1 text-[10px] text-slate-500 border-t border-slate-800/40">
+        長方形ABCDにおける動点P・Qと面積推移シミュレーター
+    </footer>
+
+    <script>
+        // --- Canvas & Controls References ---
+        const geoCanvas = document.getElementById('geometryCanvas');
+        const geoCtx = geoCanvas.getContext('2d');
+        const graphCanvas = document.getElementById('graphCanvas');
+
+        // UI Inputs
+        const playBtn = document.getElementById('playBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const timeSlider = document.getElementById('timeSlider');
+        const timeVal = document.getElementById('timeVal');
+        const maxTimeVal = document.getElementById('maxTimeVal');
+        
+        // P Controls
+        const pSpeedSelect = document.getElementById('pSpeedSelect');
+        const pStartSelect = document.getElementById('pStartSelect');
+        const pDirSelect = document.getElementById('pDirSelect');
+        const pPosText = document.getElementById('pPosText');
+
+        // Q Controls
+        const includeQToggle = document.getElementById('includeQToggle');
+        const qControlContainer = document.getElementById('qControlContainer');
+        const qSpeedSelect = document.getElementById('qSpeedSelect');
+        const qStartSelect = document.getElementById('qStartSelect');
+        const qDirSelect = document.getElementById('qDirSelect');
+        const qPosText = document.getElementById('qPosText');
+
+        // Metrics & Labels
+        const metricT = document.getElementById('metricT');
+        const metricY = document.getElementById('metricY');
+        const metricAreaTitle = document.getElementById('metricAreaTitle');
+        const metricPoints = document.getElementById('metricPoints');
+        const targetShapeBadge = document.getElementById('targetShapeBadge');
+        const explanationText = document.getElementById('explanationText');
+
+        // --- Geometry Parameters ---
+        // Rectangle ABCD: Height = 4 cm, Width = 8 cm.
+        // Coordinates:
+        // A = (0, 4), B = (0, 0), C = (8, 0), D = (8, 4)
+        const RECT_WIDTH = 8;
+        const RECT_HEIGHT = 4;
+        const PERIMETER = 24; // 8 + 4 + 8 + 4
+
+        const RECT_VERTICES = {
+            A: { x: 0, y: 4 },
+            B: { x: 0, y: 0 },
+            C: { x: 8, y: 0 },
+            D: { x: 8, y: 4 }
+        };
+
+        // State variables
+        let currentTime = 0;
+        let maxTime = 24;
+        let isPlaying = false;
+        let animationFrameId = null;
+        let chartInstance = null;
+
+        let scale = 1;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        // --- STREAMING_CHUNK:Implementing Perimeter & Point Math... ---
+        /**
+         * Clockwise perimeter parameter s in [0, 24):
+         * A = 0, D = 8, C = 12, B = 20
+         */
+        function getClockwiseOffset(vertexKey) {
+            switch (vertexKey) {
+                case 'A': return 0;
+                case 'D': return 8;
+                case 'C': return 12;
+                case 'B': return 20;
+                default: return 0;
+            }
+        }
+
+        /**
+         * Counter-Clockwise perimeter parameter s in [0, 24):
+         * A = 0, B = 4, C = 12, D = 16
+         */
+        function getCCWOffset(vertexKey) {
+            switch (vertexKey) {
+                case 'A': return 0;
+                case 'B': return 4;
+                case 'C': return 12;
+                case 'D': return 16;
+                default: return 0;
+            }
+        }
+
+        /**
+         * Calculates (x, y) coordinates on Rectangle ABCD given time t and settings
+         */
+        function getPointPosition(t, speed, startVertex, direction) {
+            const spd = parseFloat(speed);
+            const distTraveled = spd * t;
+
+            if (direction === 'CW') {
+                // Clockwise path: A(0,4) -> D(8,4) -> C(8,0) -> B(0,0) -> A(0,4)
+                const startOffset = getClockwiseOffset(startVertex);
+                let s = (startOffset + distTraveled) % PERIMETER;
+
+                if (s < 8) {
+                    // On AD (top)
+                    return { x: s, y: 4, sCW: s, segment: 'AD' };
+                } else if (s < 12) {
+                    // On DC (right)
+                    return { x: 8, y: 4 - (s - 8), sCW: s, segment: 'DC' };
+                } else if (s < 20) {
+                    // On CB (bottom)
+                    return { x: 8 - (s - 12), y: 0, sCW: s, segment: 'CB' };
+                } else {
+                    // On BA (left)
+                    return { x: 0, y: s - 20, sCW: s, segment: 'BA' };
+                }
+            } else {
+                // Counter-Clockwise path: A(0,4) -> B(0,0) -> C(8,0) -> D(8,4) -> A(0,4)
+                const startOffset = getCCWOffset(startVertex);
+                let s = (startOffset + distTraveled) % PERIMETER;
+
+                if (s < 4) {
+                    // On AB (left)
+                    const y = 4 - s;
+                    const sCW = (20 + y) % PERIMETER;
+                    return { x: 0, y: y, sCW: sCW, segment: 'AB' };
+                } else if (s < 12) {
+                    // On BC (bottom)
+                    const x = s - 4;
+                    const sCW = (20 - x) % PERIMETER;
+                    return { x: x, y: 0, sCW: sCW, segment: 'BC' };
+                } else if (s < 16) {
+                    // On CD (right)
+                    const y = s - 12;
+                    const sCW = (12 - y) % PERIMETER;
+                    return { x: 8, y: y, sCW: sCW, segment: 'CD' };
+                } else {
+                    // On DA (top)
+                    const x = 8 - (s - 16);
+                    const sCW = x;
+                    return { x: x, y: 4, sCW: sCW, segment: 'DA' };
+                }
+            }
+        }
+
+        // --- Area Calculation ---
+        function calculateArea(t) {
+            const pPos = getPointPosition(
+                t,
+                pSpeedSelect.value,
+                pStartSelect.value,
+                pDirSelect.value
+            );
+
+            const includeQ = includeQToggle.checked;
+
+            if (!includeQ) {
+                // Triangle ADP Area
+                // Base AD = 8, Height = distance from P to line AD (y = 4)
+                const height = 4 - pPos.y;
+                return 0.5 * RECT_WIDTH * height;
+            } else {
+                // Polygon / Quadrilateral APDQ Area
+                const qPos = getPointPosition(
+                    t,
+                    qSpeedSelect.value,
+                    qStartSelect.value,
+                    qDirSelect.value
+                );
+
+                // Sort vertices A, D, P, Q along perimeter (using clockwise parameter sCW)
+                const rawPoints = [
+                    { name: 'A', x: RECT_VERTICES.A.x, y: RECT_VERTICES.A.y, sCW: 0 },
+                    { name: 'D', x: RECT_VERTICES.D.x, y: RECT_VERTICES.D.y, sCW: 8 },
+                    { name: 'P', x: pPos.x, y: pPos.y, sCW: pPos.sCW },
+                    { name: 'Q', x: qPos.x, y: qPos.y, sCW: qPos.sCW }
+                ];
+
+                // Sort by perimeter position
+                rawPoints.sort((a, b) => a.sCW - b.sCW);
+
+                // Shoelace formula for polygon area
+                let areaSum = 0;
+                const n = rawPoints.length;
+                for (let i = 0; i < n; i++) {
+                    const j = (i + 1) % n;
+                    areaSum += rawPoints[i].x * rawPoints[j].y;
+                    areaSum -= rawPoints[j].x * rawPoints[i].y;
+                }
+
+                return Math.abs(areaSum) / 2;
+            }
+        }
+
+        // --- STREAMING_CHUNK:Configuring Chart.js Visualization... ---
+        function initChart() {
+            const ctx = graphCanvas.getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: '面積 y (cm²)',
+                            data: [],
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0,
+                            pointRadius: 0,
+                            pointHoverRadius: 5
+                        },
+                        {
+                            label: '現在の時刻 t',
+                            data: [],
+                            borderColor: '#818cf8',
+                            backgroundColor: '#6366f1',
+                            pointRadius: 7,
+                            pointHoverRadius: 9,
+                            showLine: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            title: { display: true, text: '時間 t (秒)', color: '#94a3b8', font: { size: 11 } },
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#94a3b8', font: { size: 10 } },
+                            min: 0,
+                            max: maxTime
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: '面積 y (cm²)', color: '#94a3b8', font: { size: 11 } },
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#94a3b8', font: { size: 10 } },
+                            max: 35
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `t: ${context.parsed.x.toFixed(2)} 秒, y: ${context.parsed.y.toFixed(2)} cm²`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateChartData() {
+            if (!chartInstance) return;
+
+            const samples = 200;
+            const curveData = [];
+
+            for (let i = 0; i <= samples; i++) {
+                const t = (maxTime * i) / samples;
+                const y = calculateArea(t);
+                curveData.push({ x: t, y: y });
+            }
+
+            const currentY = calculateArea(currentTime);
+
+            chartInstance.options.scales.x.max = maxTime;
+            chartInstance.data.datasets[0].data = curveData;
+            chartInstance.data.datasets[1].data = [{ x: currentTime, y: currentY }];
+            chartInstance.update('none');
+        }
+
+        // --- STREAMING_CHUNK:Rendering Canvas Geometry... ---
+        function setupCanvasSize() {
+            const rect = geoCanvas.parentElement.getBoundingClientRect();
+            geoCanvas.width = rect.width * window.devicePixelRatio;
+            geoCanvas.height = rect.height * window.devicePixelRatio;
+
+            // Fit 10cm x 6cm box into canvas (padding = 2cm around rectangle)
+            const marginX = 2;
+            const marginY = 1.5;
+            const viewW = RECT_WIDTH + marginX * 2; // 12
+            const viewH = RECT_HEIGHT + marginY * 2; // 7
+
+            const scaleX = geoCanvas.width / viewW;
+            const scaleY = geoCanvas.height / viewH;
+            scale = Math.min(scaleX, scaleY);
+
+            offsetX = (geoCanvas.width - RECT_WIDTH * scale) / 2;
+            offsetY = (geoCanvas.height + RECT_HEIGHT * scale) / 2; // Flip Y for traditional Cartesian
+        }
+
+        function toCanvasX(x) { return offsetX + x * scale; }
+        function toCanvasY(y) { return offsetY - y * scale; }
+
+        function drawGeometry() {
+            geoCtx.clearRect(0, 0, geoCanvas.width, geoCanvas.height);
+
+            // 1. Draw Grid / Frame
+            geoCtx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            geoCtx.lineWidth = 1;
+            for (let i = 0; i <= RECT_WIDTH; i++) {
+                geoCtx.beginPath();
+                geoCtx.moveTo(toCanvasX(i), toCanvasY(-0.5));
+                geoCtx.lineTo(toCanvasX(i), toCanvasY(RECT_HEIGHT + 0.5));
+                geoCtx.stroke();
+            }
+
+            const includeQ = includeQToggle.checked;
+            const pPos = getPointPosition(
+                currentTime,
+                pSpeedSelect.value,
+                pStartSelect.value,
+                pDirSelect.value
+            );
+
+            let qPos = null;
+            if (includeQ) {
+                qPos = getPointPosition(
+                    currentTime,
+                    qSpeedSelect.value,
+                    qStartSelect.value,
+                    qDirSelect.value
+                );
+            }
+
+            // 2. Draw Filled Target Area (△ADP or Polygon APDQ)
+            geoCtx.beginPath();
+            if (!includeQ) {
+                // Triangle ADP
+                geoCtx.moveTo(toCanvasX(RECT_VERTICES.A.x), toCanvasY(RECT_VERTICES.A.y));
+                geoCtx.lineTo(toCanvasX(pPos.x), toCanvasY(pPos.y));
+                geoCtx.lineTo(toCanvasX(RECT_VERTICES.D.x), toCanvasY(RECT_VERTICES.D.y));
+                geoCtx.closePath();
+                geoCtx.fillStyle = 'rgba(99, 102, 241, 0.25)';
+                geoCtx.strokeStyle = '#818cf8';
+            } else {
+                // Polygon APDQ
+                const rawPoints = [
+                    { x: RECT_VERTICES.A.x, y: RECT_VERTICES.A.y, sCW: 0 },
+                    { x: RECT_VERTICES.D.x, y: RECT_VERTICES.D.y, sCW: 8 },
+                    { x: pPos.x, y: pPos.y, sCW: pPos.sCW },
+                    { x: qPos.x, y: qPos.y, sCW: qPos.sCW }
+                ];
+                rawPoints.sort((a, b) => a.sCW - b.sCW);
+
+                geoCtx.moveTo(toCanvasX(rawPoints[0].x), toCanvasY(rawPoints[0].y));
+                for (let i = 1; i < rawPoints.length; i++) {
+                    geoCtx.lineTo(toCanvasX(rawPoints[i].x), toCanvasY(rawPoints[i].y));
+                }
+                geoCtx.closePath();
+                geoCtx.fillStyle = 'rgba(16, 185, 129, 0.25)';
+                geoCtx.strokeStyle = '#34d399';
+            }
+            geoCtx.fill();
+            geoCtx.lineWidth = 2.5;
+            geoCtx.stroke();
+
+            // 3. Draw Outer Rectangle ABCD
+            geoCtx.beginPath();
+            geoCtx.rect(
+                toCanvasX(0),
+                toCanvasY(RECT_HEIGHT),
+                RECT_WIDTH * scale,
+                RECT_HEIGHT * scale
+            );
+            geoCtx.strokeStyle = '#94a3b8';
+            geoCtx.lineWidth = 2;
+            geoCtx.setLineDash([5, 5]);
+            geoCtx.stroke();
+            geoCtx.setLineDash([]);
+
+            // 4. Draw Length Annotations
+            geoCtx.font = '12px sans-serif';
+            geoCtx.fillStyle = '#cbd5e1';
+            geoCtx.textAlign = 'center';
+            geoCtx.fillText('8 cm (AD)', toCanvasX(4), toCanvasY(4) - 12);
+            geoCtx.fillText('8 cm (BC)', toCanvasX(4), toCanvasY(0) + 20);
+            
+            geoCtx.textAlign = 'right';
+            geoCtx.fillText('4 cm', toCanvasX(0) - 10, toCanvasY(2) + 4);
+            geoCtx.textAlign = 'left';
+            geoCtx.fillText('4 cm', toCanvasX(8) + 10, toCanvasY(2) + 4);
+
+            // 5. Draw Vertices A, B, C, D
+            const vertices = [
+                { key: 'A', x: 0, y: 4, labelX: -14, labelY: -10 },
+                { key: 'B', x: 0, y: 0, labelX: -14, labelY: 16 },
+                { key: 'C', x: 8, y: 0, labelX: 14, labelY: 16 },
+                { key: 'D', x: 8, y: 4, labelX: 14, labelY: -10 }
+            ];
+
+            vertices.forEach(v => {
+                const cx = toCanvasX(v.x);
+                const cy = toCanvasY(v.y);
+
+                geoCtx.beginPath();
+                geoCtx.arc(cx, cy, 6, 0, Math.PI * 2);
+                geoCtx.fillStyle = '#1e293b';
+                geoCtx.fill();
+                geoCtx.strokeStyle = v.key === 'A' || v.key === 'D' ? '#818cf8' : '#cbd5e1';
+                geoCtx.lineWidth = 2;
+                geoCtx.stroke();
+
+                geoCtx.font = 'bold 13px sans-serif';
+                geoCtx.fillStyle = v.key === 'A' || v.key === 'D' ? '#a5b4fc' : '#f8fafc';
+                geoCtx.textAlign = 'center';
+                geoCtx.fillText(v.key, cx + v.labelX, cy + v.labelY);
+            });
+
+            // 6. Draw Moving Point P
+            const px = toCanvasX(pPos.x);
+            const py = toCanvasY(pPos.y);
+            geoCtx.beginPath();
+            geoCtx.arc(px, py, 8, 0, Math.PI * 2);
+            geoCtx.fillStyle = '#ec4899';
+            geoCtx.shadowColor = '#ec4899';
+            geoCtx.shadowBlur = 12;
+            geoCtx.fill();
+            geoCtx.shadowBlur = 0;
+            geoCtx.strokeStyle = '#ffffff';
+            geoCtx.lineWidth = 2;
+            geoCtx.stroke();
+
+            geoCtx.font = 'bold 12px sans-serif';
+            geoCtx.fillStyle = '#f472b6';
+            geoCtx.textAlign = 'center';
+            geoCtx.fillText(`P`, px, py - 13);
+
+            // 7. Draw Moving Point Q (if enabled)
+            if (includeQ && qPos) {
+                const qx = toCanvasX(qPos.x);
+                const qy = toCanvasY(qPos.y);
+                geoCtx.beginPath();
+                geoCtx.arc(qx, qy, 8, 0, Math.PI * 2);
+                geoCtx.fillStyle = '#06b6d4';
+                geoCtx.shadowColor = '#06b6d4';
+                geoCtx.shadowBlur = 12;
+                geoCtx.fill();
+                geoCtx.shadowBlur = 0;
+                geoCtx.strokeStyle = '#ffffff';
+                geoCtx.lineWidth = 2;
+                geoCtx.stroke();
+
+                geoCtx.font = 'bold 12px sans-serif';
+                geoCtx.fillStyle = '#22d3ee';
+                geoCtx.textAlign = 'center';
+                geoCtx.fillText(`Q`, qx, qy - 13);
+            }
+        }
+
+        // --- STREAMING_CHUNK:UI Synchronizations & Event Handlers... ---
+        function updateUI() {
+            const includeQ = includeQToggle.checked;
+
+            // Recalculate Max Time based on speeds
+            const pSpd = parseFloat(pSpeedSelect.value);
+            const qSpd = parseFloat(qSpeedSelect.value);
+            maxTime = 24 / Math.min(pSpd, includeQ ? qSpd : pSpd);
+            timeSlider.max = maxTime;
+            maxTimeVal.innerText = maxTime.toFixed(1);
+
+            if (currentTime > maxTime) currentTime = maxTime;
+            timeSlider.value = currentTime;
+            timeVal.innerText = currentTime.toFixed(2);
+
+            const area = calculateArea(currentTime);
+            const pPos = getPointPosition(
+                currentTime,
+                pSpeedSelect.value,
+                pStartSelect.value,
+                pDirSelect.value
+            );
+
+            let qPos = null;
+            if (includeQ) {
+                qPos = getPointPosition(
+                    currentTime,
+                    qSpeedSelect.value,
+                    qStartSelect.value,
+                    qDirSelect.value
+                );
+            }
+
+            // Text Updates
+            pPosText.innerText = `位置: ${pPos.segment}上 (${pPos.x.toFixed(1)}, ${pPos.y.toFixed(1)})`;
+            if (includeQ) {
+                qPosText.innerText = `位置: ${qPos.segment}上 (${qPos.x.toFixed(1)}, ${qPos.y.toFixed(1)})`;
+                qControlContainer.classList.remove('opacity-50', 'pointer-events-none');
+                targetShapeBadge.innerText = '対象: 四角形 APDQ';
+                targetShapeBadge.className = 'text-[10px] bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-800/50 font-medium';
+                metricAreaTitle.innerText = '四角形 APDQ 面積 (y):';
+                metricPoints.innerText = `P: ${pPos.segment} | Q: ${qPos.segment}`;
+                explanationText.innerText = '4頂点 A, D, P, Q の周上順序で形成される四角形APDQの面積をリアルタイム算出。';
+            } else {
+                qPosText.innerText = '非表示';
+                qControlContainer.classList.add('opacity-50', 'pointer-events-none');
+                targetShapeBadge.innerText = '対象: △ADP';
+                targetShapeBadge.className = 'text-[10px] bg-indigo-950 text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-800/50 font-medium';
+                metricAreaTitle.innerText = '△ADP 面積 (y):';
+                metricPoints.innerText = `P: ${pPos.segment} | Q: -`;
+                explanationText.innerText = '固定底辺AD（8cm）と点Pの高さ（AB・CD上では時間変化、BC上では4cm固定、AD上では0cm）から計算。';
+            }
+
+            metricT.innerHTML = `${currentTime.toFixed(2)} <span class="text-xs font-normal text-slate-400">秒</span>`;
+            metricY.innerHTML = `${area.toFixed(2)} <span class="text-xs font-normal text-slate-400">cm²</span>`;
+        }
+
+        function recalculateAndRedraw() {
+            setupCanvasSize();
+            updateUI();
+            drawGeometry();
+            updateChartData();
+        }
+
+        // --- Animation Loop ---
+        function animate() {
+            if (!isPlaying) return;
+
+            currentTime += 0.05;
+
+            if (currentTime >= maxTime) {
+                currentTime = maxTime;
+                isPlaying = false;
+                updatePlayButton();
+            }
+
+            updateUI();
+            drawGeometry();
+            updateChartData();
+
+            if (isPlaying) {
+                animationFrameId = requestAnimationFrame(animate);
+            }
+        }
+
+        function updatePlayButton() {
+            if (isPlaying) {
+                playBtn.innerHTML = '<i class="fa-solid fa-pause text-sm"></i>';
+                playBtn.classList.replace('bg-indigo-600', 'bg-amber-600');
+            } else {
+                playBtn.innerHTML = '<i class="fa-solid fa-play text-sm"></i>';
+                playBtn.classList.replace('bg-amber-600', 'bg-indigo-600');
+            }
+        }
+
+        // --- Event Listeners ---
+        playBtn.addEventListener('click', () => {
+            if (currentTime >= maxTime) currentTime = 0;
+            isPlaying = !isPlaying;
+            updatePlayButton();
+            if (isPlaying) animate();
+        });
+
+        resetBtn.addEventListener('click', () => {
+            isPlaying = false;
+            updatePlayButton();
+            currentTime = 0;
+            recalculateAndRedraw();
+        });
+
+        timeSlider.addEventListener('input', (e) => {
+            currentTime = parseFloat(e.target.value);
+            updateUI();
+            drawGeometry();
+            updateChartData();
+        });
+
+        // Control Inputs Listener
+        [
+            pSpeedSelect, pStartSelect, pDirSelect,
+            qSpeedSelect, qStartSelect, qDirSelect,
+            includeQToggle
+        ].forEach(el => {
+            el.addEventListener('change', () => {
+                recalculateAndRedraw();
+            });
+        });
+
+        window.addEventListener('resize', () => {
+            recalculateAndRedraw();
+        });
+
+        // Initialize on load
+        window.onload = () => {
+            initChart();
+            recalculateAndRedraw();
+        };
+
+    </script>
+</body>
+</html>
