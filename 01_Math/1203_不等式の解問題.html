@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2次不等式と共通範囲の可視化</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- KaTeX -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', 'Noto Sans JP', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-3 sm:p-6 flex flex-col items-center justify-start max-w-lg mx-auto">
+
+    <!-- Header -->
+    <header class="w-full text-center mb-3">
+        <h1 class="text-xs font-bold text-slate-400 tracking-wider mb-1">共通領域シミュレータ</h1>
+        <div class="flex items-center justify-center gap-2 text-xs sm:text-sm font-bold font-mono">
+            <span class="bg-sky-950 text-sky-300 border border-sky-400/60 px-2.5 py-1 rounded-lg shadow-md">
+                ① $1 \leqq x \leqq 3$
+            </span>
+            <span class="text-slate-500 text-base">/</span>
+            <span class="bg-emerald-950 text-emerald-300 border border-emerald-400/60 px-2.5 py-1 rounded-lg shadow-md">
+                ② $(x-5)(x-2a) \leqq 0$
+            </span>
+        </div>
+    </header>
+
+    <!-- Slider Control Card -->
+    <div class="w-full bg-slate-800 p-3 rounded-xl border border-slate-700 shadow-md mb-3 space-y-2">
+        <div class="flex justify-between items-center text-xs">
+            <span class="text-slate-300 font-medium">定数 $a$ の操作:</span>
+            <span id="aValueDisplay" class="text-indigo-300 font-mono text-sm bg-slate-900 px-2 py-0.5 rounded border border-indigo-500/40">a = 1.00 ($2a = 2.00$)</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <!-- Slider (Width adjusted) -->
+            <div class="flex items-center gap-1 w-2/5">
+                <span class="text-[10px] font-mono text-slate-400">-1</span>
+                <input type="range" id="aSlider" min="-1" max="4" step="0.05" value="1" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                <span class="text-[10px] font-mono text-slate-400">4</span>
+            </div>
+            <!-- State Tag & Inequality ② Solution -->
+            <div class="flex-1 flex items-center gap-1.5 min-w-0">
+                <div id="stateTag" class="px-2 py-1 rounded-lg text-xs font-bold font-mono border text-center shrink-0">
+                    <!-- Dynamically updated -->
+                </div>
+                <div id="ineq2Solution" class="text-xs font-bold font-mono text-amber-300 bg-slate-900/90 px-2 py-1 rounded border border-amber-500/40 truncate text-center flex-1">
+                    <!-- Dynamically updated -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SVG Interactive Canvas -->
+    <div class="w-full bg-slate-950 rounded-xl p-2 border border-slate-800 shadow-inner mb-3">
+        <svg id="mainSvg" class="w-full h-auto select-none" viewBox="0 0 800 420" preserveAspectRatio="xMidYMid meet">
+            <!-- Dynamically generated via JS -->
+        </svg>
+    </div>
+
+    <!-- Compact Result Box -->
+    <div id="statusBox" class="w-full p-3 rounded-xl border text-xs leading-relaxed transition-colors duration-200 shadow-lg">
+        <!-- Dynamically updated via JS -->
+    </div>
+
+    <script>
+        const aSlider = document.getElementById('aSlider');
+        const aValueDisplay = document.getElementById('aValueDisplay');
+        const stateTag = document.getElementById('stateTag');
+        const ineq2Solution = document.getElementById('ineq2Solution');
+        const svg = document.getElementById('mainSvg');
+        const statusBox = document.getElementById('statusBox');
+
+        const SVG_WIDTH = 800;
+        const X_MIN = -1.5;
+        const X_MAX = 7.5;
+
+        // Map math x coordinate to SVG pixel x
+        function xToPixel(x) {
+            const padding = 50;
+            const usableWidth = SVG_WIDTH - 2 * padding;
+            return padding + ((x - X_MIN) / (X_MAX - X_MIN)) * usableWidth;
+        }
+
+        // Map math y coordinate to SVG pixel y (for parabola graph)
+        const AXIS_Y = 160; // y=0 on x-axis in SVG pixel
+        const Y_SCALE = 11; // scale factor for math y
+        function yToPixel(y) {
+            return AXIS_Y - (y * Y_SCALE);
+        }
+
+        function updateVisualizer() {
+            const a = parseFloat(aSlider.value);
+            const twoA = 2 * a;
+
+            // Update Header Values
+            aValueDisplay.textContent = `a = ${a.toFixed(2)}  (2a = ${twoA.toFixed(2)})`;
+
+            // Update State Tag & Inequality ② Solution Text
+            if (Math.abs(twoA - 5) < 0.01) {
+                stateTag.className = 'px-2 py-1 rounded-lg text-xs font-bold font-mono bg-amber-500/20 text-amber-300 border border-amber-500/50 shrink-0';
+                stateTag.textContent = '2a = 5';
+                ineq2Solution.innerHTML = '②解: $x = 5$';
+            } else if (twoA < 5) {
+                stateTag.className = 'px-2 py-1 rounded-lg text-xs font-bold font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shrink-0';
+                stateTag.textContent = '2a < 5';
+                ineq2Solution.innerHTML = `②解: $${twoA.toFixed(1)} \\leqq x \\leqq 5$`;
+            } else {
+                stateTag.className = 'px-2 py-1 rounded-lg text-xs font-bold font-mono bg-sky-500/20 text-sky-300 border border-sky-500/50 shrink-0';
+                stateTag.textContent = '2a > 5';
+                ineq2Solution.innerHTML = `②解: $5 \\leqq x \\leqq ${twoA.toFixed(1)}$`;
+            }
+
+            svg.innerHTML = '';
+
+            // 1. Draw Parabola Graph y = (x - 2a)(x - 5)
+            renderParabola(twoA);
+
+            // 2. Draw Number Line / Axis Base
+            renderAxis();
+
+            // 3. Draw Interval ② directly ON THE X-AXIS (AXIS_Y)
+            renderIntervalOnAxis(twoA);
+
+            // 4. Draw Intersection Points (2a and 5) with prominent labels
+            renderRootsOnAxis(twoA);
+
+            // 5. Draw Interval ① [1, 3] below axis
+            const y1 = 250;
+            renderInterval(1, 3, y1, '#3b82f6', '① [1, 3]');
+
+            // 6. Calculate Intersection between ① and ②
+            const yIntersection = 340;
+            let interStart = null;
+            let interEnd = null;
+
+            if (twoA < 5) {
+                interStart = Math.max(1, twoA);
+                interEnd = Math.min(3, 5); // 3
+            } else if (Math.abs(twoA - 5) < 0.001) {
+                interStart = 5;
+                interEnd = 3; // No overlap with [1,3]
+            } else {
+                interStart = 5;
+                interEnd = 3;
+            }
+
+            const hasIntersection = interStart <= interEnd;
+
+            if (hasIntersection) {
+                renderInterval(interStart, interEnd, yIntersection, '#ef4444', '共通領域 (① ∩ ②)', true);
+            } else {
+                renderNoIntersection(yIntersection);
+            }
+
+            // 7. Update Compact Status Text
+            updateStatus(a, twoA, hasIntersection);
+
+            // Re-render KaTeX
+            if (window.renderMathInElement) {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: "$$", right: "$$", display: true},
+                        {left: "$", right: "$", display: false}
+                    ]
+                });
+            }
+        }
+
+        function renderParabola(twoA) {
+            const minX = Math.min(twoA, 5);
+            const maxX = Math.max(twoA, 5);
+
+            // Fill area where y <= 0
+            if (Math.abs(minX - maxX) > 0.01) {
+                let fillPathD = `M ${xToPixel(minX)} ${AXIS_Y}`;
+                const step = 0.05;
+                for (let x = minX; x <= maxX; x += step) {
+                    const y = (x - twoA) * (x - 5);
+                    fillPathD += ` L ${xToPixel(x)} ${yToPixel(y)}`;
+                }
+                fillPathD += ` L ${xToPixel(maxX)} ${AXIS_Y} Z`;
+
+                const area = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                area.setAttribute('d', fillPathD);
+                area.setAttribute('fill', '#10b981');
+                area.setAttribute('fill-opacity', '0.2');
+                svg.appendChild(area);
+            }
+
+            // Plot Parabola Line
+            let pathD = '';
+            const sampleStep = 0.08;
+            let isFirst = true;
+
+            for (let x = X_MIN; x <= X_MAX; x += sampleStep) {
+                const y = (x - twoA) * (x - 5);
+                const px = xToPixel(x);
+                const py = yToPixel(y);
+
+                if (py >= 10 && py <= 200) {
+                    if (isFirst) {
+                        pathD += `M ${px} ${py}`;
+                        isFirst = false;
+                    } else {
+                        pathD += ` L ${px} ${py}`;
+                    }
+                } else if (!isFirst) {
+                    pathD += ` L ${px} ${Math.max(10, Math.min(200, py))}`;
+                }
+            }
+
+            const curve = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            curve.setAttribute('d', pathD);
+            curve.setAttribute('stroke', '#34d399');
+            curve.setAttribute('stroke-width', '3.5');
+            curve.setAttribute('fill', 'none');
+            svg.appendChild(curve);
+
+            // Parabola Title Label (Larger font: 20px)
+            const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            label.setAttribute('x', '45');
+            label.setAttribute('y', '38');
+            label.setAttribute('fill', '#34d399');
+            label.setAttribute('font-size', '20');
+            label.setAttribute('font-weight', 'bold');
+            label.textContent = 'y = (x - 2a)(x - 5)';
+            svg.appendChild(label);
+        }
+
+        function renderAxis() {
+            // x-axis line
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', '30');
+            line.setAttribute('y1', AXIS_Y);
+            line.setAttribute('x2', SVG_WIDTH - 30);
+            line.setAttribute('y2', AXIS_Y);
+            line.setAttribute('stroke', '#64748b');
+            line.setAttribute('stroke-width', '3');
+            svg.appendChild(line);
+
+            // x-axis label (Enlarged: 20px)
+            const xLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            xLabel.setAttribute('x', SVG_WIDTH - 25);
+            xLabel.setAttribute('y', AXIS_Y + 6);
+            xLabel.setAttribute('fill', '#cbd5e1');
+            xLabel.setAttribute('font-size', '20');
+            xLabel.setAttribute('font-weight', 'bold');
+            xLabel.textContent = 'x';
+            svg.appendChild(xLabel);
+
+            // Axis ticks with enlarged text (18px)
+            for (let x = -1; x <= 7; x++) {
+                const px = xToPixel(x);
+                const tick = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                tick.setAttribute('x1', px);
+                tick.setAttribute('y1', AXIS_Y - 6);
+                tick.setAttribute('x2', px);
+                tick.setAttribute('y2', AXIS_Y + 6);
+                tick.setAttribute('stroke', '#64748b');
+                tick.setAttribute('stroke-width', '2.5');
+                svg.appendChild(tick);
+
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', px);
+                text.setAttribute('y', AXIS_Y + 28);
+                text.setAttribute('fill', '#94a3b8');
+                text.setAttribute('font-size', '18');
+                text.setAttribute('font-weight', 'bold');
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('font-family', 'sans-serif');
+                text.textContent = x;
+                svg.appendChild(text);
+            }
+        }
+
+        function renderIntervalOnAxis(twoA) {
+            const minX = Math.min(twoA, 5);
+            const maxX = Math.max(twoA, 5);
+
+            if (Math.abs(minX - maxX) > 0.01) {
+                const px1 = xToPixel(minX);
+                const px2 = xToPixel(maxX);
+
+                // Thick green overlay bar directly on x-axis
+                const bar = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                bar.setAttribute('x1', px1);
+                bar.setAttribute('y1', AXIS_Y);
+                bar.setAttribute('x2', px2);
+                bar.setAttribute('y2', AXIS_Y);
+                bar.setAttribute('stroke', '#10b981');
+                bar.setAttribute('stroke-width', '10');
+                bar.setAttribute('opacity', '0.85');
+                svg.appendChild(bar);
+            }
+        }
+
+        function renderRootsOnAxis(twoA) {
+            const isCoincident = Math.abs(twoA - 5) < 0.05;
+
+            if (isCoincident) {
+                // Single point x = 5 = 2a
+                const px = xToPixel(5);
+                drawRootDot(px, '#10b981');
+                drawRootLabel(px, AXIS_Y - 18, '2a = 5', '#10b981');
+            } else {
+                // Root 5 (Fixed)
+                const px5 = xToPixel(5);
+                drawRootDot(px5, '#10b981');
+                drawRootLabel(px5, AXIS_Y - 18, '5', '#10b981');
+
+                // Root 2a (Variable)
+                const px2a = xToPixel(twoA);
+                drawRootDot(px2a, '#34d399');
+                drawRootLabel(px2a, AXIS_Y - 18, `2a (${twoA.toFixed(1)})`, '#34d399');
+            }
+        }
+
+        function drawRootDot(px, color) {
+            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            circle.setAttribute('cx', px);
+            circle.setAttribute('cy', AXIS_Y);
+            circle.setAttribute('r', '8.5');
+            circle.setAttribute('fill', color);
+            circle.setAttribute('stroke', '#0f172a');
+            circle.setAttribute('stroke-width', '2.5');
+            svg.appendChild(circle);
+        }
+
+        function drawRootLabel(px, py, textStr, color) {
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', px);
+            text.setAttribute('y', py);
+            text.setAttribute('fill', color);
+            text.setAttribute('font-size', '20');
+            text.setAttribute('font-weight', 'bold');
+            text.setAttribute('text-anchor', 'middle');
+            text.textContent = textStr;
+            svg.appendChild(text);
+        }
+
+        function renderInterval(startVal, endVal, y, color, labelText, isHighlight = false) {
+            const px1 = xToPixel(startVal);
+            const px2 = xToPixel(endVal);
+
+            // Vertical guideline to axis
+            [px1, px2].forEach(px => {
+                const guide = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                guide.setAttribute('x1', px);
+                guide.setAttribute('y1', AXIS_Y);
+                guide.setAttribute('x2', px);
+                guide.setAttribute('y2', y);
+                guide.setAttribute('stroke', color);
+                guide.setAttribute('stroke-width', '2');
+                guide.setAttribute('stroke-dasharray', '4,4');
+                guide.setAttribute('opacity', '0.6');
+                svg.appendChild(guide);
+            });
+
+            // Interval line
+            const bar = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            bar.setAttribute('x1', px1);
+            bar.setAttribute('y1', y);
+            bar.setAttribute('x2', px2);
+            bar.setAttribute('y2', y);
+            bar.setAttribute('stroke', color);
+            bar.setAttribute('stroke-width', isHighlight ? '10' : '7');
+            bar.setAttribute('stroke-linecap', 'round');
+            svg.appendChild(bar);
+
+            // End circles
+            [px1, px2].forEach(px => {
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', px);
+                circle.setAttribute('cy', y);
+                circle.setAttribute('r', isHighlight ? '8.5' : '7');
+                circle.setAttribute('fill', color);
+                circle.setAttribute('stroke', '#0f172a');
+                circle.setAttribute('stroke-width', '2.5');
+                svg.appendChild(circle);
+            });
+
+            // Label with enlarged font (18px)
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', Math.min(Math.max((px1 + px2) / 2, 90), SVG_WIDTH - 90));
+            text.setAttribute('y', y - 12);
+            text.setAttribute('fill', color);
+            text.setAttribute('font-size', '18');
+            text.setAttribute('font-weight', 'bold');
+            text.setAttribute('text-anchor', 'middle');
+            text.textContent = labelText;
+            svg.appendChild(text);
+        }
+
+        function renderNoIntersection(y) {
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', SVG_WIDTH / 2);
+            text.setAttribute('y', y + 4);
+            text.setAttribute('fill', '#f87171');
+            text.setAttribute('font-size', '20');
+            text.setAttribute('font-weight', 'bold');
+            text.setAttribute('text-anchor', 'middle');
+            text.textContent = '✕ 共通領域なし';
+            svg.appendChild(text);
+        }
+
+        function updateStatus(a, twoA, hasIntersection) {
+            if (hasIntersection) {
+                statusBox.className = 'w-full p-3.5 rounded-xl border-2 bg-emerald-950/90 border-emerald-400 text-emerald-50 shadow-emerald-950/50 shadow-lg';
+                statusBox.innerHTML = `
+                    <div class="font-bold flex justify-between items-center text-base mb-1.5 border-b border-emerald-500/40 pb-1">
+                        <span class="text-emerald-300">✅ 共通範囲あり ($a \\leqq 1.5$)</span>
+                        <span class="font-mono text-amber-300 bg-emerald-900/80 px-2 py-0.5 rounded border border-amber-400/50">$a = ${a.toFixed(2)}$</span>
+                    </div>
+                    <div class="text-sm mt-1">重なる範囲: <strong class="font-mono text-yellow-300 text-base bg-black/40 px-2 py-0.5 rounded border border-yellow-400/50 inline-block">$${Math.max(1, twoA).toFixed(2)} \\leqq x \\leqq 3$</strong></div>
+                `;
+            } else {
+                statusBox.className = 'w-full p-3.5 rounded-xl border-2 bg-rose-950/90 border-rose-400 text-rose-50 shadow-rose-950/50 shadow-lg';
+                statusBox.innerHTML = `
+                    <div class="font-bold flex justify-between items-center text-base mb-1.5 border-b border-rose-500/40 pb-1">
+                        <span class="text-rose-300">❌ 共通範囲なし ($a > 1.5$)</span>
+                        <span class="font-mono text-rose-200 bg-rose-900/80 px-2 py-0.5 rounded border border-rose-400/50">$a = ${a.toFixed(2)}$</span>
+                    </div>
+                    <div class="text-sm mt-1">$2a = ${twoA.toFixed(2)}$ が ①の右端 <strong class="text-yellow-300">$3$</strong> を超えているため重なりがありません。</div>
+                `;
+            }
+        }
+
+        aSlider.addEventListener('input', updateVisualizer);
+        window.addEventListener('DOMContentLoaded', updateVisualizer);
+    </script>
+</body>
+</html>
