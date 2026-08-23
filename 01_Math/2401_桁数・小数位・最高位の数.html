@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>常用対数 桁数・小数位シミュレーター (2^n)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- MathJax Configuration and Script -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        .code-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .active-row-glow {
+            background: rgba(59, 130, 246, 0.15);
+            border-left: 4px solid #3b82f6;
+            box-shadow: inset 0 0 15px rgba(59, 130, 246, 0.1);
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+            transition: transform 0.1s ease;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+    </style>
+</head>
+<body class="min-h-screen p-3 md:p-6 bg-slate-950 text-slate-100 flex flex-col items-center">
+
+    <!-- STICKY TOP CONTAINER FOR HEADER & DASHBOARD CARD -->
+    <div class="sticky top-0 z-50 w-full max-w-4xl bg-slate-950/90 backdrop-blur-md pt-2 pb-3 mb-1">
+        <header class="w-full text-center mb-3">
+            <h1 class="text-xl md:text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400">
+                $2^n$ の桁数・小数位シミュレーター
+            </h1>
+        </header>
+
+        <!-- INTEGRATED CONTROLS & DASHBOARD CARD -->
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-3 bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-2xl items-center">
+            
+            <!-- Left Column: Exponent n & Slider (Narrowed) -->
+            <div class="md:col-span-4 space-y-2 pr-0 md:pr-3 md:border-r md:border-slate-800">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <span id="target-power-display" class="code-font text-lg font-bold text-blue-400">
+                            $2^{30}$
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-xs text-slate-400">$n =$</span>
+                        <span id="exp-val-badge" class="code-font text-sm font-bold text-indigo-400 bg-indigo-950/60 px-2.5 py-0.5 rounded-lg border border-indigo-500/30">
+                            30
+                        </span>
+                    </div>
+                </div>
+                
+                <input type="range" id="exp-slider" min="-50" max="50" step="1" value="30" 
+                       oninput="onExponentChange(this.value)" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                
+                <div class="flex justify-between text-[10px] text-slate-500 code-font">
+                    <span>$n = -50$</span>
+                    <span>$n = 0$</span>
+                    <span>$n = 50$</span>
+                </div>
+            </div>
+
+            <!-- Middle Column: Log Value (Expanded & Fixed Width Label) -->
+            <div class="md:col-span-4 px-0 md:px-3 py-2 md:py-0 border-t md:border-t-0 md:border-r border-slate-800 flex flex-col justify-center">
+                <div class="text-base md:text-lg font-black text-slate-100 code-font flex items-baseline gap-1.5 whitespace-nowrap">
+                    <span id="card-log-label" class="inline-block min-w-[125px]">$\log_{10} 2^{30} =$</span>
+                    <span id="card-log-val" class="text-blue-400 text-xl md:text-2xl font-bold">9.03</span>
+                </div>
+                <div id="card-expression-note" class="mt-1 text-[11px] text-slate-400 code-font whitespace-nowrap">
+                    $30 \times \log_{10} 2 \approx 9.03$
+                </div>
+            </div>
+
+            <!-- Right Column: Inequality & Result (Fixed Start Position) -->
+            <div class="md:col-span-4 pl-0 md:pl-3 flex flex-col justify-center space-y-1 border-t md:border-t-0 border-slate-800 pt-2 md:pt-0">
+                <div id="card-inequality-display" class="text-sm font-bold text-indigo-300 code-font">
+                    $9 \le \mathbf{9.03} < 10$
+                </div>
+                <div id="card-power-bounds" class="text-xs text-slate-400 code-font">
+                    $10^{9} \le 2^{30} < 10^{10}$
+                </div>
+                <div id="card-result-main" class="text-base md:text-lg font-black text-emerald-400 pt-0.5">
+                    10 桁の数（最高位: 1）
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="w-full max-w-4xl space-y-4">
+
+        <!-- DYNAMIC FOCUSED REFERENCE TABLE (SLIM VERTICAL SPACE) -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3 shadow-xl">
+            <!-- TABLE CONTAINER WITH RE-PROPORTIONED COLUMNS AND COMPACT ROW HEIGHT -->
+            <div class="overflow-x-auto rounded-xl border border-slate-800/80 bg-slate-950/40">
+                <table class="w-full text-left border-collapse text-xs md:text-sm table-fixed">
+                    <thead>
+                        <tr class="text-slate-400 border-b border-slate-800 bg-slate-950/80">
+                            <!-- Adjusted widths: N narrowed, 桁数・小数位 expanded -->
+                            <th class="py-1.5 px-2.5 font-semibold w-[10%] text-center whitespace-nowrap">$10^k$</th>
+                            <th class="py-1.5 px-2.5 font-semibold w-[28%]">$N$</th>
+                            <th class="py-1.5 px-2.5 font-semibold w-[12%] text-center whitespace-nowrap">$\log_{10} N$</th>
+                            <th class="py-1.5 px-2.5 font-semibold w-[40%]">桁数・小数位</th>
+                            <th class="py-1.5 px-2.5 font-semibold w-[10%] text-center whitespace-nowrap">判定</th>
+                        </tr>
+                    </thead>
+                    <tbody id="focused-table-body" class="divide-y divide-slate-800/60 code-font">
+                        <!-- Dynamic rows injected by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- HIGHEST-ORDER DIGIT DETERMINATION TABLE -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 shadow-xl space-y-2">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs md:text-sm font-bold text-slate-200">最高位の数（初めて0以外の数字）判定表</span>
+                    <span id="frac-val-badge" class="code-font text-xs text-amber-400 bg-amber-950/50 border border-amber-500/30 px-2 py-0.5 rounded">
+                        小数部分 $\alpha = 0.0300$
+                    </span>
+                </div>
+                <div id="highest-digit-summary" class="text-xs md:text-sm font-bold text-emerald-400 code-font">
+                    最高位の数: 1
+                </div>
+            </div>
+
+            <div class="overflow-x-auto rounded-xl border border-slate-800/80 bg-slate-950/40">
+                <table class="w-full text-left border-collapse text-xs table-fixed">
+                    <thead>
+                        <tr class="text-slate-400 border-b border-slate-800 bg-slate-950/80">
+                            <th class="py-1.5 px-2.5 font-semibold w-[10%] text-center whitespace-nowrap">$m$</th>
+                            <th class="py-1.5 px-2.5 font-semibold w-[42%]">$\log_{10} m$</th>
+                            <th class="py-1.5 px-2.5 font-semibold w-[20%] text-center whitespace-nowrap">対数値</th>
+                            <th class="py-1.5 px-2.5 font-semibold w-[28%] text-center whitespace-nowrap">判定</th>
+                        </tr>
+                    </thead>
+                    <tbody id="highest-digit-tbody" class="divide-y divide-slate-800/60 code-font">
+                        <!-- Dynamic digit rows injected by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- DIGIT STRING SIMULATION INSPECTOR -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3 shadow-xl">
+            <div class="p-2.5 bg-slate-950 rounded-xl border border-slate-800">
+                <div id="digit-visual-box" class="code-font text-xs md:text-sm break-all text-slate-200">
+                    <!-- Dynamic string representation -->
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        const LOG10_2 = 0.3010;
+        const LOG10_3 = 0.4771;
+
+        // Base log values up to 10
+        const LOG_TABLE_DATA = [
+            { digit: 1, expr: "$10^0 = 1 \\implies \\log_{10} 1 = 0$", val: 0.0000 },
+            { digit: 2, expr: "$\\log_{10} 2 = 0.3010$", val: 0.3010 },
+            { digit: 3, expr: "$\\log_{10} 3 = 0.4771$", val: 0.4771 },
+            { digit: 4, expr: "$\\log_{10} 2^2 = 2 \\log_{10} 2 = 0.6020$", val: 0.6020 },
+            { digit: 5, expr: "$\\log_{10} \\frac{10}{2} = 1 - \\log_{10} 2 = 0.6990$", val: 0.6990 },
+            { digit: 6, expr: "$\\log_{10} (2 \\times 3) = \\log_{10} 2 + \\log_{10} 3 = 0.7781$", val: 0.7781 },
+            { digit: 7, expr: "$\\log_{10} 7 = 0.8451$ （※与えられる値）", val: 0.8451 },
+            { digit: 8, expr: "$\\log_{10} 2^3 = 3 \\log_{10} 2 = 0.9030$", val: 0.9030 },
+            { digit: 9, expr: "$\\log_{10} 3^2 = 2 \\log_{10} 3 = 0.9542$", val: 0.9542 },
+            { digit: 10, expr: "$\\log_{10} 10 = 1.0000$", val: 1.0000 }
+        ];
+
+        window.onload = function() {
+            const initialN = parseInt(document.getElementById('exp-slider').value, 10);
+            updateSimulation(initialN);
+        };
+
+        function onExponentChange(val) {
+            const expN = parseInt(val, 10);
+            updateSimulation(expN);
+        }
+
+        function updateSimulation(n) {
+            // Calculate log10(2^n) = n * log10(2) using 0.3010
+            const rawLogVal = n * LOG10_2;
+            const logValFixed = parseFloat(rawLogVal.toFixed(4));
+            
+            const floorK = Math.floor(rawLogVal);
+            const ceilK = floorK + 1;
+
+            // Fractional part alpha in [0, 1)
+            let alpha = rawLogVal - floorK;
+            if (alpha < 0) alpha += 1;
+            alpha = parseFloat(alpha.toFixed(4));
+
+            // Find highest-order digit m
+            let foundDigit = 1;
+            for (let i = 0; i < LOG_TABLE_DATA.length - 1; i++) {
+                if (alpha >= LOG_TABLE_DATA[i].val && alpha < LOG_TABLE_DATA[i + 1].val) {
+                    foundDigit = LOG_TABLE_DATA[i].digit;
+                    break;
+                }
+            }
+
+            // Update Exponent Slider Badge & Log Label with current n
+            document.getElementById('exp-val-badge').innerText = n;
+            document.getElementById('target-power-display').innerHTML = `$2^{${n}}$`;
+            document.getElementById('card-log-label').innerHTML = `$\\log_{10} 2^{${n}} =$`;
+
+            // Log value
+            document.getElementById('card-log-val').innerText = logValFixed.toFixed(2);
+            document.getElementById('card-expression-note').innerHTML = `$${n} \\times \\log_{10} 2 \\approx ${logValFixed.toFixed(4)}$`;
+
+            // Inequality
+            document.getElementById('card-inequality-display').innerHTML = `$${floorK} \\le \\mathbf{${logValFixed.toFixed(2)}} < ${ceilK}$`;
+            document.getElementById('card-power-bounds').innerHTML = `$10^{${floorK}} \\le 2^{${n}} < 10^{${ceilK}}$`;
+
+            // Conclusion with Highest Digit
+            const resultMain = document.getElementById('card-result-main');
+
+            if (rawLogVal >= 0) {
+                const digits = floorK + 1;
+                resultMain.innerText = `${digits} 桁の数（最高位: ${foundDigit}）`;
+                resultMain.className = "text-base md:text-lg font-black text-emerald-400";
+            } else {
+                const decPlace = Math.abs(floorK);
+                resultMain.innerText = `小数第 ${decPlace} 位（最高位: ${foundDigit}）`;
+                resultMain.className = "text-base md:text-lg font-black text-purple-400";
+            }
+
+            // Render Focused Table (Target ±2 rows)
+            renderFocusedTable(floorK);
+
+            // Render Highest Digit Table
+            renderHighestDigitTable(alpha);
+
+            // Render Visual Digit Inspector
+            renderDigitVisual(n, rawLogVal, floorK);
+
+            // Trigger MathJax re-render safely
+            if (window.MathJax && MathJax.typesetPromise) {
+                MathJax.typesetPromise();
+            }
+        }
+
+        function renderHighestDigitTable(alpha) {
+            const tbody = document.getElementById('highest-digit-tbody');
+            tbody.innerHTML = '';
+
+            let foundDigit = 1;
+
+            for (let i = 0; i < LOG_TABLE_DATA.length - 1; i++) {
+                const current = LOG_TABLE_DATA[i];
+                const next = LOG_TABLE_DATA[i + 1];
+
+                if (alpha >= current.val && alpha < next.val) {
+                    foundDigit = current.digit;
+                    break;
+                }
+            }
+
+            // Update header summary
+            document.getElementById('frac-val-badge').innerHTML = `小数部分 $\\alpha = ${alpha.toFixed(4)}$`;
+            document.getElementById('highest-digit-summary').innerHTML = `最高位（初めての数字）: <span class="text-amber-400 text-base">${foundDigit}</span>`;
+
+            // Build rows
+            for (let i = 0; i < LOG_TABLE_DATA.length - 1; i++) {
+                const item = LOG_TABLE_DATA[i];
+                const nextItem = LOG_TABLE_DATA[i + 1];
+                const isSelected = (item.digit === foundDigit);
+
+                const tr = document.createElement('tr');
+                if (isSelected) {
+                    tr.className = "active-row-glow text-white font-semibold transition-all";
+                } else {
+                    tr.className = "text-slate-400 hover:bg-slate-800/40 transition-all";
+                }
+
+                const colDigit = `<td class="py-1.5 px-2.5 text-center font-bold ${isSelected ? 'text-amber-400 text-sm' : 'text-slate-300'}">${item.digit}</td>`;
+                const colExpr = `<td class="py-1.5 px-2.5 text-slate-300">${item.expr}</td>`;
+                const colVal = `<td class="py-1.5 px-2.5 text-center text-indigo-300">${item.val.toFixed(4)}</td>`;
+
+                const colStatus = `<td class="py-1.5 px-2.5 text-center whitespace-nowrap">
+                    ${isSelected ? 
+                        `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
+                            ◀ ${item.val.toFixed(4)} $\\le \\alpha <$ ${nextItem.val.toFixed(4)}
+                         </span>` : 
+                        `<span class="text-slate-600 text-[10px]">-</span>`}
+                </td>`;
+
+                tr.innerHTML = colDigit + colExpr + colVal + colStatus;
+                tbody.appendChild(tr);
+            }
+        }
+
+        function renderFocusedTable(targetK) {
+            const tbody = document.getElementById('focused-table-body');
+            tbody.innerHTML = '';
+
+            for (let k = targetK + 2; k >= targetK - 2; k--) {
+                const isTarget = (k === targetK);
+                const tr = document.createElement('tr');
+
+                if (isTarget) {
+                    tr.className = "active-row-glow text-white font-semibold transition-all";
+                } else {
+                    tr.className = "text-slate-400 hover:bg-slate-800/40 transition-all";
+                }
+
+                // Col 1: 10^k
+                const expCol = `<td class="py-1.5 px-2.5 text-center">
+                    <span class="${isTarget ? 'text-blue-400 font-extrabold text-xs' : ''}">$10^{${k}}$</span>
+                </td>`;
+
+                // Col 2: N (Narrower)
+                let valStr = "";
+                if (k >= 0 && k <= 4) {
+                    valStr = Math.pow(10, k).toLocaleString();
+                } else if (k < 0 && k >= -4) {
+                    valStr = Math.pow(10, k).toFixed(Math.abs(k));
+                } else if (k > 4) {
+                    valStr = `100...0 ($${k}$個の0)`;
+                } else {
+                    valStr = `0.00...01 (小数第$${Math.abs(k)}$位が1)`;
+                }
+
+                const valCol = `<td class="py-1.5 px-2.5 text-slate-300 font-normal truncate">${valStr}</td>`;
+
+                // Col 3: log10N
+                const logCol = `<td class="py-1.5 px-2.5 text-center"><span class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800">${k}</span></td>`;
+
+                // Col 4: 桁数・小数位 (Single-line combined representation)
+                let meaningStr = "";
+                let conditionStr = `$10^{${k}} \\le N < 10^{${k+1}}$`;
+                
+                if (k >= 0) {
+                    meaningStr = `<span class="${isTarget ? 'text-emerald-400 font-bold' : ''}">${k + 1} 桁</span>`;
+                } else {
+                    const decPos = Math.abs(k);
+                    meaningStr = `<span class="${isTarget ? 'text-purple-400 font-bold' : ''}">小数第 ${decPos} 位</span>`;
+                }
+
+                const descCol = `<td class="py-1.5 px-2.5">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span>${meaningStr}</span>
+                        <span class="text-[11px] text-slate-500 font-sans">${conditionStr}</span>
+                    </div>
+                </td>`;
+
+                // Col 5: Status Badge
+                const statusCol = `<td class="py-1.5 px-2.5 text-center whitespace-nowrap">
+                    ${isTarget ? 
+                        `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40 animate-pulse">
+                            ◀ 対象
+                         </span>` : 
+                        `<span class="text-slate-600 text-[10px]">-</span>`}
+                </td>`;
+
+                tr.innerHTML = expCol + valCol + logCol + descCol + statusCol;
+                tbody.appendChild(tr);
+            }
+        }
+
+        function renderDigitVisual(n, logVal, floorK) {
+            const visualBox = document.getElementById('digit-visual-box');
+
+            const mantissa = Math.pow(10, logVal - floorK);
+            const mantissaFixed = mantissa.toFixed(3);
+
+            if (logVal >= 0) {
+                const totalDigits = floorK + 1;
+                const leadDigit = mantissaFixed.charAt(0);
+                const subDigits = mantissaFixed.replace('.', '').slice(1, 4);
+
+                let zerosCount = Math.max(0, totalDigits - 1 - subDigits.length);
+
+                let html = `<div class="flex items-center gap-1.5 flex-wrap">`;
+                html += `<span class="text-slate-400 text-xs font-sans">$2^{${n}} \\approx$</span> `;
+                html += `<span class="text-emerald-400 font-bold text-base">${leadDigit}</span>`;
+                html += `<span class="text-blue-300">${subDigits}</span>`;
+
+                if (totalDigits > 8) {
+                    html += `<span class="text-slate-500 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800 mx-1 text-xs font-sans">... 0 が約 ${totalDigits - 4} 個 ...</span>`;
+                } else {
+                    for(let i = 0; i < zerosCount; i++) {
+                        html += `<span class="text-slate-600">0</span>`;
+                    }
+                }
+
+                html += `<span class="ml-auto text-xs bg-emerald-500/10 text-emerald-300 px-2 py-0.5 rounded-md border border-emerald-500/20 font-sans">`;
+                html += `${totalDigits} 桁</span>`;
+                html += `</div>`;
+
+                visualBox.innerHTML = html;
+            } else {
+                const decPlace = Math.abs(floorK);
+                const zerosBefore = decPlace - 1;
+                const leadDigit = mantissaFixed.charAt(0);
+                const subDigits = mantissaFixed.replace('.', '').slice(1, 4);
+
+                let html = `<div class="flex items-center gap-1.5 flex-wrap">`;
+                html += `<span class="text-slate-400 text-xs font-sans">$2^{${n}} \\approx$</span> `;
+                html += `<span class="text-slate-400">0.</span>`;
+
+                if (zerosBefore > 5) {
+                    html += `<span class="text-purple-400 font-semibold bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800 mx-1 text-xs font-sans">0 が ${zerosBefore} 個連続</span>`;
+                } else {
+                    for(let i = 0; i < zerosBefore; i++) {
+                        html += `<span class="text-slate-500">0</span>`;
+                    }
+                }
+
+                html += `<span class="text-purple-400 font-bold text-base underline decoration-purple-500 decoration-2">${leadDigit}</span>`;
+                html += `<span class="text-indigo-300">${subDigits}</span>...`;
+
+                html += `<span class="ml-auto text-xs bg-purple-500/10 text-purple-300 px-2 py-0.5 rounded-md border border-purple-500/20 font-sans">`;
+                html += `小数第 ${decPlace} 位</span>`;
+                html += `</div>`;
+
+                visualBox.innerHTML = html;
+            }
+        }
+    </script>
+</body>
+</html>
