@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2次方程式の実数解可視化シミュレーター</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+
+        .code-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+
+        /* Range Slider Styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: #334155;
+            border-radius: 4px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            height: 22px;
+            width: 22px;
+            border-radius: 50%;
+            background: #38bdf8;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -7px;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+            transition: transform 0.1s ease, background-color 0.2s ease;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+            background: #7dd3fc;
+        }
+
+        canvas {
+            touch-action: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-sky-500 selection:text-white">
+
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 flex flex-wrap items-center justify-between gap-2 sm:gap-4">
+            <div class="flex items-center space-x-2.5">
+                <div class="p-1.5 sm:p-2 bg-gradient-to-tr from-sky-500 to-indigo-600 rounded-xl shadow-lg shadow-sky-500/20">
+                    <i class="fa-solid font-bold text-white text-base sm:text-lg">f(x)</i>
+                </div>
+                <div>
+                    <h1 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                        2次方程式の実数解 可視化
+                    </h1>
+                    <p class="text-[11px] sm:text-xs text-slate-400 hidden sm:block">定数 <span class="italic font-serif">a</span> の変化に伴う2つの放物線の交点と実数解の動的シミュレーション</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2 text-[11px] sm:text-xs font-mono bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700">
+                <span class="text-sky-400 font-bold">① x² + 3x + a = 0</span>
+                <span class="text-slate-500">|</span>
+                <span class="text-rose-400 font-bold">② x² + ax + 3 = 0</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-6 flex-grow w-full">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
+
+            <!-- Left / Top Column: Canvas & Interactive Slider (7 cols) -->
+            <div class="lg:col-span-7 flex flex-col gap-3 sm:gap-5">
+                
+                <!-- Main Slider Control Card -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 sm:p-5 shadow-xl relative overflow-hidden">
+                    <div class="absolute -right-10 -top-10 w-32 h-32 bg-sky-500/5 rounded-full blur-2xl"></div>
+                    
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2 sm:mb-3">
+                        <label for="a-slider" class="text-xs sm:text-sm font-semibold text-slate-200 flex items-center justify-between sm:justify-start gap-2">
+                            <span class="flex items-center gap-1.5"><i class="fa-solid fa-sliders text-sky-400"></i> 定数 <span class="italic font-serif">a</span>:</span>
+                            <span id="a-value-display" class="text-lg sm:text-xl font-bold font-mono text-sky-400 bg-sky-950/60 border border-sky-800/50 px-2.5 py-0.5 rounded-lg">a = -4.00</span>
+                        </label>
+                        <div class="flex items-center justify-end gap-1.5 text-xs text-slate-400">
+                            <button id="btn-step-prev" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 transition" title="-0.1 減少"><i class="fa-solid fa-minus"></i></button>
+                            <button id="btn-step-next" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 transition" title="+0.1 増加"><i class="fa-solid fa-plus"></i></button>
+                            <button id="btn-play-toggle" class="ml-1 px-2.5 py-1 bg-sky-600 hover:bg-sky-500 text-white rounded font-medium transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-play text-[10px]" id="play-icon"></i>
+                                <span id="play-text" class="text-xs">再生</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Slider Input -->
+                    <div class="relative py-1">
+                        <input type="range" id="a-slider" min="-8" max="8" step="0.01" value="-4" class="w-full">
+                        <div class="flex justify-between text-[10px] sm:text-[11px] font-mono text-slate-500 mt-1">
+                            <span>-8.0</span>
+                            <span class="text-rose-400">-2√3</span>
+                            <span class="text-amber-400">2.25</span>
+                            <span class="text-indigo-400">2√3</span>
+                            <span>8.0</span>
+                        </div>
+                    </div>
+
+                    <!-- Key Preset Buttons -->
+                    <div class="mt-3 pt-2.5 border-t border-slate-800/80">
+                        <span class="text-[11px] font-medium text-slate-400 mb-1.5 block">注目値 (タップで設定):</span>
+                        <div class="flex flex-wrap gap-1.5">
+                            <button class="preset-btn px-2 py-1 text-[11px] rounded-lg bg-emerald-950/80 border border-emerald-700/60 text-emerald-300 hover:bg-emerald-900 transition flex items-center gap-1" data-value="-4">
+                                <i class="fa-solid fa-star text-[9px]"></i> a = -4 <span class="text-[9px] opacity-75">(共通解)</span>
+                            </button>
+                            <button class="preset-btn px-2 py-1 text-[11px] rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 transition" data-value="-3.4641">
+                                -2√3
+                            </button>
+                            <button class="preset-btn px-2 py-1 text-[11px] rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 transition" data-value="0">
+                                0
+                            </button>
+                            <button class="preset-btn px-2 py-1 text-[11px] rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 transition" data-value="2.25">
+                                9/4
+                            </button>
+                            <button class="preset-btn px-2 py-1 text-[11px] rounded-lg bg-indigo-950/80 border border-indigo-700/60 text-indigo-300 hover:bg-indigo-900 transition" data-value="3">
+                                a = 3
+                            </button>
+                            <button class="preset-btn px-2 py-1 text-[11px] rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 transition" data-value="3.4641">
+                                2√3
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Canvas Graph Container (コンパクト化・縦幅削減) -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3 sm:p-4 shadow-xl flex flex-col">
+                    <div class="flex justify-between items-center mb-1.5 px-0.5">
+                        <div class="flex items-center gap-2.5 text-[11px] sm:text-xs">
+                            <span class="flex items-center gap-1 font-medium text-sky-400">
+                                <span class="w-2.5 h-0.5 bg-sky-400 rounded-full inline-block"></span> ①
+                            </span>
+                            <span class="flex items-center gap-1 font-medium text-rose-400">
+                                <span class="w-2.5 h-0.5 bg-rose-400 rounded-full inline-block"></span> ②
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs">
+                            <button id="btn-reset-view" class="px-2 py-0.5 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700 transition flex items-center gap-1">
+                                <i class="fa-solid fa-arrows-to-dot text-slate-400"></i> リセット
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Canvas Box: 縦幅をコンパクト(h-44 sm:h-56)に設定 -->
+                    <div class="relative w-full h-44 sm:h-56 bg-slate-950 rounded-xl overflow-hidden border border-slate-800/80">
+                        <canvas id="graph-canvas" class="w-full h-full cursor-grab active:cursor-grabbing"></canvas>
+                        
+                        <!-- Floating Controls / Info on Canvas -->
+                        <div class="absolute bottom-2 left-2 bg-slate-900/90 backdrop-blur border border-slate-700/70 rounded px-2 py-1 text-[10px] text-slate-300 font-mono shadow pointer-events-none">
+                            <span id="canvas-coords" class="text-sky-400">x: 0.00, y: 0.00</span>
+                        </div>
+
+                        <!-- Legend overlay -->
+                        <div class="absolute top-2 right-2 bg-slate-900/85 backdrop-blur border border-slate-800 rounded px-2 py-1 text-[10px] space-y-0.5">
+                            <div class="flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-sky-400 inline-block"></span>
+                                <span class="text-slate-300">①の解</span>
+                                <span class="w-2 h-2 rounded-full bg-rose-400 inline-block ml-1"></span>
+                                <span class="text-slate-300">②の解</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400 ring-1 ring-emerald-400 inline-block"></span>
+                                <span class="text-emerald-300 font-semibold">共通解</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right / Bottom Column: Mathematical Analysis & Status (5 cols) -->
+            <div class="lg:col-span-5 flex flex-col gap-3 sm:gap-5">
+                
+                <!-- Status Summary Card -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 sm:p-5 shadow-xl">
+                    <h2 class="text-xs sm:text-sm font-bold text-slate-200 border-b border-slate-800 pb-2 mb-3 flex items-center justify-between">
+                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-square-root-variable text-sky-400"></i> 解の判別・リアルタイム解析</span>
+                        <span id="common-root-badge" class="px-2 py-0.5 text-[10px] sm:text-xs font-semibold rounded-full bg-slate-800 text-slate-400 border border-slate-700">判定中</span>
+                    </h2>
+
+                    <!-- Equation 1 Analysis -->
+                    <div class="mb-2.5 p-2.5 sm:p-3 rounded-xl bg-slate-950/60 border border-sky-900/30">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs font-bold text-sky-400 flex items-center gap-1">
+                                <span class="w-2 h-2 rounded-full bg-sky-400"></span> 方程式 ①
+                            </span>
+                            <span id="eq1-count-tag" class="text-[11px] font-semibold px-2 py-0.5 rounded bg-sky-950 border border-sky-800 text-sky-300">2個の実数解</span>
+                        </div>
+                        <div class="text-[11px] sm:text-xs font-mono text-slate-300 space-y-0.5">
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">D₁ = 9 - 4a =</span>
+                                <span id="d1-value" class="font-bold text-sky-300">25.00 (&gt; 0)</span>
+                            </div>
+                            <div class="flex justify-between pt-0.5 border-t border-slate-800/60">
+                                <span class="text-slate-400">解 x =</span>
+                                <span id="eq1-roots" class="font-bold text-slate-100">1.00, -4.00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Equation 2 Analysis -->
+                    <div class="mb-2.5 p-2.5 sm:p-3 rounded-xl bg-slate-950/60 border border-rose-900/30">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs font-bold text-rose-400 flex items-center gap-1">
+                                <span class="w-2 h-2 rounded-full bg-rose-400"></span> 方程式 ②
+                            </span>
+                            <span id="eq2-count-tag" class="text-[11px] font-semibold px-2 py-0.5 rounded bg-rose-950 border border-rose-800 text-rose-300">2個の実数解</span>
+                        </div>
+                        <div class="text-[11px] sm:text-xs font-mono text-slate-300 space-y-0.5">
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">D₂ = a² - 12 =</span>
+                                <span id="d2-value" class="font-bold text-rose-300">4.00 (&gt; 0)</span>
+                            </div>
+                            <div class="flex justify-between pt-0.5 border-t border-slate-800/60">
+                                <span class="text-slate-400">解 x =</span>
+                                <span id="eq2-roots" class="font-bold text-slate-100">3.00, 1.00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Common Root Box -->
+                    <div id="common-root-box" class="p-2.5 sm:p-3 rounded-xl bg-slate-800/50 border border-slate-700 transition-all">
+                        <div class="flex items-center gap-1.5 text-xs font-semibold text-slate-200">
+                            <i class="fa-solid fa-circle-info text-amber-400"></i> 共通解の検証:
+                        </div>
+                        <p id="common-root-desc" class="text-[11px] sm:text-xs text-slate-300 mt-0.5 leading-relaxed">
+                            計算中...
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Parameter Space / Number Line Visualization -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 sm:p-5 shadow-xl">
+                    <h3 class="text-[11px] sm:text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <i class="fa-solid fa-chart-line text-indigo-400"></i> a の値に応じた解の個数マップ
+                    </h3>
+                    
+                    <!-- Diagram of 'a' line -->
+                    <div class="relative py-2 my-1">
+                        <!-- Main Number Line Track -->
+                        <div class="h-2.5 bg-slate-800 rounded-full w-full relative overflow-hidden flex">
+                            <!-- Left Region: a < -2√3 -->
+                            <div class="h-full bg-emerald-500/30 border-r border-emerald-500/50" style="width: 28.35%;" title="①2個, ②2個"></div>
+                            <!-- Middle Region 1: -2√3 < a < 2.25 -->
+                            <div class="h-full bg-sky-500/30 border-r border-sky-500/50" style="width: 35.71%;" title="①2個, ②0個"></div>
+                            <!-- Middle Region 2: 2.25 < a < 2√3 -->
+                            <div class="h-full bg-amber-500/30 border-r border-amber-500/50" style="width: 7.59%;" title="①0個, ②0個"></div>
+                            <!-- Right Region: a > 2√3 -->
+                            <div class="h-full bg-rose-500/30" style="width: 28.35%;" title="①0個, ②2個"></div>
+                        </div>
+
+                        <!-- Current 'a' Marker Pin -->
+                        <div id="a-marker-pin" class="absolute top-1/2 -translate-y-1/2 -ml-2 transition-all duration-75 pointer-events-none" style="left: 25%;">
+                            <div class="w-4 h-4 rounded-full bg-sky-400 border-2 border-white shadow shadow-sky-500/50 flex items-center justify-center">
+                                <div class="w-1 h-1 rounded-full bg-slate-900"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Legend for Regions -->
+                    <div class="grid grid-cols-2 gap-1.5 text-[10px] sm:text-[11px] mt-1.5">
+                        <div class="bg-slate-950 p-1.5 rounded border border-slate-800">
+                            <span class="text-emerald-400 font-bold">a &lt; -2√3 (-3.46)</span>
+                            <div class="text-slate-400">①:2個, ②:2個 <span class="text-emerald-300 font-semibold">(a=-4で共通解)</span></div>
+                        </div>
+                        <div class="bg-slate-950 p-1.5 rounded border border-slate-800">
+                            <span class="text-sky-400 font-bold">-2√3 &lt; a &lt; 2.25</span>
+                            <div class="text-slate-400">①:2個, ②:0個</div>
+                        </div>
+                        <div class="bg-slate-950 p-1.5 rounded border border-slate-800">
+                            <span class="text-amber-400 font-bold">2.25 &lt; a &lt; 2√3</span>
+                            <div class="text-slate-400">①:0個, ②:0個</div>
+                        </div>
+                        <div class="bg-slate-950 p-1.5 rounded border border-slate-800">
+                            <span class="text-rose-400 font-bold">a &gt; 2√3 (3.46)</span>
+                            <div class="text-slate-400">①:0個, ②:2個</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800 bg-slate-900/60 py-3 text-center text-[11px] text-slate-500 mt-4">
+        2次方程式の実数解・共通解インタラクティブ可視化ツール
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM Elements
+            const slider = document.getElementById('a-slider');
+            const aValueDisplay = document.getElementById('a-value-display');
+            const btnStepPrev = document.getElementById('btn-step-prev');
+            const btnStepNext = document.getElementById('btn-step-next');
+            const btnPlayToggle = document.getElementById('btn-play-toggle');
+            const playIcon = document.getElementById('play-icon');
+            const playText = document.getElementById('play-text');
+            const btnResetView = document.getElementById('btn-reset-view');
+            const presetBtns = document.querySelectorAll('.preset-btn');
+
+            const canvas = document.getElementById('graph-canvas');
+            const ctx = canvas.getContext('2d');
+            const coordsDisplay = document.getElementById('canvas-coords');
+
+            // Analysis Elements
+            const d1Value = document.getElementById('d1-value');
+            const d2Value = document.getElementById('d2-value');
+            const eq1Roots = document.getElementById('eq1-roots');
+            const eq2Roots = document.getElementById('eq2-roots');
+            const eq1CountTag = document.getElementById('eq1-count-tag');
+            const eq2CountTag = document.getElementById('eq2-count-tag');
+            const commonRootBadge = document.getElementById('common-root-badge');
+            const commonRootBox = document.getElementById('common-root-box');
+            const commonRootDesc = document.getElementById('common-root-desc');
+            const aMarkerPin = document.getElementById('a-marker-pin');
+
+            // State Variables
+            let currentA = -4.0;
+            let isPlaying = false;
+            let animationFrameId = null;
+            let animDirection = 1;
+
+            // View transform state (Pan & Zoom)
+            let scale = 45; // pixels per unit
+            let originX = 0; // will be set dynamically based on canvas size
+            let originY = 0;
+            let isDragging = false;
+            let dragStartX = 0;
+            let dragStartY = 0;
+
+            function resizeCanvas() {
+                const rect = canvas.parentElement.getBoundingClientRect();
+                canvas.width = rect.width * window.devicePixelRatio;
+                canvas.height = rect.height * window.devicePixelRatio;
+                
+                // Reset default center if it's initial load
+                if (originX === 0 && originY === 0) {
+                    resetView();
+                } else {
+                    render();
+                }
+            }
+
+            function resetView() {
+                const rect = canvas.parentElement.getBoundingClientRect();
+                const w = rect.width * window.devicePixelRatio;
+                const h = rect.height * window.devicePixelRatio;
+                
+                // 画面（特にスマホなどのコンパクトな縦幅）に合わせて表示範囲を調整
+                scale = Math.min(w, h) / 8;
+                originX = w / 2 + scale * 0.5;
+                originY = h / 2 + scale * 0.2;
+                render();
+            }
+
+            // Coordinate Transforms
+            function toScreenX(x) {
+                return originX + x * scale;
+            }
+            function toScreenY(y) {
+                return originY - y * scale;
+            }
+            function toMathX(px) {
+                return (px - originX) / scale;
+            }
+            function toMathY(py) {
+                return (originY - py) / scale;
+            }
+
+            // Math functions for parabolas
+            function f1(x, a) {
+                return x * x + 3 * x + a;
+            }
+            function f2(x, a) {
+                return x * x + a * x + 3;
+            }
+
+            function render() {
+                const w = canvas.width;
+                const h = canvas.height;
+
+                // Clear background
+                ctx.fillStyle = '#020617';
+                ctx.fillRect(0, 0, w, h);
+
+                drawGrid(w, h);
+                drawAxes(w, h);
+                drawParabolas(w, h);
+                drawIntersectionPoints();
+            }
+
+            // Draw Background Grid
+            function drawGrid(w, h) {
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = '#1e293b';
+
+                const minX = Math.floor(toMathX(0));
+                const maxX = Math.ceil(toMathX(w));
+                const minY = Math.floor(toMathY(h));
+                const maxY = Math.ceil(toMathY(0));
+
+                ctx.beginPath();
+                for (let x = minX; x <= maxX; x++) {
+                    const sx = toScreenX(x);
+                    ctx.moveTo(sx, 0);
+                    ctx.lineTo(sx, h);
+                }
+                for (let y = minY; y <= maxY; y++) {
+                    const sy = toScreenY(y);
+                    ctx.moveTo(0, sy);
+                    ctx.lineTo(w, sy);
+                }
+                ctx.stroke();
+            }
+
+            // Draw Coordinate Axes & Labels
+            function drawAxes(w, h) {
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#475569';
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = `${Math.max(10, Math.floor(scale * 0.28))}px Inter, sans-serif`;
+
+                // X Axis
+                ctx.beginPath();
+                ctx.moveTo(0, originY);
+                ctx.lineTo(w, originY);
+                ctx.stroke();
+
+                // Y Axis
+                ctx.beginPath();
+                ctx.moveTo(originX, 0);
+                ctx.lineTo(originX, h);
+                ctx.stroke();
+
+                // Numbers along X-axis
+                const minX = Math.floor(toMathX(0));
+                const maxX = Math.ceil(toMathX(w));
+                for (let x = minX; x <= maxX; x++) {
+                    if (x === 0) continue;
+                    const sx = toScreenX(x);
+                    if (sx > 0 && sx < w) {
+                        ctx.fillText(x.toString(), sx - 6, Math.min(Math.max(originY + 16, 20), h - 10));
+                    }
+                }
+
+                // Numbers along Y-axis
+                const minY = Math.floor(toMathY(h));
+                const maxY = Math.ceil(toMathY(0));
+                for (let y = minY; y <= maxY; y++) {
+                    if (y === 0) continue;
+                    const sy = toScreenY(y);
+                    if (sy > 0 && sy < h) {
+                        ctx.fillText(y.toString(), Math.min(Math.max(originX + 8, 10), w - 25), sy + 4);
+                    }
+                }
+
+                // Origin '0'
+                ctx.fillText('0', originX - 12, originY + 16);
+            }
+
+            // Draw the two parabolas
+            function drawParabolas(w, h) {
+                const minX = toMathX(0);
+                const maxX = toMathX(w);
+                const step = (maxX - minX) / 300; // Resolution
+
+                // 1. Draw f1(x) = x^2 + 3x + a (Sky Blue)
+                ctx.beginPath();
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#38bdf8'; // Sky 400
+                let first = true;
+                for (let x = minX; x <= maxX; x += step) {
+                    const y = f1(x, currentA);
+                    const sx = toScreenX(x);
+                    const sy = toScreenY(y);
+                    if (first) {
+                        ctx.moveTo(sx, sy);
+                        first = false;
+                    } else {
+                        ctx.lineTo(sx, sy);
+                    }
+                }
+                ctx.stroke();
+
+                // 2. Draw f2(x) = x^2 + ax + 3 (Rose Red)
+                ctx.beginPath();
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#fb7185'; // Rose 400
+                first = true;
+                for (let x = minX; x <= maxX; x += step) {
+                    const y = f2(x, currentA);
+                    const sx = toScreenX(x);
+                    const sy = toScreenY(y);
+                    if (first) {
+                        ctx.moveTo(sx, sy);
+                        first = false;
+                    } else {
+                        ctx.lineTo(sx, sy);
+                    }
+                }
+                ctx.stroke();
+            }
+
+            function drawIntersectionPoints() {
+                const d1 = 9 - 4 * currentA;
+                const d2 = currentA * currentA - 12;
+
+                let eq1RootsList = [];
+                let eq2RootsList = [];
+
+                // Eq 1 Real Roots
+                if (d1 >= 0) {
+                    const r1 = (-3 + Math.sqrt(d1)) / 2;
+                    const r2 = (-3 - Math.sqrt(d1)) / 2;
+                    eq1RootsList.push(r1);
+                    if (d1 > 1e-7) eq1RootsList.push(r2);
+                }
+
+                // Eq 2 Real Roots
+                if (d2 >= 0) {
+                    const r1 = (-currentA + Math.sqrt(d2)) / 2;
+                    const r2 = (-currentA - Math.sqrt(d2)) / 2;
+                    eq2RootsList.push(r1);
+                    if (d2 > 1e-7) eq2RootsList.push(r2);
+                }
+
+                const isCommonRootA4 = Math.abs(currentA - (-4)) < 0.02;
+
+                // Draw Eq 1 roots (Sky Blue dots on X-axis)
+                eq1RootsList.forEach(r => {
+                    const sx = toScreenX(r);
+                    const sy = toScreenY(0);
+                    
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, 6, 0, Math.PI * 2);
+                    ctx.fillStyle = '#38bdf8';
+                    ctx.fill();
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.stroke();
+                });
+
+                // Draw Eq 2 roots (Rose Red dots on X-axis)
+                eq2RootsList.forEach(r => {
+                    const sx = toScreenX(r);
+                    const sy = toScreenY(0);
+
+                    // Check if close to eq1 root (Common root)
+                    const isCommon = isCommonRootA4 && Math.abs(r - 1.0) < 0.1;
+
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, isCommon ? 9 : 6, 0, Math.PI * 2);
+                    ctx.fillStyle = isCommon ? '#10b981' : '#fb7185';
+                    ctx.fill();
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.stroke();
+
+                    if (isCommon) {
+                        // Pulsing outer ring for common root
+                        ctx.beginPath();
+                        ctx.arc(sx, sy, 14, 0, Math.PI * 2);
+                        ctx.strokeStyle = '#34d399';
+                        ctx.lineWidth = 2;
+                        ctx.setLineDash([4, 4]);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                    }
+                });
+
+                // Draw Intersection point between two curves (f1(x) = f2(x))
+                // (3 - a)x = 3 - a => if a != 3, x = 1, y = 1 + 3 + a = a + 4
+                if (Math.abs(currentA - 3) > 0.05) {
+                    const ix = 1.0;
+                    const iy = currentA + 4;
+                    const sx = toScreenX(ix);
+                    const sy = toScreenY(iy);
+
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, 5, 0, Math.PI * 2);
+                    ctx.fillStyle = '#f59e0b'; // Amber
+                    ctx.fill();
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.stroke();
+
+                    // Label intersection of curves
+                    ctx.fillStyle = '#fcd34d';
+                    ctx.font = '11px font-mono, sans-serif';
+                    ctx.fillText(`交点 (1, ${(iy).toFixed(1)})`, sx + 8, sy - 8);
+                }
+            }
+
+            function updateAnalysis() {
+                const a = currentA;
+                const d1 = 9 - 4 * a;
+                const d2 = a * a - 12;
+
+                // Update D1 Display
+                d1Value.textContent = `${d1.toFixed(2)} ${d1 > 0 ? '(> 0)' : d1 === 0 ? '(= 0)' : '(< 0)'}`;
+                if (d1 > 0) {
+                    const r1 = (-3 + Math.sqrt(d1)) / 2;
+                    const r2 = (-3 - Math.sqrt(d1)) / 2;
+                    eq1Roots.textContent = `${r1.toFixed(2)}, ${r2.toFixed(2)}`;
+                    eq1CountTag.textContent = '2個の実数解';
+                    eq1CountTag.className = 'text-xs font-semibold px-2 py-0.5 rounded bg-sky-950 border border-sky-800 text-sky-300';
+                } else if (Math.abs(d1) < 1e-5) {
+                    eq1Roots.textContent = `-1.50 (重解)`;
+                    eq1CountTag.textContent = '1個 (重解)';
+                    eq1CountTag.className = 'text-xs font-semibold px-2 py-0.5 rounded bg-amber-950 border border-amber-800 text-amber-300';
+                } else {
+                    eq1Roots.textContent = 'なし (虚数解)';
+                    eq1CountTag.textContent = '0個';
+                    eq1CountTag.className = 'text-xs font-semibold px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-400';
+                }
+
+                // Update D2 Display
+                d2Value.textContent = `${d2.toFixed(2)} ${d2 > 0 ? '(> 0)' : d2 === 0 ? '(= 0)' : '(< 0)'}`;
+                if (d2 > 0) {
+                    const r1 = (-a + Math.sqrt(d2)) / 2;
+                    const r2 = (-a - Math.sqrt(d2)) / 2;
+                    eq2Roots.textContent = `${r1.toFixed(2)}, ${r2.toFixed(2)}`;
+                    eq2CountTag.textContent = '2個の実数解';
+                    eq2CountTag.className = 'text-xs font-semibold px-2 py-0.5 rounded bg-rose-950 border border-rose-800 text-rose-300';
+                } else if (Math.abs(d2) < 1e-5) {
+                    const r = -a / 2;
+                    eq2Roots.textContent = `${r.toFixed(2)} (重解)`;
+                    eq2CountTag.textContent = '1個 (重解)';
+                    eq2CountTag.className = 'text-xs font-semibold px-2 py-0.5 rounded bg-amber-950 border border-amber-800 text-amber-300';
+                } else {
+                    eq2Roots.textContent = 'なし (虚数解)';
+                    eq2CountTag.textContent = '0個';
+                    eq2CountTag.className = 'text-xs font-semibold px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-400';
+                }
+
+                // Common Root Analysis
+                if (Math.abs(a - (-4)) < 0.02) {
+                    commonRootBadge.textContent = '共通実数解あり！';
+                    commonRootBadge.className = 'px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-500 text-slate-950 animate-pulse';
+                    commonRootBox.className = 'p-3.5 rounded-xl bg-emerald-950/60 border border-emerald-500/80 shadow-lg shadow-emerald-950/50';
+                    commonRootDesc.innerHTML = `<span class="text-emerald-300 font-bold">a = -4 のとき:</span> 共通の実数解 <span class="font-mono bg-emerald-900 px-1.5 py-0.5 rounded text-white font-bold">x = 1</span> をもちます。<br>①: (x - 1)(x + 4) = 0 &nbsp;|&nbsp; ②: (x - 1)(x - 3) = 0`;
+                } else if (Math.abs(a - 3) < 0.05) {
+                    commonRootBadge.textContent = '2式が完全に同一';
+                    commonRootBadge.className = 'px-2.5 py-0.5 text-xs font-bold rounded-full bg-indigo-500 text-white';
+                    commonRootBox.className = 'p-3.5 rounded-xl bg-indigo-950/60 border border-indigo-500/80';
+                    commonRootDesc.innerHTML = `<span class="text-indigo-300 font-bold">a = 3 のとき:</span> 方程式①と②は同じ式 <span class="font-mono">x² + 3x + 3 = 0</span> になります。ただし判別式 <span class="font-mono">D = -3 &lt; 0</span> のため<span class="text-indigo-200">実数解は存在しません</span>。`;
+                } else {
+                    commonRootBadge.textContent = '共通実数解なし';
+                    commonRootBadge.className = 'px-2.5 py-0.5 text-xs font-medium rounded-full bg-slate-800 text-slate-400 border border-slate-700';
+                    commonRootBox.className = 'p-3.5 rounded-xl bg-slate-950/60 border border-slate-800';
+                    
+                    if (d1 >= 0 && d2 >= 0) {
+                        commonRootDesc.textContent = '①, ②ともにそれぞれ実数解をもちますが、共通の解はありません。';
+                    } else if (d1 < 0 && d2 < 0) {
+                        commonRootDesc.textContent = '①, ②ともに実数解をもちません。';
+                    } else {
+                        commonRootDesc.textContent = '一方の方程式のみが実数解をもつ状態です。';
+                    }
+                }
+
+                // Update Number Line Pin Position
+                // Mapping range [-8, 8] to percentage [0%, 100%]
+                const percent = Math.min(Math.max(((a - (-8)) / (8 - (-8))) * 100, 2), 98);
+                aMarkerPin.style.left = `${percent}%`;
+            }
+
+            function setAValue(val) {
+                currentA = Math.min(Math.max(parseFloat(val), -8), 8);
+                slider.value = currentA;
+                aValueDisplay.textContent = `a = ${currentA.toFixed(2)}`;
+                render();
+                updateAnalysis();
+            }
+
+            // Slider Input Event
+            slider.addEventListener('input', (e) => {
+                setAValue(e.target.value);
+            });
+
+            // Step Buttons
+            btnStepPrev.addEventListener('click', () => setAValue(currentA - 0.1));
+            btnStepNext.addEventListener('click', () => setAValue(currentA + 0.1));
+
+            // Presets
+            presetBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const val = btn.getAttribute('data-value');
+                    setAValue(val);
+                });
+            });
+
+            // Play / Pause Animation Loop
+            function togglePlay() {
+                isPlaying = !isPlaying;
+                if (isPlaying) {
+                    playIcon.className = 'fa-solid fa-pause text-xs';
+                    playText.textContent = '停止';
+                    animate();
+                } else {
+                    playIcon.className = 'fa-solid fa-play text-xs';
+                    playText.textContent = 'アニメーション';
+                    if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                }
+            }
+
+            function animate() {
+                if (!isPlaying) return;
+                
+                let nextA = currentA + 0.03 * animDirection;
+                if (nextA >= 7.5) {
+                    nextA = 7.5;
+                    animDirection = -1;
+                } else if (nextA <= -7.5) {
+                    nextA = -7.5;
+                    animDirection = 1;
+                }
+                setAValue(nextA);
+                animationFrameId = requestAnimationFrame(animate);
+            }
+
+            btnPlayToggle.addEventListener('click', togglePlay);
+            btnResetView.addEventListener('click', resetView);
+
+            // Canvas Mouse Dragging (Pan) & Zoom
+            canvas.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                // Update Canvas Coordinates Display
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
+                const mouseY = (e.clientY - rect.top) * (canvas.height / rect.height);
+                
+                if (mouseX >= 0 && mouseX <= canvas.width && mouseY >= 0 && mouseY <= canvas.height) {
+                    const mx = toMathX(mouseX);
+                    const my = toMathY(mouseY);
+                    coordsDisplay.textContent = `x: ${mx.toFixed(2)}, y: ${my.toFixed(2)}`;
+                }
+
+                if (!isDragging) return;
+                const dx = (e.clientX - dragStartX) * window.devicePixelRatio;
+                const dy = (e.clientY - dragStartY) * window.devicePixelRatio;
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+
+                originX += dx;
+                originY += dy;
+                render();
+            });
+
+            window.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+
+            // Wheel Zooming
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+                
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
+                const mouseY = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+                // Zoom centered around mouse pointer
+                const mathX = toMathX(mouseX);
+                const mathY = toMathY(mouseY);
+
+                scale = Math.min(Math.max(scale * zoomFactor, 15), 300);
+
+                originX = mouseX - mathX * scale;
+                originY = mouseY + mathY * scale;
+
+                render();
+            }, { passive: false });
+
+            // Window Resize listener
+            window.addEventListener('resize', resizeCanvas);
+
+            // Initial Kickoff
+            resizeCanvas();
+            setAValue(-4.0); // Start default at a = -4 (Common Root)
+        });
+    </script>
+</body>
+</html>
