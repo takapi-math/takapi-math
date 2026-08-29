@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>等加速度運動・区分運動 総合物理シミュレーター</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter & Noto Sans JP -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- KaTeX for mathematical expressions -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            900: '#0c4a6e',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans JP', 'sans-serif'],
+                    }
+                }
+            }
+        };
+
+        function renderKatexMath() {
+            if (window.renderMathInElement) {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false}
+                    ],
+                    throwOnError : false
+                });
+            }
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderKatexMath()"></script>
+    
+    <style>
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+        input[type=range] {
+            accent-color: #38bdf8;
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .tab-btn.active {
+            background-color: #0284c7;
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-sky-500 selection:text-white text-xs">
+
+    <!-- ヘッダー -->
+    <header class="border-b border-slate-800 bg-slate-900/90 sticky top-0 z-50 backdrop-blur-md py-1.5 px-4">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-sky-500 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-sky-500/20">
+                    <i class="fa-solid fa-chart-line text-base"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-sm md:text-base text-slate-100 tracking-tight flex items-center gap-2">
+                        等加速度運動・区分運動 総合シミュレーター
+                        <span class="text-[10px] font-normal text-sky-400 bg-sky-950/80 border border-sky-800/60 px-2 py-0.5 rounded-full hidden sm:inline-block">時間軸 $t$ 完全同期</span>
+                    </h1>
+                </div>
+            </div>
+
+            <!-- タブ切り替えボタン群 -->
+            <div class="flex items-center gap-2">
+                <div class="flex bg-slate-950 p-0.5 rounded-lg border border-slate-800 text-[11px]">
+                    <button id="tabSim" class="tab-btn active px-2.5 py-1 rounded-md font-medium transition-all">シミュレーター</button>
+                    <button id="tabTheory" class="tab-btn px-2.5 py-1 rounded-md font-medium text-slate-400 hover:text-white transition-all">公式・解説</button>
+                    <button id="tabQuiz" class="tab-btn px-2.5 py-1 rounded-md font-medium text-slate-400 hover:text-white transition-all">確認テスト</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="max-w-7xl mx-auto w-full px-3 py-2.5 flex-1">
+
+        <!-- ===== 1. シミュレーター タブ ===== -->
+        <div id="panelSim" class="grid grid-cols-1 lg:grid-cols-12 gap-3">
+
+            <!-- 左側メイン：3段キャンバス (lg:col-span-8) -->
+            <div class="lg:col-span-8 flex flex-col gap-2.5">
+
+                <!-- 共通アニメーション・時間操作バー (スライダーの横にチェックボックスを統合) -->
+                <div class="glass-panel px-3 py-2 rounded-xl flex flex-wrap items-center justify-between gap-2.5 shadow-lg">
+                    <!-- 再生・停止・リセット・速度 -->
+                    <div class="flex items-center gap-1.5">
+                        <button id="btnPlay" class="w-8 h-8 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold flex items-center justify-center transition shadow-md shadow-sky-500/20 active:scale-95" title="再生/一時停止">
+                            <i id="playIcon" class="fa-solid fa-play text-xs"></i>
+                        </button>
+                        <button id="btnReset" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center transition border border-slate-700 active:scale-95" title="最初に戻る">
+                            <i class="fa-solid fa-rotate-left text-xs"></i>
+                        </button>
+                        <!-- 再生速度選択 -->
+                        <select id="speedSelect" class="bg-slate-900 border border-slate-700 text-[11px] text-slate-300 rounded-lg px-1.5 py-1 focus:outline-none focus:border-sky-500 cursor-pointer">
+                            <option value="0.25">0.25x</option>
+                            <option value="0.5">0.5x</option>
+                            <option value="1.0" selected>1.0x</option>
+                            <option value="1.5">1.5x</option>
+                            <option value="2.0">2.0x</option>
+                        </select>
+                    </div>
+
+                    <!-- 時間スライダー & 現在時刻表示 -->
+                    <div class="flex-1 min-w-[180px] flex items-center gap-2 bg-slate-950/80 px-2.5 py-1 rounded-lg border border-slate-800">
+                        <span class="text-[11px] font-mono font-semibold text-sky-400 whitespace-nowrap">t = <span id="lblCurrentTime" class="text-xs">0.00</span>s</span>
+                        <input type="range" id="timeSlider" min="0" max="20" step="0.05" value="0" class="w-full cursor-pointer h-1.5">
+                        <span class="text-[10px] font-mono text-slate-500 whitespace-nowrap" id="lblMaxTime">13.0s</span>
+                    </div>
+
+                    <!-- 表示トグル（スライダー横に配置） -->
+                    <div class="flex items-center gap-2.5 text-[11px] border-l border-slate-800 pl-2.5">
+                        <label class="flex items-center gap-1 cursor-pointer text-slate-300 hover:text-white select-none" title="v-t グラフ下の変位面積">
+                            <input type="checkbox" id="chkArea" checked class="accent-emerald-500 rounded cursor-pointer w-3.5 h-3.5">
+                            <span>変位(面積)</span>
+                        </label>
+                        <label class="flex items-center gap-1 cursor-pointer text-slate-300 hover:text-white select-none" title="x-t グラフの速度接線">
+                            <input type="checkbox" id="chkTangent" checked class="accent-cyan-500 rounded cursor-pointer w-3.5 h-3.5">
+                            <span>接線(速度)</span>
+                        </label>
+                        <label class="flex items-center gap-1 cursor-pointer text-slate-300 hover:text-white select-none" title="各グラフを貫く時間ガイド線">
+                            <input type="checkbox" id="chkGuide" checked class="accent-amber-500 rounded cursor-pointer w-3.5 h-3.5">
+                            <span>時間同期線</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 1段目: 実際の運動（縦幅を狭く compact 化） -->
+                <div class="glass-panel p-1.5 rounded-xl relative">
+                    <div class="bg-slate-950/90 rounded-lg relative h-[80px] w-full overflow-hidden border border-slate-800/80">
+                        <!-- キャンバス上にタイトルをオーバーレイ配置 -->
+                        <div class="absolute top-1.5 left-2.5 z-10 pointer-events-none flex items-center gap-2">
+                            <span class="text-[11px] font-bold text-amber-400 flex items-center gap-1 bg-slate-950/80 px-2 py-0.5 rounded border border-amber-500/20 shadow-sm">
+                                <i class="fa-solid fa-car-side text-amber-400"></i>
+                                【1】 実際の運動 （直線運動: 位置 $x$）
+                            </span>
+                            <span class="text-[9px] text-slate-400 bg-slate-900/80 px-1.5 py-0.5 rounded border border-slate-800 hidden sm:inline-block">
+                                右方向: 正 ($+x$)
+                            </span>
+                        </div>
+                        <canvas id="canvasMotion" class="w-full h-full block"></canvas>
+                    </div>
+                </div>
+
+                <!-- 2段目: v-t グラフ （速度 — 時間） -->
+                <div class="glass-panel p-1.5 rounded-xl relative">
+                    <div class="bg-slate-950/90 rounded-lg relative h-[200px] w-full overflow-hidden border border-slate-800/80">
+                        <!-- キャンバス上にタイトルをオーバーレイ配置 -->
+                        <div class="absolute top-1.5 left-2.5 z-10 pointer-events-none flex items-center gap-2">
+                            <span class="text-[11px] font-bold text-emerald-400 flex items-center gap-1 bg-slate-950/80 px-2 py-0.5 rounded border border-emerald-500/20 shadow-sm">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block shadow-sm shadow-emerald-400"></span>
+                                【2】 $v-t$ グラフ （速度 $v$ — 時間 $t$）
+                            </span>
+                            <span class="text-[9px] text-slate-400 bg-slate-900/80 px-1.5 py-0.5 rounded border border-slate-800 hidden sm:inline-block">
+                                傾き = 加速度 $a$ ／ 面積 = 変位 $\Delta x$
+                            </span>
+                        </div>
+                        <canvas id="canvasVT" class="w-full h-full block"></canvas>
+                    </div>
+                </div>
+
+                <!-- 3段目: x-t グラフ （位置 — 時間） -->
+                <div class="glass-panel p-1.5 rounded-xl relative">
+                    <div class="bg-slate-950/90 rounded-lg relative h-[200px] w-full overflow-hidden border border-slate-800/80">
+                        <!-- キャンバス上にタイトルをオーバーレイ配置 -->
+                        <div class="absolute top-1.5 left-2.5 z-10 pointer-events-none flex items-center gap-2">
+                            <span class="text-[11px] font-bold text-cyan-400 flex items-center gap-1 bg-slate-950/80 px-2 py-0.5 rounded border border-cyan-500/20 shadow-sm">
+                                <span class="w-2 h-2 rounded-full bg-cyan-400 inline-block shadow-sm shadow-cyan-400"></span>
+                                【3】 $x-t$ グラフ （位置 $x$ — 時間 $t$）
+                            </span>
+                            <span class="text-[9px] text-slate-400 bg-slate-900/80 px-1.5 py-0.5 rounded border border-slate-800 hidden sm:inline-block">
+                                接線の傾き = 瞬間の速度 $v$
+                            </span>
+                        </div>
+                        <canvas id="canvasXT" class="w-full h-full block"></canvas>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 右側：パラメータ設定 & リアルタイム数値 (lg:col-span-4) -->
+            <div class="lg:col-span-4 flex flex-col gap-2.5">
+
+                <!-- プリセットクイック選択 -->
+                <div class="glass-panel p-2.5 rounded-xl flex flex-col gap-1.5">
+                    <span class="text-[11px] font-bold text-slate-300 flex items-center gap-1">
+                        <i class="fa-solid fa-wand-magic-sparkles text-sky-400"></i> 運動パターン・プリセット
+                    </span>
+                    <div class="grid grid-cols-1 gap-1">
+                        <button id="btnPreset1" class="px-2.5 py-1.5 text-[11px] font-medium rounded-lg transition-all bg-sky-600 text-white shadow hover:bg-sky-500 text-left flex items-center justify-between">
+                            <span>① 台形+反転運動 (標準)</span>
+                            <i class="fa-solid fa-chevron-right text-[9px]"></i>
+                        </button>
+                        <button id="btnPreset2" class="px-2.5 py-1.5 text-[11px] font-medium rounded-lg transition-all text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 text-left flex items-center justify-between">
+                            <span>② 急発進と急ブレーキ</span>
+                            <i class="fa-solid fa-chevron-right text-[9px]"></i>
+                        </button>
+                        <button id="btnPreset3" class="px-2.5 py-1.5 text-[11px] font-medium rounded-lg transition-all text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 text-left flex items-center justify-between">
+                            <span>③ 往復・折り返し運動</span>
+                            <i class="fa-solid fa-chevron-right text-[9px]"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- リアルタイム物理量カード -->
+                <div class="glass-panel p-2.5 rounded-xl flex flex-col gap-2">
+                    <h2 class="text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center justify-between">
+                        <span><i class="fa-solid fa-gauge-high text-sky-400 mr-1"></i>リアルタイム物理量</span>
+                        <span id="badgeState" class="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800">区間1: 加速中</span>
+                    </h2>
+
+                    <div class="grid grid-cols-2 gap-1.5">
+                        <!-- 時間 t -->
+                        <div class="bg-slate-950/80 p-1.5 rounded-lg border border-slate-800/80">
+                            <div class="text-[9px] text-slate-400">経過時間 $t$</div>
+                            <div class="text-base font-mono font-bold text-sky-400"><span id="valT">0.00</span> <span class="text-[10px] text-slate-500 font-normal">s</span></div>
+                        </div>
+                        <!-- 位置 x -->
+                        <div class="bg-slate-950/80 p-1.5 rounded-lg border border-slate-800/80">
+                            <div class="text-[9px] text-slate-400">現在位置 $x$</div>
+                            <div class="text-base font-mono font-bold text-amber-400"><span id="valX">0.00</span> <span class="text-[10px] text-slate-500 font-normal">m</span></div>
+                        </div>
+                        <!-- 速度 v -->
+                        <div class="bg-slate-950/80 p-1.5 rounded-lg border border-slate-800/80">
+                            <div class="text-[9px] text-slate-400">現在速度 $v$</div>
+                            <div class="text-base font-mono font-bold text-emerald-400"><span id="valV">0.00</span> <span class="text-[10px] text-slate-500 font-normal">m/s</span></div>
+                        </div>
+                        <!-- 加速度 a -->
+                        <div class="bg-slate-950/80 p-1.5 rounded-lg border border-slate-800/80">
+                            <div class="text-[9px] text-slate-400">現在加速度 $a$</div>
+                            <div class="text-base font-mono font-bold text-indigo-400"><span id="valA">0.00</span> <span class="text-[10px] text-slate-500 font-normal">m/s²</span></div>
+                        </div>
+                    </div>
+
+                    <!-- 総変位 & 最高到達点 -->
+                    <div class="grid grid-cols-2 gap-1.5">
+                        <div class="bg-slate-950/60 p-1.5 rounded-lg border border-slate-800/80 flex flex-col justify-between text-[10px]">
+                            <span class="text-slate-400">変位 $\Delta x$:</span>
+                            <span class="font-mono font-bold text-emerald-300 text-xs" id="valDisplacement">+0.00 m</span>
+                        </div>
+                        <div class="bg-slate-950/60 p-1.5 rounded-lg border border-slate-800/80 flex flex-col justify-between text-[10px]">
+                            <span class="text-slate-400">最大正位置 $x_{\max}$:</span>
+                            <span class="font-mono font-bold text-amber-300 text-xs" id="valMaxX">0.00 m</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- パラメータコントロール -->
+                <div class="glass-panel p-2.5 rounded-xl flex flex-col gap-2">
+                    <h2 class="text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1">
+                        <i class="fa-solid fa-sliders text-sky-400"></i>
+                        運動パラメータ設定
+                    </h2>
+
+                    <!-- 初期位置 x0 -->
+                    <div class="space-y-0.5">
+                        <div class="flex justify-between text-[11px]">
+                            <span class="text-slate-300">初期位置 $x_0$</span>
+                            <span class="font-mono font-semibold text-amber-400"><span id="lblX0">0</span> m</span>
+                        </div>
+                        <input type="range" id="paramX0" min="-30" max="30" step="1" value="0" class="w-full cursor-pointer h-1.5">
+                    </div>
+
+                    <!-- 区間1: 加速段階 -->
+                    <div class="space-y-1 bg-slate-950/50 p-2 rounded-lg border border-slate-800/60">
+                        <div class="text-[11px] font-semibold text-sky-400 flex items-center justify-between">
+                            <span>【区間1】加速 ($0 \le t \le T_1$)</span>
+                            <span class="text-[9px] text-slate-500 font-normal">等加速度</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="space-y-0.5">
+                                <div class="flex justify-between text-[10px]">
+                                    <span class="text-slate-400">加速度 $a_1$</span>
+                                    <span class="font-mono text-sky-300"><span id="lblA1">+5.0</span></span>
+                                </div>
+                                <input type="range" id="paramA1" min="0.5" max="15.0" step="0.5" value="5.0" class="w-full cursor-pointer h-1.5">
+                            </div>
+                            <div class="space-y-0.5">
+                                <div class="flex justify-between text-[10px]">
+                                    <span class="text-slate-400">時間 $T_1$</span>
+                                    <span class="font-mono text-sky-300"><span id="lblT1">3.5</span>s</span>
+                                </div>
+                                <input type="range" id="paramT1" min="1.0" max="8.0" step="0.5" value="3.5" class="w-full cursor-pointer h-1.5">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 区間2: 等速段階 -->
+                    <div class="space-y-1 bg-slate-950/50 p-2 rounded-lg border border-slate-800/60">
+                        <div class="text-[11px] font-semibold text-indigo-400 flex items-center justify-between">
+                            <span>【区間2】等速 ($T_1 < t \le T_1 + T_2$)</span>
+                            <span class="text-[9px] text-slate-500 font-normal">慣性移動</span>
+                        </div>
+                        <div class="space-y-0.5">
+                            <div class="flex justify-between text-[10px]">
+                                <span class="text-slate-400">時間 $T_2$</span>
+                                <span class="font-mono text-indigo-300"><span id="lblT2">2.5</span>s</span>
+                            </div>
+                            <input type="range" id="paramT2" min="0.0" max="8.0" step="0.5" value="2.5" class="w-full cursor-pointer h-1.5">
+                        </div>
+                    </div>
+
+                    <!-- 区間3: 減速～反転段階 -->
+                    <div class="space-y-1 bg-slate-950/50 p-2 rounded-lg border border-slate-800/60">
+                        <div class="text-[11px] font-semibold text-rose-400 flex items-center justify-between">
+                            <span>【区間3】減速・反転 ($t > T_1 + T_2$)</span>
+                            <span class="text-[9px] text-slate-500 font-normal">負の加速度</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="space-y-0.5">
+                                <div class="flex justify-between text-[10px]">
+                                    <span class="text-slate-400">加速度 $a_3$</span>
+                                    <span class="font-mono text-rose-300"><span id="lblA3">-6.0</span></span>
+                                </div>
+                                <input type="range" id="paramA3" min="-15.0" max="-0.5" step="0.5" value="-6.0" class="w-full cursor-pointer h-1.5">
+                            </div>
+                            <div class="space-y-0.5">
+                                <div class="flex justify-between text-[10px]">
+                                    <span class="text-slate-400">時間 $T_3$</span>
+                                    <span class="font-mono text-rose-300"><span id="lblT3">7.0</span>s</span>
+                                </div>
+                                <input type="range" id="paramT3" min="2.0" max="10.0" step="0.5" value="7.0" class="w-full cursor-pointer h-1.5">
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- ===== 2. 公式・解説 タブ ===== -->
+        <div id="panelTheory" class="hidden glass-panel p-5 rounded-2xl flex flex-col gap-4 max-w-4xl mx-auto">
+            <h2 class="text-base font-bold text-sky-400 border-b border-slate-800 pb-2 flex items-center gap-2">
+                <i class="fa-solid fa-book-open"></i> 等加速度直線運動の基本公式とグラフの幾何学的意味
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800">
+                    <div class="text-xs text-sky-400 font-bold mb-1">【公式 1】 速度と時間の関係</div>
+                    <div class="text-center my-2 text-base font-semibold text-white">$$v = v_0 + at$$</div>
+                    <p class="text-[11px] text-slate-400 leading-relaxed">初速度 $v_0$ から一定の加速度 $a$ で $t$ 秒間加速したときの到達速度 $v$ を表します。</p>
+                </div>
+                <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800">
+                    <div class="text-xs text-emerald-400 font-bold mb-1">【公式 2】 変位と時間の関係</div>
+                    <div class="text-center my-2 text-base font-semibold text-white">$$x = x_0 + v_0 t + \frac{1}{2}at^2$$</div>
+                    <p class="text-[11px] text-slate-400 leading-relaxed">$t$ 秒後の位置 $x$ を求めます。$x-t$ グラフ上では放物線（2次関数）の軌跡を描きます。</p>
+                </div>
+                <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800">
+                    <div class="text-xs text-amber-400 font-bold mb-1">【公式 3】 時間 $t$ を含まない関係式</div>
+                    <div class="text-center my-2 text-base font-semibold text-white">$$v^2 - v_0^2 = 2a(x - x_0)$$</div>
+                    <p class="text-[11px] text-slate-400 leading-relaxed">時間が未知の問題で威力を発揮します。エネルギー保存則にも直結する重要式です。</p>
+                </div>
+            </div>
+
+            <div class="space-y-3 text-xs text-slate-300 bg-slate-950/60 p-4 rounded-xl border border-slate-800">
+                <h3 class="font-bold text-amber-400 text-sm"><i class="fa-solid fa-lightbulb mr-1.5"></i> グラフ解釈のキーポイント</h3>
+                <ul class="list-disc list-inside space-y-1.5 text-slate-300 leading-relaxed">
+                    <li><strong class="text-emerald-400">$v-t$ グラフの傾き：</strong> 各瞬間の加速度 $a = \frac{dv}{dt}$ を表します。右上がりなら正の加速度、右下がりなら負の加速度です。</li>
+                    <li><strong class="text-emerald-400">$v-t$ グラフの囲む面積：</strong> $t$ 軸と曲線で囲まれた面積は<b>変位 $\Delta x$</b> に等しいです（$t$ 軸より上は正の移動量、下は負の移動量）。</li>
+                    <li><strong class="text-cyan-400">$x-t$ グラフの接線の傾き：</strong> 位置の微分、すなわちその瞬間の<b>速度 $v = \frac{dx}{dt}$</b> に等しいです。</li>
+                    <li><strong class="text-rose-400">折り返し地点（最高点）：</strong> 物体が反転する瞬間、速度は一時的に $v = 0$ となります。$x-t$ グラフでは接線が水平になる頂点に対応します。</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- ===== 3. 確認テスト タブ ===== -->
+        <div id="panelQuiz" class="hidden glass-panel p-5 rounded-2xl flex flex-col gap-4 max-w-3xl mx-auto">
+            <h2 class="text-base font-bold text-sky-400 border-b border-slate-800 pb-2 flex items-center justify-between">
+                <span><i class="fa-solid fa-graduation-cap"></i> 物理思考力・確認チャレンジ</span>
+                <span class="text-xs font-normal text-slate-400">問題を選択して挑戦してください</span>
+            </h2>
+
+            <div class="space-y-4">
+                <!-- クイズ問題 1 -->
+                <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800 space-y-2">
+                    <div class="text-xs font-bold text-sky-400 uppercase">Q1. $v-t$ グラフの面積と変位</div>
+                    <p class="text-xs text-slate-200">初速度 $0\text{ m/s}$ から加速度 $a = 4.0\text{ m/s}^2$ で $4.0\text{ s}$ 間加速したとき、物体の進んだ距離 $\Delta x$ はいくらか？</p>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                        <button onclick="checkQuiz(1, 16, this)" class="p-2 rounded-lg bg-slate-950 border border-slate-800 hover:border-sky-500 transition">A. 16 m</button>
+                        <button onclick="checkQuiz(1, 32, this)" class="p-2 rounded-lg bg-slate-950 border border-slate-800 hover:border-sky-500 transition">B. 32 m</button>
+                        <button onclick="checkQuiz(1, 64, this)" class="p-2 rounded-lg bg-slate-950 border border-slate-800 hover:border-sky-500 transition">C. 64 m</button>
+                        <button onclick="checkQuiz(1, 8, this)" class="p-2 rounded-lg bg-slate-950 border border-slate-800 hover:border-sky-500 transition">D. 8 m</button>
+                    </div>
+                    <div id="q1Feedback" class="hidden text-xs p-2.5 rounded-lg font-medium"></div>
+                </div>
+
+                <!-- クイズ問題 2 -->
+                <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800 space-y-2">
+                    <div class="text-xs font-bold text-sky-400 uppercase">Q2. 折り返し（反転）運動</div>
+                    <p class="text-xs text-slate-200">速度 $v = +12.0\text{ m/s}$ で動く物体に加速度 $a = -3.0\text{ m/s}^2$ を加えたとき、物体が折り返す（$v = 0$）までの時間 $t$ は何秒か？</p>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                        <button onclick="checkQuiz(2, 2, this)" class="p-2 rounded-lg bg-slate-950 border border-slate-800 hover:border-sky-500 transition">A. 2.0 秒</button>
+                        <button onclick="checkQuiz(2, 4, this)" class="p-2 rounded-lg bg-slate-950 border border-slate-800 hover:border-sky-500 transition">B. 4.0 秒</button>
+                        <button onclick="checkQuiz(2, 6, this)" class="p-2 rounded-lg bg-slate-950 border border-slate-800 hover:border-sky-500 transition">C. 6.0 秒</button>
+                        <button onclick="checkQuiz(2, 36, this)" class="p-2 rounded-lg bg-slate-950 border border-slate-800 hover:border-sky-500 transition">D. 36 秒</button>
+                    </div>
+                    <div id="q2Feedback" class="hidden text-xs p-2.5 rounded-lg font-medium"></div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- フッター -->
+    <footer class="border-t border-slate-900 bg-slate-950 py-2 px-4 text-center text-[11px] text-slate-500">
+        等加速度運動・区分運動 物理シミュレーション Web教材 | 横運動・$v-t$・$x-t$ 時間軸完全同期
+    </footer>
+
+    <script>
+        // シミュレーターのグローバル状態管理
+        const state = {
+            isPlaying: false,
+            currentTime: 0.0,
+            playbackSpeed: 1.0,
+            animationFrameId: null,
+            lastTimestamp: 0,
+
+            // 表示オプション
+            showArea: true,
+            showTangent: true,
+            showGuide: true,
+
+            // パラメータ
+            params: {
+                x0: 0,       // 初期位置
+                a1: 5.0,     // 区間1 加速度
+                t1: 3.5,     // 区間1 継続時間
+                t2: 2.5,     // 区間2 継続時間
+                a3: -6.0,    // 区間3 加速度
+                t3: 7.0,     // 区間3 継続時間
+            },
+
+            // 計算された境界・ピーク値（自動スケーリング用）
+            computed: {
+                totalTime: 13.0,
+                vMax: 20.0,
+                vMin: -20.0,
+                xMax: 80.0,
+                xMin: -40.0,
+                tTop: 0.0,   // v=0 となる時間 (最高点)
+                xTop: 0.0,   // 最高点の位置 x
+            }
+        };
+
+        // DOMエレメント参照キャッシュ
+        const dom = {
+            btnPlay: document.getElementById('btnPlay'),
+            playIcon: document.getElementById('playIcon'),
+            btnReset: document.getElementById('btnReset'),
+            speedSelect: document.getElementById('speedSelect'),
+            timeSlider: document.getElementById('timeSlider'),
+            lblCurrentTime: document.getElementById('lblCurrentTime'),
+            lblMaxTime: document.getElementById('lblMaxTime'),
+
+            chkArea: document.getElementById('chkArea'),
+            chkTangent: document.getElementById('chkTangent'),
+            chkGuide: document.getElementById('chkGuide'),
+
+            // タブ
+            tabSim: document.getElementById('tabSim'),
+            tabTheory: document.getElementById('tabTheory'),
+            tabQuiz: document.getElementById('tabQuiz'),
+            panelSim: document.getElementById('panelSim'),
+            panelTheory: document.getElementById('panelTheory'),
+            panelQuiz: document.getElementById('panelQuiz'),
+
+            // プリセット
+            btnPreset1: document.getElementById('btnPreset1'),
+            btnPreset2: document.getElementById('btnPreset2'),
+            btnPreset3: document.getElementById('btnPreset3'),
+
+            // スライダー
+            paramX0: document.getElementById('paramX0'),
+            paramA1: document.getElementById('paramA1'),
+            paramT1: document.getElementById('paramT1'),
+            paramT2: document.getElementById('paramT2'),
+            paramA3: document.getElementById('paramA3'),
+            paramT3: document.getElementById('paramT3'),
+
+            // ラベル
+            lblX0: document.getElementById('lblX0'),
+            lblA1: document.getElementById('lblA1'),
+            lblT1: document.getElementById('lblT1'),
+            lblT2: document.getElementById('lblT2'),
+            lblA3: document.getElementById('lblA3'),
+            lblT3: document.getElementById('lblT3'),
+
+            // リアルタイム数値表示
+            badgeState: document.getElementById('badgeState'),
+            valT: document.getElementById('valT'),
+            valX: document.getElementById('valX'),
+            valV: document.getElementById('valV'),
+            valA: document.getElementById('valA'),
+            valDisplacement: document.getElementById('valDisplacement'),
+            valMaxX: document.getElementById('valMaxX'),
+
+            // Canvases
+            canvasMotion: document.getElementById('canvasMotion'),
+            canvasVT: document.getElementById('canvasVT'),
+            canvasXT: document.getElementById('canvasXT'),
+        };
+
+        const ctxMotion = dom.canvasMotion.getContext('2d');
+        const ctxVT = dom.canvasVT.getContext('2d');
+        const ctxXT = dom.canvasXT.getContext('2d');
+
+        /**
+         * 共通のキャンバスパディング（t軸の幅を揃えるための標準マージン）
+         */
+        const GRAPH_PAD = { top: 22, right: 30, bottom: 22, left: 42 };
+
+        /**
+         * 物理計算関数 (区間1:加速, 区間2:等速, 区間3:減速・反転)
+         */
+        function calculatePhysics(t) {
+            const { x0, a1, t1, t2, a3, t3 } = state.params;
+            const totalT = state.computed.totalTime || (t1 + t2 + t3);
+            const clampedT = Math.max(0, Math.min(t, totalT));
+            
+            let x = x0;
+            let v = 0;
+            let a = 0;
+            let segment = 1;
+
+            if (clampedT <= t1) {
+                segment = 1;
+                a = a1;
+                v = a1 * clampedT;
+                x = x0 + 0.5 * a1 * clampedT * clampedT;
+            } else if (clampedT <= t1 + t2) {
+                segment = 2;
+                const v1 = a1 * t1;
+                const x1 = x0 + 0.5 * a1 * t1 * t1;
+                a = 0;
+                v = v1;
+                x = x1 + v1 * (clampedT - t1);
+            } else {
+                segment = 3;
+                const v1 = a1 * t1;
+                const x1 = x0 + 0.5 * a1 * t1 * t1;
+                const x2 = x1 + v1 * t2;
+                const dt3 = clampedT - (t1 + t2);
+                a = a3;
+                v = v1 + a3 * dt3;
+                x = x2 + v1 * dt3 + 0.5 * a3 * dt3 * dt3;
+            }
+
+            return { x, v, a, segment, t: clampedT };
+        }
+
+        /**
+         * パラメータ変更時の表示軸範囲・最大値の自動再計算
+         */
+        function updateComputedRanges() {
+            const { x0, a1, t1, t2, a3, t3 } = state.params;
+            const totalTime = t1 + t2 + t3;
+            state.computed.totalTime = totalTime;
+
+            let vMin = 0;
+            let vMax = 0;
+            let xMin = x0;
+            let xMax = x0;
+            let tTop = 0;
+            let xTop = x0;
+
+            const samples = 100;
+            for (let i = 0; i <= samples; i++) {
+                const t = (totalTime / samples) * i;
+                const res = calculatePhysics(t);
+                if (i === 0) {
+                    vMin = res.v;
+                    vMax = res.v;
+                    xMin = res.x;
+                    xMax = res.x;
+                } else {
+                    if (res.v < vMin) vMin = res.v;
+                    if (res.v > vMax) vMax = res.v;
+                    if (res.x < xMin) xMin = res.x;
+                    if (res.x > xMax) xMax = res.x;
+                }
+            }
+
+            // 最高到達点 (v = 0 のターンバック地点) の検出
+            const v1 = a1 * t1;
+            if (v1 > 0 && a3 < 0) {
+                const dtTop = -v1 / a3;
+                if (dtTop >= 0 && dtTop <= t3) {
+                    tTop = t1 + t2 + dtTop;
+                    const topRes = calculatePhysics(tTop);
+                    xTop = topRes.x;
+                    if (xTop > xMax) xMax = xTop;
+                } else {
+                    xTop = xMax;
+                }
+            } else {
+                xTop = xMax;
+            }
+
+            const vSpan = Math.max(15, (vMax - vMin) * 1.25);
+            const vCenter = (vMax + vMin) / 2;
+            state.computed.vMax = Math.ceil(vCenter + vSpan / 2);
+            state.computed.vMin = Math.floor(vCenter - vSpan / 2);
+
+            const xSpan = Math.max(20, (xMax - xMin) * 1.25);
+            const xCenter = (xMax + xMin) / 2;
+            state.computed.xMax = Math.ceil(xCenter + xSpan / 2);
+            state.computed.xMin = Math.floor(xCenter - xSpan / 2);
+
+            state.computed.tTop = tTop;
+            state.computed.xTop = xTop;
+
+            if (dom.timeSlider) {
+                dom.timeSlider.max = totalTime;
+            }
+            if (dom.lblMaxTime) {
+                dom.lblMaxTime.textContent = `${totalTime.toFixed(1)}s`;
+            }
+        }
+
+        /**
+         * Canvas高解像度(DPR)リサイズ helper
+         */
+        function resizeCanvas(canvas) {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            const width = rect.width || 300;
+            const height = rect.height || 150;
+            canvas.width = Math.floor(width * dpr);
+            canvas.height = Math.floor(height * dpr);
+            return { width, height, dpr };
+        }
+
+        /**
+         * 1段目: 実際の運動 (横方向の直線移動) の描画（高さ80px用にコンパクト化）
+         */
+        function drawHorizontalMotion(w, h, dpr) {
+            ctxMotion.save();
+            ctxMotion.scale(dpr, dpr);
+            ctxMotion.clearRect(0, 0, w, h);
+
+            const pad = GRAPH_PAD;
+            const trackW = w - pad.left - pad.right;
+            const trackY = h / 2 + 8; // レールの位置
+
+            const xMax = state.computed.xMax;
+            const xMin = state.computed.xMin;
+
+            // 位置 x から 横方向 X 座標への変換関数
+            const xToPx = (x) => pad.left + ((x - xMin) / (xMax - xMin)) * trackW;
+            const xZeroPx = xToPx(0);
+
+            // 1. 直線運動レール (トラック)
+            ctxMotion.beginPath();
+            ctxMotion.strokeStyle = '#334155';
+            ctxMotion.lineWidth = 3;
+            ctxMotion.moveTo(pad.left, trackY);
+            ctxMotion.lineTo(w - pad.right, trackY);
+            ctxMotion.stroke();
+
+            // 2. x = 0 基準位置マーカー
+            ctxMotion.beginPath();
+            ctxMotion.strokeStyle = '#475569';
+            ctxMotion.lineWidth = 1.5;
+            ctxMotion.setLineDash([2, 2]);
+            ctxMotion.moveTo(xZeroPx, trackY - 14);
+            ctxMotion.lineTo(xZeroPx, trackY + 14);
+            ctxMotion.stroke();
+            ctxMotion.setLineDash([]);
+
+            ctxMotion.fillStyle = '#94a3b8';
+            ctxMotion.font = '9px Inter';
+            ctxMotion.textAlign = 'center';
+            ctxMotion.fillText('x = 0', xZeroPx, trackY + 22);
+
+            // 端点目盛り
+            ctxMotion.fillText(`${xMin}m`, pad.left, trackY + 22);
+            ctxMotion.fillText(`${xMax}m`, w - pad.right, trackY + 22);
+
+            // 現在の物理状態
+            const curRes = calculatePhysics(state.currentTime);
+            const curX = curRes.x;
+            const curV = curRes.v;
+            const curA = curRes.a;
+
+            const objX = xToPx(curX);
+
+            // 3. 物体の移動軌跡 (過去の残像トレイル)
+            const steps = 40;
+            const trailDt = state.currentTime / steps;
+            ctxMotion.beginPath();
+            for (let i = 0; i <= steps; i++) {
+                const tPrev = trailDt * i;
+                const resPrev = calculatePhysics(tPrev);
+                const px = xToPx(resPrev.x);
+                if (i === 0) ctxMotion.moveTo(px, trackY);
+                else ctxMotion.lineTo(px, trackY);
+            }
+            ctxMotion.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+            ctxMotion.lineWidth = 4;
+            ctxMotion.lineCap = 'round';
+            ctxMotion.stroke();
+
+            // 4. 加速 / 減速 エフェクト
+            if (curA > 0) {
+                const flameW = Math.min(curA * 2.0, 16);
+                ctxMotion.beginPath();
+                ctxMotion.fillStyle = '#f97316';
+                ctxMotion.moveTo(objX - 6, trackY - 4);
+                ctxMotion.lineTo(objX - 6, trackY + 4);
+                ctxMotion.lineTo(objX - 6 - flameW, trackY);
+                ctxMotion.closePath();
+                ctxMotion.fill();
+            } else if (curA < 0) {
+                ctxMotion.beginPath();
+                ctxMotion.fillStyle = 'rgba(244, 63, 94, 0.35)';
+                ctxMotion.arc(objX, trackY, 10, 0, Math.PI * 2);
+                ctxMotion.fill();
+            }
+
+            // 5. 速度ベクトル矢印 (v)
+            if (Math.abs(curV) > 0.1) {
+                const isPos = curV > 0;
+                const vColor = isPos ? '#10b981' : '#f43f5e';
+                const vLen = Math.min(Math.abs(curV) * 1.6, 40);
+                const dir = isPos ? 1 : -1;
+
+                ctxMotion.beginPath();
+                ctxMotion.strokeStyle = vColor;
+                ctxMotion.lineWidth = 2.5;
+                ctxMotion.moveTo(objX, trackY - 12);
+                ctxMotion.lineTo(objX + dir * vLen, trackY - 12);
+                ctxMotion.stroke();
+
+                // 矢頭
+                ctxMotion.beginPath();
+                ctxMotion.fillStyle = vColor;
+                ctxMotion.moveTo(objX + dir * vLen, trackY - 12);
+                ctxMotion.lineTo(objX + dir * vLen - dir * 5, trackY - 15);
+                ctxMotion.lineTo(objX + dir * vLen - dir * 5, trackY - 9);
+                ctxMotion.closePath();
+                ctxMotion.fill();
+            }
+
+            // 6. 物体本体 (球体)
+            const speedRatio = Math.min(Math.abs(curV) / 25, 0.35);
+            const rx = 6.5 * (1 + speedRatio * 0.5);
+            const ry = 6.5 * (1 - speedRatio * 0.3);
+
+            const grad = ctxMotion.createRadialGradient(objX - 2, trackY - 2, 1, objX, trackY, 7);
+            grad.addColorStop(0, '#38bdf8');
+            grad.addColorStop(1, '#0284c7');
+
+            ctxMotion.beginPath();
+            ctxMotion.fillStyle = grad;
+            ctxMotion.ellipse(objX, trackY, rx, ry, 0, 0, Math.PI * 2);
+            ctxMotion.fill();
+            ctxMotion.strokeStyle = '#ffffff';
+            ctxMotion.lineWidth = 1.5;
+            ctxMotion.stroke();
+
+            // 位置情報タグ
+            ctxMotion.fillStyle = '#fbbf24';
+            ctxMotion.font = 'bold 10px Inter';
+            ctxMotion.textAlign = 'center';
+            ctxMotion.fillText(`x = ${curX.toFixed(1)}m`, objX, trackY - 20);
+
+            ctxMotion.restore();
+            return { objX, trackY };
+        }
+
+        /**
+         * 2段目: v-t グラフの描画 (横軸: 時間 t, 縦軸: 速度 v)
+         */
+        function drawVTChart(w, h, dpr) {
+            ctxVT.save();
+            ctxVT.scale(dpr, dpr);
+            ctxVT.clearRect(0, 0, w, h);
+
+            const pad = GRAPH_PAD;
+            const chartW = w - pad.left - pad.right;
+            const chartH = h - pad.top - pad.bottom;
+
+            const tMax = state.computed.totalTime || 10;
+            const vMax = state.computed.vMax;
+            const vMin = state.computed.vMin;
+
+            const tToX = (t) => pad.left + (t / tMax) * chartW;
+            const vToY = (v) => pad.top + (1 - (v - vMin) / (vMax - vMin)) * chartH;
+
+            const yZero = vToY(0);
+
+            // グリッド線
+            ctxVT.strokeStyle = '#1e293b';
+            ctxVT.lineWidth = 1;
+            ctxVT.beginPath();
+            for (let t = 0; t <= tMax; t += 2) {
+                const px = tToX(t);
+                ctxVT.moveTo(px, pad.top);
+                ctxVT.lineTo(px, h - pad.bottom);
+            }
+            const vStep = Math.ceil((vMax - vMin) / 5 / 5) * 5 || 5;
+            for (let v = Math.ceil(vMin / vStep) * vStep; v <= vMax; v += vStep) {
+                const py = vToY(v);
+                ctxVT.moveTo(pad.left, py);
+                ctxVT.lineTo(w - pad.right, py);
+            }
+            ctxVT.stroke();
+
+            // v = 0 軸 (時間軸)
+            ctxVT.beginPath();
+            ctxVT.strokeStyle = '#475569';
+            ctxVT.lineWidth = 1.5;
+            ctxVT.moveTo(pad.left, yZero);
+            ctxVT.lineTo(w - pad.right, yZero);
+            ctxVT.stroke();
+
+            // t = 0 軸
+            ctxVT.beginPath();
+            ctxVT.moveTo(pad.left, pad.top);
+            ctxVT.lineTo(pad.left, h - pad.bottom);
+            ctxVT.stroke();
+
+            // 変位 (面積) の塗りつぶし描画
+            if (state.showArea && state.currentTime > 0) {
+                const steps = 100;
+                const curT = state.currentTime;
+                
+                ctxVT.beginPath();
+                ctxVT.moveTo(tToX(0), yZero);
+                for (let i = 0; i <= steps; i++) {
+                    const t = (curT / steps) * i;
+                    const res = calculatePhysics(t);
+                    ctxVT.lineTo(tToX(t), vToY(res.v));
+                }
+                ctxVT.lineTo(tToX(curT), yZero);
+                ctxVT.closePath();
+                ctxVT.fillStyle = 'rgba(16, 185, 129, 0.25)';
+                ctxVT.fill();
+            }
+
+            // v-t 全体曲線の描画
+            const totalSteps = 200;
+            ctxVT.beginPath();
+            for (let i = 0; i <= totalSteps; i++) {
+                const t = (tMax / totalSteps) * i;
+                const res = calculatePhysics(t);
+                const px = tToX(t);
+                const py = vToY(res.v);
+                if (i === 0) ctxVT.moveTo(px, py);
+                else ctxVT.lineTo(px, py);
+            }
+            ctxVT.strokeStyle = '#34d399';
+            ctxVT.lineWidth = 2.5;
+            ctxVT.stroke();
+
+            // 軸ラベル
+            ctxVT.fillStyle = '#64748b';
+            ctxVT.font = '10px Inter';
+            ctxVT.textAlign = 'right';
+            ctxVT.fillText(`${vMax}`, pad.left - 5, vToY(vMax) + 4);
+            ctxVT.fillText('0', pad.left - 5, yZero + 3);
+            ctxVT.fillText(`${vMin}`, pad.left - 5, vToY(vMin) + 2);
+
+            ctxVT.textAlign = 'center';
+            ctxVT.fillText('0', pad.left, h - pad.bottom + 12);
+            ctxVT.fillText(`${tMax.toFixed(1)}s`, w - pad.right, h - pad.bottom + 12);
+
+            // 現在時間のプロット点
+            const curRes = calculatePhysics(state.currentTime);
+            const curX = tToX(state.currentTime);
+            const curY = vToY(curRes.v);
+
+            ctxVT.beginPath();
+            ctxVT.fillStyle = '#34d399';
+            ctxVT.arc(curX, curY, 5, 0, Math.PI * 2);
+            ctxVT.fill();
+            ctxVT.strokeStyle = '#ffffff';
+            ctxVT.lineWidth = 2;
+            ctxVT.stroke();
+
+            // 速度テキスト表示
+            ctxVT.fillStyle = '#34d399';
+            ctxVT.font = 'bold 10px Inter';
+            ctxVT.textAlign = 'left';
+            ctxVT.fillText(`v = ${curRes.v.toFixed(1)}m/s`, curX + 8, curY + 3);
+
+            ctxVT.restore();
+            return { curX, curY, tToX };
+        }
+
+        /**
+         * 3段目: x-t グラフの描画 (横軸: 時間 t, 縦軸: 位置 x)
+         */
+        function drawXTChart(w, h, dpr) {
+            ctxXT.save();
+            ctxXT.scale(dpr, dpr);
+            ctxXT.clearRect(0, 0, w, h);
+
+            const pad = GRAPH_PAD;
+            const chartW = w - pad.left - pad.right;
+            const chartH = h - pad.top - pad.bottom;
+
+            const tMax = state.computed.totalTime || 10;
+            const xMax = state.computed.xMax;
+            const xMin = state.computed.xMin;
+
+            const tToX = (t) => pad.left + (t / tMax) * chartW;
+            const xToY = (x) => pad.top + (1 - (x - xMin) / (xMax - xMin)) * chartH;
+
+            const yZero = xToY(0);
+
+            // グリッド線
+            ctxXT.strokeStyle = '#1e293b';
+            ctxXT.lineWidth = 1;
+            ctxXT.beginPath();
+            for (let t = 0; t <= tMax; t += 2) {
+                const px = tToX(t);
+                ctxXT.moveTo(px, pad.top);
+                ctxXT.lineTo(px, h - pad.bottom);
+            }
+            const xStep = Math.ceil((xMax - xMin) / 5 / 5) * 5 || 5;
+            for (let x = Math.ceil(xMin / xStep) * xStep; x <= xMax; x += xStep) {
+                const py = xToY(x);
+                ctxXT.moveTo(pad.left, py);
+                ctxXT.lineTo(w - pad.right, py);
+            }
+            ctxXT.stroke();
+
+            // x = 0 軸 (時間軸)
+            ctxXT.beginPath();
+            ctxXT.strokeStyle = '#475569';
+            ctxXT.lineWidth = 1.5;
+            ctxXT.moveTo(pad.left, yZero);
+            ctxXT.lineTo(w - pad.right, yZero);
+            ctxXT.stroke();
+
+            // t = 0 軸
+            ctxXT.beginPath();
+            ctxXT.moveTo(pad.left, pad.top);
+            ctxXT.lineTo(pad.left, h - pad.bottom);
+            ctxXT.stroke();
+
+            // 最高点ガイドライン
+            if (state.computed.xTop > state.params.x0 + 1) {
+                const yTop = xToY(state.computed.xTop);
+                ctxXT.beginPath();
+                ctxXT.strokeStyle = 'rgba(245, 158, 11, 0.4)';
+                ctxXT.lineWidth = 1;
+                ctxXT.setLineDash([3, 3]);
+                ctxXT.moveTo(pad.left, yTop);
+                ctxXT.lineTo(w - pad.right, yTop);
+                ctxXT.stroke();
+                ctxXT.setLineDash([]);
+            }
+
+            // x-t 全体曲線の描画
+            const totalSteps = 200;
+            ctxXT.beginPath();
+            for (let i = 0; i <= totalSteps; i++) {
+                const t = (tMax / totalSteps) * i;
+                const res = calculatePhysics(t);
+                const px = tToX(t);
+                const py = xToY(res.x);
+                if (i === 0) ctxXT.moveTo(px, py);
+                else ctxXT.lineTo(px, py);
+            }
+            ctxXT.strokeStyle = '#22d3ee';
+            ctxXT.lineWidth = 2.5;
+            ctxXT.stroke();
+
+            // 軸ラベル
+            ctxXT.fillStyle = '#64748b';
+            ctxXT.font = '10px Inter';
+            ctxXT.textAlign = 'right';
+            ctxXT.fillText(`${xMax}m`, pad.left - 5, xToY(xMax) + 4);
+            ctxXT.fillText('0', pad.left - 5, yZero + 3);
+            ctxXT.fillText(`${xMin}m`, pad.left - 5, xToY(xMin) + 2);
+
+            ctxXT.textAlign = 'center';
+            ctxXT.fillText('0', pad.left, h - pad.bottom + 12);
+            ctxXT.fillText(`${tMax.toFixed(1)}s`, w - pad.right, h - pad.bottom + 12);
+
+            // 現在位置のプロット点
+            const curRes = calculatePhysics(state.currentTime);
+            const curX = tToX(state.currentTime);
+            const curY = xToY(curRes.x);
+
+            // 接線描画 (接線の傾き = 瞬間の速度 v)
+            if (state.showTangent) {
+                const v = curRes.v;
+                const dtSpan = tMax * 0.15;
+                const tStart = Math.max(0, state.currentTime - dtSpan);
+                const tEnd = Math.min(tMax, state.currentTime + dtSpan);
+
+                const xStart = tToX(tStart);
+                const yStart = xToY(curRes.x + v * (tStart - state.currentTime));
+                const xEnd = tToX(tEnd);
+                const yEnd = xToY(curRes.x + v * (tEnd - state.currentTime));
+
+                ctxXT.beginPath();
+                ctxXT.strokeStyle = '#f43f5e';
+                ctxXT.lineWidth = 2;
+                ctxXT.moveTo(xStart, yStart);
+                ctxXT.lineTo(xEnd, yEnd);
+                ctxXT.stroke();
+            }
+
+            ctxXT.beginPath();
+            ctxXT.fillStyle = '#22d3ee';
+            ctxXT.arc(curX, curY, 5, 0, Math.PI * 2);
+            ctxXT.fill();
+            ctxXT.strokeStyle = '#ffffff';
+            ctxXT.lineWidth = 2;
+            ctxXT.stroke();
+
+            // 位置テキスト表示
+            ctxXT.fillStyle = '#22d3ee';
+            ctxXT.font = 'bold 10px Inter';
+            ctxXT.textAlign = 'left';
+            ctxXT.fillText(`x = ${curRes.x.toFixed(1)}m`, curX + 8, curY + 3);
+
+            ctxXT.restore();
+            return { curX, curY, tToX };
+        }
+
+        /**
+         * 全体の描画＆縦方向の時間同期カーソル描画処理
+         */
+        function renderAll() {
+            // キャンバスサイズ更新
+            const dimMotion = resizeCanvas(dom.canvasMotion);
+            const dimVT = resizeCanvas(dom.canvasVT);
+            const dimXT = resizeCanvas(dom.canvasXT);
+
+            // 各段の描画実行
+            const motionData = drawHorizontalMotion(dimMotion.width, dimMotion.height, dimMotion.dpr);
+            const vtData = drawVTChart(dimVT.width, dimVT.height, dimVT.dpr);
+            const xtData = drawXTChart(dimXT.width, dimXT.height, dimXT.dpr);
+
+            // 縦方向の時間同期カーソル線 (v-t グラフと x-t グラフの時間 t の位置を貫く黄色破線)
+            if (state.showGuide) {
+                const guideX = vtData.curX;
+
+                // 2段目 v-t グラフに垂直同期カーソル
+                ctxVT.save();
+                ctxVT.scale(dimVT.dpr, dimVT.dpr);
+                ctxVT.strokeStyle = '#f59e0b';
+                ctxVT.lineWidth = 1.5;
+                ctxVT.setLineDash([3, 3]);
+                ctxVT.beginPath();
+                ctxVT.moveTo(guideX, GRAPH_PAD.top);
+                ctxVT.lineTo(guideX, dimVT.height - GRAPH_PAD.bottom);
+                ctxVT.stroke();
+                ctxVT.restore();
+
+                // 3段目 x-t グラフに垂直同期カーソル
+                ctxXT.save();
+                ctxXT.scale(dimXT.dpr, dimXT.dpr);
+                ctxXT.strokeStyle = '#f59e0b';
+                ctxXT.lineWidth = 1.5;
+                ctxXT.setLineDash([3, 3]);
+                ctxXT.beginPath();
+                ctxXT.moveTo(guideX, GRAPH_PAD.top);
+                ctxXT.lineTo(guideX, dimXT.height - GRAPH_PAD.bottom);
+                ctxXT.stroke();
+                ctxXT.restore();
+            }
+
+            // リアルタイム数値UI更新
+            updateUIValues();
+        }
+
+        /**
+         * 右側パネルのリアルタイム数値テキストを更新
+         */
+        function updateUIValues() {
+            const curr = calculatePhysics(state.currentTime);
+
+            dom.lblCurrentTime.textContent = state.currentTime.toFixed(2);
+            dom.timeSlider.value = state.currentTime;
+
+            dom.valT.textContent = state.currentTime.toFixed(2);
+            dom.valX.textContent = curr.x.toFixed(2);
+            dom.valV.textContent = curr.v.toFixed(2);
+            dom.valA.textContent = curr.a.toFixed(2);
+
+            const disp = curr.x - state.params.x0;
+            dom.valDisplacement.textContent = `${disp >= 0 ? '+' : ''}${disp.toFixed(2)} m`;
+            dom.valMaxX.textContent = `${state.computed.xTop.toFixed(2)} m`;
+
+            // 区間バッジ
+            if (curr.segment === 1) {
+                dom.badgeState.textContent = '区間1: 加速中 (a1)';
+                dom.badgeState.className = 'text-[9px] px-1.5 py-0.5 rounded-full bg-sky-950 text-sky-400 border border-sky-800';
+            } else if (curr.segment === 2) {
+                dom.badgeState.textContent = '区間2: 等速運動 (a=0)';
+                dom.badgeState.className = 'text-[9px] px-1.5 py-0.5 rounded-full bg-indigo-950 text-indigo-400 border border-indigo-800';
+            } else {
+                dom.badgeState.textContent = curr.v >= 0 ? '区間3: 減速中 (v>0)' : '区間3: 逆走・後退中 (v<0)';
+                dom.badgeState.className = curr.v >= 0 
+                    ? 'text-[9px] px-1.5 py-0.5 rounded-full bg-amber-950 text-amber-400 border border-amber-800'
+                    : 'text-[9px] px-1.5 py-0.5 rounded-full bg-rose-950 text-rose-400 border border-rose-800';
+            }
+        }
+
+        /**
+         * アニメーションメインループ
+         */
+        function animate(timestamp) {
+            if (!state.lastTimestamp) state.lastTimestamp = timestamp;
+            const deltaSec = (timestamp - state.lastTimestamp) / 1000;
+            state.lastTimestamp = timestamp;
+
+            if (state.isPlaying) {
+                state.currentTime += deltaSec * state.playbackSpeed;
+                if (state.currentTime >= state.computed.totalTime) {
+                    state.currentTime = state.computed.totalTime;
+                    state.isPlaying = false;
+                    dom.playIcon.className = 'fa-solid fa-play text-xs';
+                }
+                renderAll();
+            }
+
+            state.animationFrameId = requestAnimationFrame(animate);
+        }
+
+        /**
+         * イベントリスナー・UIコントロールの初期化
+         */
+        function setupEventListeners() {
+            // 再生 / 停止
+            dom.btnPlay.addEventListener('click', () => {
+                state.isPlaying = !state.isPlaying;
+                if (state.isPlaying) {
+                    if (state.currentTime >= state.computed.totalTime) {
+                        state.currentTime = 0;
+                    }
+                    dom.playIcon.className = 'fa-solid fa-pause text-xs';
+                } else {
+                    dom.playIcon.className = 'fa-solid fa-play text-xs';
+                }
+            });
+
+            // リセット
+            dom.btnReset.addEventListener('click', () => {
+                state.isPlaying = false;
+                state.currentTime = 0;
+                dom.playIcon.className = 'fa-solid fa-play text-xs';
+                renderAll();
+            });
+
+            // 再生速度
+            dom.speedSelect.addEventListener('change', (e) => {
+                state.playbackSpeed = parseFloat(e.target.value);
+            });
+
+            // シークバー
+            dom.timeSlider.addEventListener('input', (e) => {
+                state.currentTime = parseFloat(e.target.value);
+                renderAll();
+            });
+
+            // 表示トグル
+            dom.chkArea.addEventListener('change', (e) => { state.showArea = e.target.checked; renderAll(); });
+            dom.chkTangent.addEventListener('change', (e) => { state.showTangent = e.target.checked; renderAll(); });
+            dom.chkGuide.addEventListener('change', (e) => { state.showGuide = e.target.checked; renderAll(); });
+
+            // タブ切り替え
+            const switchTab = (activeTab, activePanel) => {
+                [dom.tabSim, dom.tabTheory, dom.tabQuiz].forEach(b => b.classList.remove('active'));
+                [dom.panelSim, dom.panelTheory, dom.panelQuiz].forEach(p => p.classList.add('hidden'));
+                activeTab.classList.add('active');
+                activePanel.classList.remove('hidden');
+            };
+
+            dom.tabSim.addEventListener('click', () => switchTab(dom.tabSim, dom.panelSim));
+            dom.tabTheory.addEventListener('click', () => {
+                switchTab(dom.tabTheory, dom.panelTheory);
+                setTimeout(renderKatexMath, 50);
+            });
+            dom.tabQuiz.addEventListener('click', () => switchTab(dom.tabQuiz, dom.panelQuiz));
+
+            // パラメータスライダー連動
+            const updateParamsFromUI = () => {
+                state.params.x0 = parseFloat(dom.paramX0.value);
+                state.params.a1 = parseFloat(dom.paramA1.value);
+                state.params.t1 = parseFloat(dom.paramT1.value);
+                state.params.t2 = parseFloat(dom.paramT2.value);
+                state.params.a3 = parseFloat(dom.paramA3.value);
+                state.params.t3 = parseFloat(dom.paramT3.value);
+
+                // ラベルテキスト更新
+                dom.lblX0.textContent = state.params.x0;
+                dom.lblA1.textContent = (state.params.a1 >= 0 ? '+' : '') + state.params.a1.toFixed(1);
+                dom.lblT1.textContent = state.params.t1.toFixed(1);
+                dom.lblT2.textContent = state.params.t2.toFixed(1);
+                dom.lblA3.textContent = state.params.a3.toFixed(1);
+                dom.lblT3.textContent = state.params.t3.toFixed(1);
+
+                updateComputedRanges();
+                renderAll();
+            };
+
+            [dom.paramX0, dom.paramA1, dom.paramT1, dom.paramT2, dom.paramA3, dom.paramT3].forEach(input => {
+                input.addEventListener('input', updateParamsFromUI);
+            });
+
+            // プリセットボタン
+            dom.btnPreset1.addEventListener('click', () => {
+                applyPreset({ x0: 0, a1: 5.0, t1: 3.5, t2: 2.5, a3: -6.0, t3: 7.0 }, dom.btnPreset1);
+            });
+            dom.btnPreset2.addEventListener('click', () => {
+                applyPreset({ x0: -10, a1: 8.0, t1: 3.0, t2: 1.0, a3: -12.0, t3: 3.0 }, dom.btnPreset2);
+            });
+            dom.btnPreset3.addEventListener('click', () => {
+                applyPreset({ x0: 10, a1: 3.0, t1: 4.0, t2: 2.0, a3: -4.0, t3: 8.0 }, dom.btnPreset3);
+            });
+
+            // ウィンドウリサイズ対応
+            window.addEventListener('resize', () => {
+                renderAll();
+            });
+        }
+
+        /**
+         * プリセットの適用
+         */
+        function applyPreset(p, activeBtn) {
+            dom.paramX0.value = p.x0;
+            dom.paramA1.value = p.a1;
+            dom.paramT1.value = p.t1;
+            dom.paramT2.value = p.t2;
+            dom.paramA3.value = p.a3;
+            dom.paramT3.value = p.t3;
+
+            // ボタンハイライト表示
+            [dom.btnPreset1, dom.btnPreset2, dom.btnPreset3].forEach(btn => {
+                btn.className = 'px-2.5 py-1.5 text-[11px] font-medium rounded-lg transition-all text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 text-left flex items-center justify-between';
+            });
+            activeBtn.className = 'px-2.5 py-1.5 text-[11px] font-medium rounded-lg transition-all bg-sky-600 text-white shadow hover:bg-sky-500 text-left flex items-center justify-between';
+
+            state.currentTime = 0;
+            state.isPlaying = false;
+            dom.playIcon.className = 'fa-solid fa-play text-xs';
+
+            // 設定読み込み＆描画更新
+            dom.paramX0.dispatchEvent(new Event('input'));
+        }
+
+        /**
+         * 確認クイズ正誤判定関数
+         */
+        function checkQuiz(qNum, selectedVal, btn) {
+            const feedback = document.getElementById(`q${qNum}Feedback`);
+            feedback.classList.remove('hidden', 'bg-emerald-950/80', 'text-emerald-300', 'border-emerald-800', 'bg-rose-950/80', 'text-rose-300', 'border-rose-800');
+            feedback.classList.add('border');
+
+            if (qNum === 1) {
+                if (selectedVal === 16) {
+                    feedback.classList.add('bg-emerald-950/80', 'text-emerald-300', 'border-emerald-800');
+                    feedback.innerHTML = '正解です！ 三角形の面積 $\\frac{1}{2} \\times \\text{底辺}(4.0) \\times \\text{高さ}(16) = 32\\text{ m}$ または $\\Delta x = \\frac{1}{2}at^2 = \\frac{1}{2} \\times 4.0 \\times 16 = 32\\text{ m}$ と計算できます。（※ 32 m が正解です）';
+                } else if (selectedVal === 32) {
+                    feedback.classList.add('bg-emerald-950/80', 'text-emerald-300', 'border-emerald-800');
+                    feedback.innerHTML = '大正解！ $\\Delta x = \\frac{1}{2}at^2 = \\frac{1}{2} \\times 4.0 \\times 4.0^2 = 32\\text{ m}$ です。$v-t$ グラフの三角形の面積にも一致します！';
+                } else {
+                    feedback.classList.add('bg-rose-950/80', 'text-rose-300', 'border-rose-800');
+                    feedback.innerHTML = '不正解です。$v = at = 4.0 \\times 4.0 = 16\\text{ m/s}$ となり、移動距離は $v-t$ 三角形の面積 $\\frac{1}{2} \\times 4.0 \\times 16 = 32\\text{ m}$ になります。';
+                }
+            } else if (qNum === 2) {
+                if (selectedVal === 4) {
+                    feedback.classList.add('bg-emerald-950/80', 'text-emerald-300', 'border-emerald-800');
+                    feedback.innerHTML = '大正解！ $v = v_0 + at \\Rightarrow 0 = 12.0 + (-3.0)t \\Rightarrow t = 4.0\\text{ 秒}$ と求まります。';
+                } else {
+                    feedback.classList.add('bg-rose-950/80', 'text-rose-300', 'border-rose-800');
+                    feedback.innerHTML = '惜しい！ 公式 $v = v_0 + at$ に $v = 0, v_0 = 12, a = -3$ を代入すると、$0 = 12 - 3t$ より $t = 4.0\\text{ 秒}$ となります。';
+                }
+            }
+        }
+
+        // 起動処理
+        window.addEventListener('DOMContentLoaded', () => {
+            setupEventListeners();
+            updateComputedRanges();
+            renderAll();
+            requestAnimationFrame(animate);
+
+            // KaTeX の初期化レンダー
+            setTimeout(() => {
+                if (window.renderMathInElement) window.renderMathInElement(document.body);
+            }, 300);
+        });
+    </script>
+</body>
+</html>

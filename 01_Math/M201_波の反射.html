@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>物理：波の反射・合成シミュレーター</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    body {
+      font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    }
+    canvas {
+      touch-action: none;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans antialiased">
+
+  <!-- ヘッダーナビゲーション -->
+  <header class="bg-slate-800/80 backdrop-blur border-b border-slate-700 px-4 py-3 sticky top-0 z-30 flex flex-wrap justify-between items-center gap-2">
+    <div class="flex items-center gap-3">
+      <div class="p-2 bg-indigo-600 rounded-lg text-white shadow-lg shadow-indigo-500/30">
+        <i class="fa-solid fa-wave-square text-xl"></i>
+      </div>
+      <div>
+        <h1 class="text-lg font-bold text-white leading-tight">波の反射 & 合成シミュレーター</h1>
+        <p class="text-xs text-slate-400">自由端・固定端における波の挙動と重ね合わせの原理</p>
+      </div>
+    </div>
+    <!-- 凡例 -->
+    <div class="flex items-center gap-2 text-xs bg-slate-900/60 p-1.5 rounded-lg border border-slate-700">
+      <span class="flex items-center gap-1.5 px-2 py-1 rounded bg-blue-500/20 text-blue-400 font-semibold">
+        <span class="w-2 h-2 rounded-full bg-blue-400"></span> 入射波
+      </span>
+      <span class="flex items-center gap-1.5 px-2 py-1 rounded bg-emerald-500/20 text-emerald-400 font-semibold">
+        <span class="w-2 h-2 rounded-full bg-emerald-400"></span> 反射波
+      </span>
+      <span class="flex items-center gap-1.5 px-2 py-1 rounded bg-rose-500/20 text-rose-400 font-semibold">
+        <span class="w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-rose-400/50"></span> 合成波 (実際の波)
+      </span>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto p-3 md:p-5 flex flex-col gap-4">
+    
+    <!-- 1. メイン操作コントロールパネル -->
+    <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex flex-col gap-4 shadow-xl">
+      
+      <!-- ① 波形選択 (説明やサブテキストを削除) -->
+      <div class="flex flex-col gap-2">
+        <label class="text-xs font-semibold text-slate-300 flex items-center gap-1">
+          <i class="fa-solid fa-water text-cyan-400"></i> 波形選択
+        </label>
+        
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2" id="wave-type-buttons">
+          <button data-wave="gaussian" class="wave-btn active p-2 text-xs rounded-lg border font-bold transition flex items-center justify-between bg-indigo-600/30 border-indigo-500 text-white">
+            <span>1. ガウスパルス</span> <i class="fa-solid fa-circle-check text-indigo-400 text-xs"></i>
+          </button>
+
+          <button data-wave="triangle" class="wave-btn p-2 text-xs rounded-lg border font-bold transition flex items-center justify-between bg-slate-900/80 border-slate-700 text-slate-300 hover:border-slate-600">
+            <span>2. 三角波</span>
+          </button>
+
+          <button data-wave="square" class="wave-btn p-2 text-xs rounded-lg border font-bold transition flex items-center justify-between bg-slate-900/80 border-slate-700 text-slate-300 hover:border-slate-600">
+            <span>3. 矩形パルス</span>
+          </button>
+
+          <button data-wave="sine_continuous" class="wave-btn p-2 text-xs rounded-lg border font-bold transition flex items-center justify-between bg-slate-900/80 border-slate-700 text-slate-300 hover:border-slate-600">
+            <span>4. 連続正弦波</span>
+          </button>
+
+          <button data-wave="double_pulse" class="wave-btn p-2 text-xs rounded-lg border font-bold transition flex items-center justify-between bg-slate-900/80 border-slate-700 text-slate-300 hover:border-slate-600">
+            <span>5. 連続パルス</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ② 自由端・固定端選択 -->
+      <div class="flex flex-col gap-1.5 pt-2 border-t border-slate-700/70">
+        <label class="text-xs font-semibold text-slate-300 flex items-center gap-1">
+          <i class="fa-solid fa-shield-halved text-amber-400"></i> 反射端の条件
+        </label>
+        <div class="grid grid-cols-2 gap-2 bg-slate-900 p-1.5 rounded-lg border border-slate-700 max-w-md">
+          <button id="btn-end-free" class="py-2 text-xs font-bold rounded transition bg-indigo-600 text-white shadow flex items-center justify-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-amber-400"></span> 自由端 (端が動く)
+          </button>
+          <button id="btn-end-fixed" class="py-2 text-xs font-bold rounded transition text-slate-400 hover:text-slate-200 flex items-center justify-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-sky-400"></span> 固定端 (端が固定)
+          </button>
+        </div>
+      </div>
+
+      <!-- ③ 再生関係コントロール (再生/停止・コマ送り・リセット・発射) -->
+      <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-700/70">
+        <button id="btn-play-pause" class="min-w-[110px] bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow transition flex items-center justify-center gap-2 text-sm">
+          <i class="fa-solid fa-pause" id="icon-play"></i> <span id="text-play">一時停止</span>
+        </button>
+
+        <button id="btn-step" class="bg-slate-700 hover:bg-slate-600 active:bg-slate-800 text-slate-200 py-2 px-3.5 rounded-lg text-sm transition flex items-center gap-1.5" title="コマ送り">
+          <i class="fa-solid fa-step-forward"></i> コマ送り
+        </button>
+
+        <button id="btn-restart" class="bg-slate-700 hover:bg-slate-600 active:bg-slate-800 text-slate-200 py-2 px-3.5 rounded-lg text-sm transition flex items-center gap-1.5" title="最初に戻す">
+          <i class="fa-solid fa-rotate-left"></i> リセット
+        </button>
+
+        <button id="btn-trigger-pulse" class="bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold py-2 px-3.5 rounded-lg text-sm transition flex items-center gap-1.5 shadow" title="新しく波を発射">
+          <i class="fa-solid fa-bolt"></i> 波を発射
+        </button>
+      </div>
+
+    </div>
+
+    <!-- ④ グラフ (キャンバス) -->
+    <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-2xl flex flex-col">
+      <!-- グラフヘッダーバー -->
+      <div class="bg-slate-800/90 px-4 py-2 border-b border-slate-700/80 flex flex-wrap justify-between items-center gap-3 text-sm">
+        <div class="flex items-center gap-4">
+          <span class="font-bold text-slate-200 flex items-center gap-1.5">
+            <i class="fa-solid fa-chart-line text-indigo-400"></i> 波の合成グラフ
+          </span>
+          <div class="text-xs text-slate-400 flex items-center gap-3">
+            <span>経過時間 <span id="time-display" class="font-mono text-indigo-300 font-semibold text-sm">0.00</span> 秒</span>
+          </div>
+        </div>
+
+        <!-- 波の表示/非表示切り替えチェックボックス -->
+        <div class="flex items-center gap-2 text-xs">
+          <label class="inline-flex items-center gap-1.5 cursor-pointer bg-slate-900/60 px-2.5 py-1 rounded border border-slate-700 hover:border-slate-600 transition">
+            <input type="checkbox" id="chk-show-incident" checked class="rounded accent-blue-500">
+            <span class="text-blue-300">入射波</span>
+          </label>
+          <label class="inline-flex items-center gap-1.5 cursor-pointer bg-slate-900/60 px-2.5 py-1 rounded border border-slate-700 hover:border-slate-600 transition">
+            <input type="checkbox" id="chk-show-reflected" checked class="rounded accent-emerald-500">
+            <span class="text-emerald-300">反射波</span>
+          </label>
+          <label class="inline-flex items-center gap-1.5 cursor-pointer bg-slate-900/60 px-2.5 py-1 rounded border border-slate-700 hover:border-slate-600 transition">
+            <input type="checkbox" id="chk-show-combined" checked class="rounded accent-rose-500">
+            <span class="text-rose-300 font-semibold">合成波</span>
+          </label>
+          <label class="inline-flex items-center gap-1.5 cursor-pointer bg-slate-900/60 px-2.5 py-1 rounded border border-slate-700 hover:border-slate-600 transition" title="壁の右側の仮想世界を表示して反射の幾何学的原理を示します">
+            <input type="checkbox" id="chk-show-ghost" checked class="rounded accent-purple-500">
+            <span class="text-purple-300">仮想拡張線</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- キャンバスエリア -->
+      <div class="relative w-full h-[300px] md:h-[340px] bg-slate-950 cursor-crosshair">
+        <canvas id="sim-canvas" class="w-full h-full block"></canvas>
+        
+        <!-- オーバーレイ情報 -->
+        <div id="canvas-overlay-info" class="absolute bottom-3 left-3 bg-slate-900/80 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-700/80 text-xs text-slate-300 pointer-events-none">
+          現在の反射端: <span id="overlay-end-type" class="font-bold text-amber-400">自由端</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ⑤ パラメータ調整 -->
+    <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-xl">
+      <label class="text-xs font-semibold text-slate-300 flex items-center gap-1 mb-3">
+        <i class="fa-solid fa-sliders text-indigo-400"></i> パラメータ調整
+      </label>
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-slate-900/60 p-3 rounded-lg border border-slate-700/60 text-xs">
+        <div class="flex items-center gap-2">
+          <span class="w-16 font-semibold text-slate-300 shrink-0">振幅 (A):</span>
+          <input type="range" id="slider-amplitude" min="30" max="100" value="65" class="w-full accent-indigo-500 h-1.5 bg-slate-700 rounded cursor-pointer">
+          <span id="val-amplitude" class="w-10 text-right font-mono text-indigo-400 shrink-0">65 px</span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <span class="w-16 font-semibold text-slate-300 shrink-0">幅/波長:</span>
+          <input type="range" id="slider-width" min="60" max="220" value="130" class="w-full accent-indigo-500 h-1.5 bg-slate-700 rounded cursor-pointer">
+          <span id="val-width" class="w-10 text-right font-mono text-indigo-400 shrink-0">130 px</span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <span class="w-16 font-semibold text-slate-300 shrink-0">速度 (v):</span>
+          <input type="range" id="slider-speed" min="50" max="300" value="150" class="w-full accent-indigo-500 h-1.5 bg-slate-700 rounded cursor-pointer">
+          <span id="val-speed" class="w-10 text-right font-mono text-indigo-400 shrink-0">150 px/s</span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <span class="w-16 font-semibold text-slate-300 shrink-0">再生速度:</span>
+          <input type="range" id="slider-sim-speed" min="0.1" max="1.5" step="0.1" value="0.7" class="w-full accent-indigo-500 h-1.5 bg-slate-700 rounded cursor-pointer">
+          <span id="val-sim-speed" class="w-10 text-right font-mono text-indigo-400 shrink-0">0.7x</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. 物理現象の解説パネル -->
+    <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex flex-col md:flex-row gap-4 shadow-lg">
+      <div class="flex-1 space-y-2">
+        <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2 border-b border-slate-700/80 pb-2">
+          <i class="fa-solid fa-graduation-cap text-indigo-400"></i> 物理現象のポイント解説
+        </h2>
+        <div id="explanation-box" class="text-xs text-slate-300 space-y-2 leading-relaxed">
+          <!-- JSで動的生成 -->
+        </div>
+      </div>
+
+      <div class="w-full md:w-80 bg-slate-900/80 p-3 rounded-lg border border-slate-700 text-xs text-slate-400 shrink-0 flex flex-col justify-center">
+        <strong class="text-indigo-300 block mb-1 text-sm"><i class="fa-solid fa-lightbulb"></i> 重ね合わせの原理</strong>
+        <p class="leading-relaxed">
+          媒質の各点の変位 $y$ は、入射波の変位 $y_1$ と反射波の変位 $y_2$ の代数和となります。
+        </p>
+        <div class="font-mono text-center text-rose-300 my-2 bg-slate-950 py-1.5 rounded border border-slate-800 text-xs font-bold">
+          y(x, t) = y₁(x, t) + y₂(x, t)
+        </div>
+        <p class="text-[11px] text-slate-400">
+          波が反射端に到達すると、壁の向こうから対称な仮想波が進んでくるモデルとして計算できます。
+        </p>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // --- Physics Simulation Engine State ---
+    const state = {
+      // Simulation Time
+      time: 0,
+      isRunning: true,
+      simSpeed: 0.7,
+      
+      // Boundary Condition
+      endType: 'free', // 'free' or 'fixed'
+      
+      // Wave Presets
+      waveType: 'gaussian', // 'gaussian', 'triangle', 'square', 'sine_continuous', 'double_pulse'
+      
+      // Parameters
+      amplitude: 65,     // Height in Canvas Pixels
+      waveWidth: 130,    // Pulse width or wavelength in pixels
+      speed: 150,        // Speed v in pixels/sec
+      
+      // View Toggles
+      showIncident: true,
+      showReflected: true,
+      showCombined: true,
+      showGhost: true,
+      
+      // Canvas geometry
+      canvasWidth: 800,
+      canvasHeight: 340,
+      wallX: 680,        // Boundary position
+      startX: 360,       // Wave generation position (反射個所から少しだけ離す)
+      baselineY: 170,    // Y offset for 0 displacement
+      
+      // Animation handle
+      lastFrameTime: 0
+    };
+
+    // DOM References
+    const canvas = document.getElementById('sim-canvas');
+    const ctx = canvas.getContext('2d');
+
+    const btnPlayPause = document.getElementById('btn-play-pause');
+    const iconPlay = document.getElementById('icon-play');
+    const textPlay = document.getElementById('text-play');
+    const btnStep = document.getElementById('btn-step');
+    const btnRestart = document.getElementById('btn-restart');
+    const btnTriggerPulse = document.getElementById('btn-trigger-pulse');
+    
+    const btnEndFree = document.getElementById('btn-end-free');
+    const btnEndFixed = document.getElementById('btn-end-fixed');
+    
+    const timeDisplay = document.getElementById('time-display');
+    const overlayEndType = document.getElementById('overlay-end-type');
+    const explanationBox = document.getElementById('explanation-box');
+
+    const chkShowIncident = document.getElementById('chk-show-incident');
+    const chkShowReflected = document.getElementById('chk-show-reflected');
+    const chkShowCombined = document.getElementById('chk-show-combined');
+    const chkShowGhost = document.getElementById('chk-show-ghost');
+
+    const sliderAmplitude = document.getElementById('slider-amplitude');
+    const sliderWidth = document.getElementById('slider-width');
+    const sliderSpeed = document.getElementById('slider-speed');
+    const sliderSimSpeed = document.getElementById('slider-sim-speed');
+
+    const valAmplitude = document.getElementById('val-amplitude');
+    const valWidth = document.getElementById('val-width');
+    const valSpeed = document.getElementById('val-speed');
+    const valSimSpeed = document.getElementById('val-sim-speed');
+
+    /**
+     * 波の基本形状を計算関数 y(d)
+     */
+    function calculateBaseShape(d, type, A, W) {
+      if (type === 'gaussian') {
+        const sigma = W / 3.5;
+        if (Math.abs(d) > W * 1.8) return 0;
+        return A * Math.exp(-(d * d) / (2 * sigma * sigma));
+      } 
+      else if (type === 'triangle') {
+        const frontWidth = W * 0.35;
+        const backWidth = W * 0.65;
+        if (d >= -frontWidth && d <= 0) {
+          return A * (1 + d / frontWidth);
+        } else if (d > 0 && d <= backWidth) {
+          return A * (1 - d / backWidth);
+        }
+        return 0;
+      } 
+      else if (type === 'square') {
+        const halfW = W / 2;
+        if (Math.abs(d) <= halfW) {
+          return A;
+        }
+        return 0;
+      } 
+      else if (type === 'sine_continuous') {
+        const k = (2 * Math.PI) / W;
+        if (d > 0) return 0; // まだ波が届いていない先端
+        return A * Math.sin(k * d);
+      } 
+      else if (type === 'double_pulse') {
+        const d1 = d;
+        const d2 = d + W * 1.3;
+        const sigma = W / 4;
+        let val1 = Math.abs(d1) <= W ? A * Math.exp(-(d1 * d1) / (2 * sigma * sigma)) : 0;
+        let val2 = Math.abs(d2) <= W ? A * Math.exp(-(d2 * d2) / (2 * sigma * sigma)) : 0;
+        return val1 + val2;
+      }
+      return 0;
+    }
+
+    /**
+     * 入射波の変位 y1
+     */
+    function getIncidentWave(x, t) {
+      const v = state.speed;
+      const x0 = state.startX;
+      const centerPos = x0 + v * t;
+      const d = x - centerPos;
+      
+      return calculateBaseShape(d, state.waveType, state.amplitude, state.waveWidth);
+    }
+
+    /**
+     * 反射波の変位 y2 (仮想の波の折り返し原理)
+     */
+    function getReflectedWave(x, t) {
+      const v = state.speed;
+      const x0 = state.startX;
+      const wall = state.wallX;
+      
+      const centerPos = x0 + v * t;
+      const x_virtual = 2 * wall - x;
+      const d = x_virtual - centerPos;
+      
+      let y = calculateBaseShape(d, state.waveType, state.amplitude, state.waveWidth);
+      
+      if (state.endType === 'fixed') {
+        y = -y;
+      }
+      
+      return y;
+    }
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      
+      ctx.scale(dpr, dpr);
+      
+      state.canvasWidth = rect.width;
+      state.canvasHeight = rect.height;
+      state.baselineY = rect.height / 2;
+      
+      // 反射端の位置 (全体の左から2/3あたりの位置に配置)
+      state.wallX = rect.width * (2 / 3);
+      
+      // スタート位置：反射箇所の手前
+      state.startX = Math.max(30, state.wallX - 280);
+    }
+
+    function drawBackgroundAndGrid() {
+      const w = state.canvasWidth;
+      const h = state.canvasHeight;
+      const base = state.baselineY;
+
+      // キャンバスクリア
+      ctx.fillStyle = '#0f172a'; // slate-950
+      ctx.fillRect(0, 0, w, h);
+
+      // グリッド線
+      ctx.strokeStyle = '#1e293b'; // slate-800
+      ctx.lineWidth = 1;
+
+      const gridSpacing = 40;
+      for (let x = 0; x < w; x += gridSpacing) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+
+      for (let y = base % gridSpacing; y < h; y += gridSpacing) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+
+      // 中心軸 (変位 0 の基準線)
+      ctx.strokeStyle = '#475569'; // slate-600
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(0, base);
+      ctx.lineTo(w, base);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 壁の右側 (仮想領域) の背景背景を少し暗く
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+      ctx.fillRect(state.wallX, 0, w - state.wallX, h);
+    }
+
+    function drawWallAndBoundary() {
+      const wallX = state.wallX;
+      const base = state.baselineY;
+      const h = state.canvasHeight;
+
+      if (state.endType === 'fixed') {
+        // --- 固定端 (壁 & 固定リング) ---
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(wallX, 25, 16, h - 50);
+
+        // 斜線模様
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 2;
+        for (let y = 35; y < h - 50; y += 12) {
+          ctx.beginPath();
+          ctx.moveTo(wallX, y);
+          ctx.lineTo(wallX + 16, y + 10);
+          ctx.stroke();
+        }
+
+        // 固定ピン
+        ctx.fillStyle = '#f59e0b'; // amber-500
+        ctx.beginPath();
+        ctx.arc(wallX, base, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.fillStyle = '#f59e0b';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillText('固定端 (y = 0)', wallX - 35, 38);
+      } else {
+        // --- 自由端 (滑走ポール & リング) ---
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(wallX, 30);
+        ctx.lineTo(wallX, h - 30);
+        ctx.stroke();
+
+        // 端点での合成波変位に従って上下移動する滑走リング
+        const ringDisplacement = getIncidentWave(wallX, state.time) + getReflectedWave(wallX, state.time);
+        const ringY = base - ringDisplacement;
+
+        ctx.fillStyle = '#38bdf8'; // sky-400
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(wallX, ringY, 8, 12, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // ポールストッパー
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(wallX - 8, 24, 16, 6);
+        ctx.fillRect(wallX - 8, h - 30, 16, 6);
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillText('自由端 (滑走リング)', wallX - 45, 38);
+      }
+    }
+
+    function drawWaves() {
+      const base = state.baselineY;
+      const wallX = state.wallX;
+      const totalW = state.canvasWidth;
+      const step = 2;
+
+      // 1. 入射波 (青色)
+      if (state.showIncident) {
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let x = 0; x <= wallX; x += step) {
+          const y = base - getIncidentWave(x, state.time);
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        // 仮想領域 (ゴースト線)
+        if (state.showGhost) {
+          ctx.strokeStyle = 'rgba(59, 130, 246, 0.4)';
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          for (let x = wallX; x <= totalW; x += step) {
+            const y = base - getIncidentWave(x, state.time);
+            if (x === wallX) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      }
+
+      // 2. 反射波 (緑色)
+      if (state.showReflected) {
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let x = 0; x <= wallX; x += step) {
+          const y = base - getReflectedWave(x, state.time);
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        if (state.showGhost) {
+          ctx.strokeStyle = 'rgba(16, 185, 129, 0.4)';
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          for (let x = wallX; x <= totalW; x += step) {
+            const y = base - getReflectedWave(x, state.time);
+            if (x === wallX) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      }
+
+      // 3. 合成波 (赤色 / 赤紫 太線)
+      if (state.showCombined) {
+        ctx.strokeStyle = '#f43f5e';
+        ctx.lineWidth = 4.5;
+        ctx.beginPath();
+        for (let x = 0; x <= wallX; x += step) {
+          const y1 = getIncidentWave(x, state.time);
+          const y2 = getReflectedWave(x, state.time);
+          const yComb = base - (y1 + y2);
+          
+          if (x === 0) ctx.moveTo(x, yComb);
+          else ctx.lineTo(x, yComb);
+        }
+        ctx.stroke();
+
+        // 媒質の質点（ドット）を描画
+        ctx.fillStyle = '#ffe4e6';
+        const particleSpacing = 24;
+        for (let x = 20; x <= wallX; x += particleSpacing) {
+          const y1 = getIncidentWave(x, state.time);
+          const y2 = getReflectedWave(x, state.time);
+          const yComb = base - (y1 + y2);
+          
+          ctx.beginPath();
+          ctx.arc(x, yComb, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    function renderFrame(timestamp) {
+      if (!state.lastFrameTime) state.lastFrameTime = timestamp;
+      const deltaTime = (timestamp - state.lastFrameTime) / 1000;
+      state.lastFrameTime = timestamp;
+
+      if (state.isRunning) {
+        state.time += deltaTime * state.simSpeed;
+      }
+
+      timeDisplay.textContent = state.time.toFixed(2);
+
+      drawBackgroundAndGrid();
+      drawWaves();
+      drawWallAndBoundary();
+
+      requestAnimationFrame(renderFrame);
+    }
+
+    function updateExplanationText() {
+      let html = '';
+
+      if (state.endType === 'free') {
+        html += `
+          <div class="p-2.5 bg-indigo-950/60 rounded-lg border border-indigo-800/50">
+            <span class="font-bold text-amber-300">【自由端反射の特徴】</span><br>
+            端が固定されず自由に動くことができる境界です。
+            <ul class="list-disc list-inside mt-1 space-y-0.5 text-slate-300">
+              <li>反射時の<strong class="text-amber-300">位相変化はありません (同位相)</strong>。</li>
+              <li>「山」で入射した波は<strong class="text-amber-300">「山」のまま</strong>反射して戻ります。</li>
+              <li>反射端（壁の位置）では入射波と反射波が強め合い、振幅が<strong class="text-amber-300">最大2倍</strong>になります。</li>
+            </ul>
+          </div>
+        `;
+      } else {
+        html += `
+          <div class="p-2.5 bg-indigo-950/60 rounded-lg border border-indigo-800/50">
+            <span class="font-bold text-sky-300">【固定端反射の特徴】</span><br>
+            端が完全に固定され動かない境界です。
+            <ul class="list-disc list-inside mt-1 space-y-0.5 text-slate-300">
+              <li>反射時に<strong class="text-sky-300">位相が π (180°) 反転</strong>します。</li>
+              <li>「山」で入射した波は上下がひっくり返り<strong class="text-sky-300">「谷」になって</strong>反射します。</li>
+              <li>反射端（壁の位置）では入射波と反射波が常に打ち消し合い、<strong class="text-sky-300">変位は常に 0</strong> に固定されます。</li>
+            </ul>
+          </div>
+        `;
+      }
+
+      if (state.waveType === 'sine_continuous') {
+        html += `
+          <div class="p-2.5 bg-cyan-950/60 rounded-lg border border-cyan-800/50">
+            <span class="font-bold text-cyan-300">【定常波（立ち上がり波）の形成】</span><br>
+            連続正弦波が反射波と常に重ね合わさることで、左右に進まないように見える<strong class="text-cyan-300">「定常波」</strong>が形成されます。<br>
+            ・全く動かない点: <strong class="text-cyan-300">節 (Node)</strong><br>
+            ・大きく上下に揺れる点: <strong class="text-cyan-300">腹 (Antinode)</strong><br>
+            ※自由端では端が「腹」、固定端では端が「節」になります。
+          </div>
+        `;
+      } else if (state.waveType === 'triangle') {
+        html += `
+          <div class="p-2.5 bg-emerald-950/60 rounded-lg border border-emerald-800/50">
+            <span class="font-bold text-emerald-300">【非対称波で見る波の前後関係】</span><br>
+            切り立った斜面が前にある非対称な三角波を見ることで、反射によって波の進行方向とともに前後の傾きがどう入れ替わるかが直感的に理解できます。
+          </div>
+        `;
+      }
+
+      explanationBox.innerHTML = html;
+    }
+
+    function setupEventListeners() {
+      window.addEventListener('resize', resizeCanvas);
+
+      // 再生 / 一時停止
+      btnPlayPause.addEventListener('click', () => {
+        state.isRunning = !state.isRunning;
+        if (state.isRunning) {
+          iconPlay.className = 'fa-solid fa-pause';
+          textPlay.textContent = '一時停止';
+        } else {
+          iconPlay.className = 'fa-solid fa-play';
+          textPlay.textContent = '再生';
+        }
+      });
+
+      // コマ送り
+      btnStep.addEventListener('click', () => {
+        state.isRunning = false;
+        iconPlay.className = 'fa-solid fa-play';
+        textPlay.textContent = '再生';
+        state.time += 0.05;
+      });
+
+      // リセット
+      btnRestart.addEventListener('click', () => {
+        state.time = 0;
+      });
+
+      // 波を再発射
+      btnTriggerPulse.addEventListener('click', () => {
+        state.time = 0;
+        if (!state.isRunning) {
+          state.isRunning = true;
+          iconPlay.className = 'fa-solid fa-pause';
+          textPlay.textContent = '一時停止';
+        }
+      });
+
+      // 自由端 / 固定端 切替ボタン
+      btnEndFree.addEventListener('click', () => {
+        state.endType = 'free';
+        btnEndFree.className = 'py-2 text-xs font-bold rounded transition bg-indigo-600 text-white shadow flex items-center justify-center gap-1.5';
+        btnEndFixed.className = 'py-2 text-xs font-bold rounded transition text-slate-400 hover:text-slate-200 flex items-center justify-center gap-1.5';
+        overlayEndType.textContent = '自由端';
+        overlayEndType.className = 'font-bold text-amber-400';
+        updateExplanationText();
+      });
+
+      btnEndFixed.addEventListener('click', () => {
+        state.endType = 'fixed';
+        btnEndFixed.className = 'py-2 text-xs font-bold rounded transition bg-indigo-600 text-white shadow flex items-center justify-center gap-1.5';
+        btnEndFree.className = 'py-2 text-xs font-bold rounded transition text-slate-400 hover:text-slate-200 flex items-center justify-center gap-1.5';
+        overlayEndType.textContent = '固定端';
+        overlayEndType.className = 'font-bold text-sky-400';
+        updateExplanationText();
+      });
+
+      // 波形選択ボタン群のイベント設定
+      const waveBtns = document.querySelectorAll('.wave-btn');
+      waveBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const waveType = btn.getAttribute('data-wave');
+          state.waveType = waveType;
+          state.time = 0; // 切り替え時に時間をリセット
+
+          // アクティブスタイルの更新
+          waveBtns.forEach(b => {
+            b.className = 'wave-btn p-2.5 text-xs rounded-lg border font-semibold text-left transition flex flex-col gap-1 bg-slate-900/80 border-slate-700 text-slate-300 hover:border-slate-600';
+            const checkIcon = b.querySelector('.fa-circle-check');
+            if (checkIcon) checkIcon.remove();
+          });
+
+          btn.className = 'wave-btn active p-2.5 text-xs rounded-lg border font-semibold text-left transition flex flex-col gap-1 bg-indigo-600/30 border-indigo-500 text-white';
+          const titleEl = btn.querySelector('.font-bold');
+          if (titleEl && !titleEl.querySelector('.fa-circle-check')) {
+            const check = document.createElement('i');
+            check.className = 'fa-solid fa-circle-check text-indigo-400 text-xs';
+            titleEl.appendChild(check);
+          }
+
+          updateExplanationText();
+        });
+      });
+
+      // 表示切り替えチェックボックス
+      chkShowIncident.addEventListener('change', (e) => state.showIncident = e.target.checked);
+      chkShowReflected.addEventListener('change', (e) => state.showReflected = e.target.checked);
+      chkShowCombined.addEventListener('change', (e) => state.showCombined = e.target.checked);
+      chkShowGhost.addEventListener('change', (e) => state.showGhost = e.target.checked);
+
+      // スライダー
+      sliderAmplitude.addEventListener('input', (e) => {
+        state.amplitude = parseFloat(e.target.value);
+        valAmplitude.textContent = `${state.amplitude} px`;
+      });
+
+      sliderWidth.addEventListener('input', (e) => {
+        state.waveWidth = parseFloat(e.target.value);
+        valWidth.textContent = `${state.waveWidth} px`;
+      });
+
+      sliderSpeed.addEventListener('input', (e) => {
+        state.speed = parseFloat(e.target.value);
+        valSpeed.textContent = `${state.speed} px/s`;
+      });
+
+      sliderSimSpeed.addEventListener('input', (e) => {
+        state.simSpeed = parseFloat(e.target.value);
+        valSimSpeed.textContent = `${state.simSpeed.toFixed(1)}x`;
+      });
+    }
+
+    window.onload = function() {
+      resizeCanvas();
+      setupEventListeners();
+      updateExplanationText();
+      requestAnimationFrame(renderFrame);
+    };
+  </script>
+</body>
+</html>
+      // 波形選択ボタン群のイベント設定 (シンプルなスタイル切り替え)
+      const waveBtns = document.querySelectorAll('.wave-btn');
+      waveBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const waveType = btn.getAttribute('data-wave');
+          state.waveType = waveType;
+          state.time = 0; // 切り替え時に時間をリセット
+
+          // アクティブスタイルの更新
+          waveBtns.forEach(b => {
+            b.className = 'wave-btn p-2 text-xs rounded-lg border font-bold transition flex items-center justify-between bg-slate-900/80 border-slate-700 text-slate-300 hover:border-slate-600';
+            const checkIcon = b.querySelector('.fa-circle-check');
+            if (checkIcon) checkIcon.remove();
+          });
+
+          btn.className = 'wave-btn active p-2 text-xs rounded-lg border font-bold transition flex items-center justify-between bg-indigo-600/30 border-indigo-500 text-white';
+          if (!btn.querySelector('.fa-circle-check')) {
+            const check = document.createElement('i');
+            check.className = 'fa-solid fa-circle-check text-indigo-400 text-xs';
+            btn.appendChild(check);
+          }
+
+          updateExplanationText();
+        });
+      });
+
+      // 表示切り替えチェックボックス
+      chkShowIncident.addEventListener('change', (e) => state.showIncident = e.target.checked);
+      chkShowReflected.addEventListener('change', (e) => state.showReflected = e.target.checked);
+      chkShowCombined.addEventListener('change', (e) => state.showCombined = e.target.checked);
+      chkShowGhost.addEventListener('change', (e) => state.showGhost = e.target.checked);
+
+      // スライダー
+      sliderAmplitude.addEventListener('input', (e) => {
+        state.amplitude = parseFloat(e.target.value);
+        valAmplitude.textContent = `${state.amplitude} px`;
+      });
+
+      sliderWidth.addEventListener('input', (e) => {
+        state.waveWidth = parseFloat(e.target.value);
+        valWidth.textContent = `${state.waveWidth} px`;
+      });
+
+      sliderSpeed.addEventListener('input', (e) => {
+        state.speed = parseFloat(e.target.value);
+        valSpeed.textContent = `${state.speed} px/s`;
+      });
+
+      sliderSimSpeed.addEventListener('input', (e) => {
+        state.simSpeed = parseFloat(e.target.value);
+        valSimSpeed.textContent = `${state.simSpeed.toFixed(1)}x`;
+      });
+    }
+
+    window.onload = function() {
+      resizeCanvas();
+      setupEventListeners();
+      updateExplanationText();
+      requestAnimationFrame(renderFrame);
+    };
+  </script>
+</body>
+</html>

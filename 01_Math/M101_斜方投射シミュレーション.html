@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>斜方投射の軌跡と速度分解シミュレーター</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Noto Sans JP', 'Inter', sans-serif;
+        }
+        canvas {
+            touch-action: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans antialiased">
+
+    <!-- Header -->
+    <header class="bg-slate-800/80 backdrop-blur border-b border-slate-700/60 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-indigo-600 rounded-lg shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid me-1 fa-rocket text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg md:text-xl font-bold text-white leading-tight">斜方投射の軌跡＆速度分解ラボ</h1>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-2">
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <span class="w-2 h-2 mr-1.5 rounded-full bg-emerald-400 animate-pulse"></span> 物理シミュレーター
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Left Column: Canvas Animation & Controls (8 cols on large screens) -->
+        <div class="lg:col-span-8 flex flex-col space-y-4">
+            
+            <!-- Canvas Container -->
+            <div class="relative bg-slate-950 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden flex flex-col">
+                <!-- Overlay Badges / Key Metrics -->
+                <div class="absolute top-4 left-4 z-10 flex flex-wrap gap-2 pointer-events-none">
+                    <!-- Position Badge (x, y) with fixed width -->
+                    <div class="bg-slate-900/90 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-700/60 text-xs flex items-center gap-2 shadow-lg">
+                        <span class="w-3 h-3 rounded-full bg-purple-500 inline-block shrink-0"></span>
+                        <span class="text-slate-300 shrink-0">位置 (<i class="font-serif italic">x</i>, <i class="font-serif italic">y</i>):</span>
+                        <span id="badge-pos" class="font-mono font-bold text-purple-300 w-[115px] inline-block text-right">(0.0m, 0.0m)</span>
+                    </div>
+
+                    <!-- Key Trajectory Metrics: Max Height & Distance -->
+                    <div class="bg-slate-900/90 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-700/60 text-xs flex items-center gap-2 shadow-lg">
+                        <span class="w-3 h-3 rounded-full bg-amber-400 inline-block shrink-0"></span>
+                        <span class="text-slate-300 shrink-0">最高点 <i class="font-serif italic">y</i><sub>max</sub>:</span>
+                        <span id="badge-ymax" class="font-mono font-bold text-amber-300 w-[55px] inline-block text-right">0.0m</span>
+                    </div>
+                    <div class="bg-slate-900/90 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-700/60 text-xs flex items-center gap-2 shadow-lg">
+                        <span class="w-3 h-3 rounded-full bg-indigo-400 inline-block shrink-0"></span>
+                        <span class="text-slate-300 shrink-0">到達距離 <i class="font-serif italic">x</i><sub>end</sub>:</span>
+                        <span id="badge-xend" class="font-mono font-bold text-indigo-300 w-[60px] inline-block text-right">0.0m</span>
+                    </div>
+
+                    <!-- Velocity Badges with fixed widths -->
+                    <div class="bg-slate-900/90 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-700/60 text-xs flex items-center gap-2 shadow-lg">
+                        <span class="w-3 h-3 rounded-full bg-blue-500 inline-block shrink-0"></span>
+                        <span class="text-slate-300 shrink-0">水平成分 <i class="font-serif italic">v</i><sub>x</sub>:</span>
+                        <span id="badge-vx" class="font-mono font-bold text-blue-400 w-[65px] inline-block text-right">0.0 m/s</span>
+                        <span class="text-[10px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded shrink-0">等速</span>
+                    </div>
+                    <div class="bg-slate-900/90 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-700/60 text-xs flex items-center gap-2 shadow-lg">
+                        <span class="w-3 h-3 rounded-full bg-rose-500 inline-block shrink-0"></span>
+                        <span class="text-slate-300 shrink-0">鉛直成分 <i class="font-serif italic">v</i><sub>y</sub>:</span>
+                        <span id="badge-vy" class="font-mono font-bold text-rose-400 w-[65px] inline-block text-right">0.0 m/s</span>
+                        <span id="vy-state-tag" class="text-[10px] bg-rose-500/20 text-rose-300 px-1.5 py-0.5 rounded shrink-0">変速</span>
+                    </div>
+                    <div class="bg-slate-900/90 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-700/60 text-xs flex items-center gap-2 shadow-lg">
+                        <span class="w-3 h-3 rounded-full bg-emerald-400 inline-block shrink-0"></span>
+                        <span class="text-slate-300 shrink-0">合成速度 <i class="font-serif italic">v</i>:</span>
+                        <span id="badge-v" class="font-mono font-bold text-emerald-400 w-[65px] inline-block text-right">0.0 m/s</span>
+                    </div>
+                </div>
+
+                <!-- Peak Alert Indicator -->
+                <div id="peak-indicator" class="absolute top-4 right-4 z-10 opacity-0 transition-opacity duration-300 bg-amber-500/20 border border-amber-500/50 text-amber-300 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 backdrop-blur shadow-lg">
+                    <i class="fa-solid fa-crown text-amber-400"></i> 最高点通過！ (<i class="font-serif italic">v</i><sub>y</sub> = 0)
+                </div>
+
+                <!-- Simulation Canvas -->
+                <div class="w-full h-[400px] md:h-[480px] relative">
+                    <canvas id="simCanvas" class="w-full h-full block"></canvas>
+                </div>
+
+                <!-- Control Bar under Canvas -->
+                <div class="bg-slate-900 border-t border-slate-800 p-3 md:p-4 flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-center space-x-2">
+                        <button id="btn-play" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition shadow-lg shadow-indigo-600/30 active:scale-95">
+                            <i class="fa-solid fa-play" id="icon-play"></i>
+                            <span id="lbl-play">スタート</span>
+                        </button>
+                        <button id="btn-reset" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-xl text-sm font-medium flex items-center gap-1.5 transition active:scale-95">
+                            <i class="fa-solid fa-rotate-left"></i> リセット
+                        </button>
+                    </div>
+
+                    <!-- Speed & View Toggles -->
+                    <div class="flex flex-wrap items-center gap-2 md:gap-4 text-xs">
+                        <div class="flex items-center space-x-1 bg-slate-800/80 p-1 rounded-xl border border-slate-700/50">
+                            <span class="text-slate-400 px-2 font-medium">速度:</span>
+                            <button class="btn-speed px-2 py-1 rounded-lg hover:bg-slate-700 text-slate-300 transition font-mono" data-speed="0.25">0.25x</button>
+                            <button class="btn-speed px-2 py-1 rounded-lg hover:bg-slate-700 text-slate-300 transition font-mono" data-speed="0.5">0.5x</button>
+                            <button class="btn-speed px-2 py-1 rounded-lg bg-indigo-600 text-white transition font-mono active font-bold" data-speed="1.0">1.0x</button>
+                        </div>
+
+                        <div class="flex items-center space-x-3 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700/50">
+                            <label class="flex items-center gap-1.5 cursor-pointer select-none text-slate-300 hover:text-white">
+                                <input type="checkbox" id="chk-triangle" checked class="rounded bg-slate-700 border-slate-600 text-indigo-600 focus:ring-indigo-500">
+                                三平方の三角形
+                            </label>
+                            <label class="flex items-center gap-1.5 cursor-pointer select-none text-slate-300 hover:text-white">
+                                <input type="checkbox" id="chk-trace" checked class="rounded bg-slate-700 border-slate-600 text-indigo-600 focus:ring-indigo-500">
+                                軌跡残像
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Parameters Card -->
+            <div class="bg-slate-800/60 backdrop-blur rounded-2xl border border-slate-700/60 p-4 md:p-5 shadow-xl space-y-4">
+                <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-indigo-400"></i> 投射パラメータの調整
+                </h3>
+
+                <div class="space-y-4">
+                    <!-- Initial Speed & Launch Angle Sliders Side-by-Side -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Initial Speed Slider -->
+                        <div class="bg-slate-900/60 p-3.5 rounded-xl border border-slate-700/40 flex flex-col justify-between">
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-xs font-medium text-slate-400">初速度 <i class="font-serif italic">v</i><sub>0</sub></label>
+                                <span id="val-v0" class="text-sm font-bold font-mono text-indigo-400">30 m/s</span>
+                            </div>
+                            <input type="range" id="rng-v0" min="10" max="60" value="30" step="1" class="w-full accent-indigo-500 cursor-pointer">
+                            <div class="flex justify-between text-[10px] text-slate-500 mt-1 font-mono">
+                                <span>10 m/s</span>
+                                <span>60 m/s</span>
+                            </div>
+                        </div>
+
+                        <!-- Angle Slider -->
+                        <div class="bg-slate-900/60 p-3.5 rounded-xl border border-slate-700/40 flex flex-col justify-between">
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-xs font-medium text-slate-400">投射角 θ</label>
+                                <span id="val-angle" class="text-sm font-bold font-mono text-indigo-400">45°</span>
+                            </div>
+                            <input type="range" id="rng-angle" min="15" max="90" value="45" step="1" class="w-full accent-indigo-500 cursor-pointer">
+                            <div class="flex justify-between text-[10px] text-slate-500 mt-1 font-mono">
+                                <span>15°</span>
+                                <span>90°</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gravity Preset Buttons -->
+                    <div class="bg-slate-900/60 p-3.5 rounded-xl border border-slate-700/40 flex flex-col justify-between">
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-xs font-medium text-slate-400">重力加速度 <i class="font-serif italic">g</i></label>
+                            <span id="val-g" class="text-sm font-bold font-mono text-indigo-400">9.8 m/s²</span>
+                        </div>
+                        <div class="flex items-center space-x-1.5 my-1">
+                            <button class="btn-g flex-1 py-1 rounded bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 text-[11px] font-medium hover:bg-indigo-600/50 transition font-bold" data-g="9.8">地球 (9.8)</button>
+                            <button class="btn-g flex-1 py-1 rounded bg-slate-800 text-slate-400 border border-slate-700 text-[11px] font-medium hover:bg-slate-700 transition" data-g="1.62">月 (1.62)</button>
+                            <button class="btn-g flex-1 py-1 rounded bg-slate-800 text-slate-400 border border-slate-700 text-[11px] font-medium hover:bg-slate-700 transition" data-g="3.71">火星 (3.71)</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Pythagorean Theorem & Educational Explanations (4 cols on large screens) -->
+        <div class="lg:col-span-4 flex flex-col space-y-4">
+            
+            <!-- Realtime Pythagorean Theorem Card -->
+            <div class="bg-slate-800/60 backdrop-blur rounded-2xl border border-slate-700/60 p-4 md:p-5 shadow-xl space-y-3">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-square-root-variable text-emerald-400"></i> 三平方の定理と合成速度
+                    </h3>
+                    <span class="text-[10px] text-slate-400 font-mono"><i class="font-serif italic">v</i> = √(<i class="font-serif italic">v</i><sub>x</sub>² + <i class="font-serif italic">v</i><sub>y</sub>²)</span>
+                </div>
+
+                <!-- Live Formula Display Box -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 font-mono space-y-2 text-xs md:text-sm">
+                    <div class="flex items-center justify-between text-slate-300">
+                        <span><i class="font-serif italic">v</i><sub>x</sub> (水平方向)</span>
+                        <span id="calc-vx" class="text-blue-400 font-bold">21.21 m/s</span>
+                    </div>
+                    <div class="flex items-center justify-between text-slate-300">
+                        <span><i class="font-serif italic">v</i><sub>y</sub> (鉛直方向)</span>
+                        <span id="calc-vy" class="text-rose-400 font-bold">21.21 m/s</span>
+                    </div>
+                    <div class="h-px bg-slate-800 my-1"></div>
+                    <div class="flex items-center justify-between text-slate-100 font-bold">
+                        <span>合成速度 <i class="font-serif italic">v</i></span>
+                        <span id="calc-v" class="text-emerald-400 text-base">30.00 m/s</span>
+                    </div>
+                    <!-- Detailed calculation string -->
+                    <div class="text-[11px] text-slate-500 pt-1 border-t border-slate-800/80 leading-relaxed overflow-x-auto whitespace-nowrap">
+                        <span class="text-emerald-400 font-semibold">√</span>(<span class="text-blue-400" id="math-vx">21.21</span>² + <span class="text-rose-400" id="math-vy">21.21</span>²) = <span class="text-emerald-400 font-bold" id="math-v">30.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Educational Notes -->
+            <div class="bg-slate-800/40 rounded-2xl border border-slate-700/40 p-4 text-xs text-slate-300 space-y-2">
+                <h4 class="font-bold text-slate-200 flex items-center gap-1.5 text-xs">
+                    <i class="fa-solid fa-graduation-cap text-amber-400"></i> 斜方投射のここがポイント！
+                </h4>
+                <ul class="list-disc list-inside space-y-1 text-slate-400 text-[11px] leading-relaxed">
+                    <li><strong class="text-blue-300">水平方向 (<i class="font-serif italic">v</i><sub>x</sub>):</strong> 空気抵抗を無視する場合、力を受けないため<span class="text-blue-400 font-semibold">ずっと等速</span>。</li>
+                    <li><strong class="text-rose-300">鉛直方向 (<i class="font-serif italic">v</i><sub>y</sub>):</strong> 重力加速度 <i class="font-serif italic">g</i> を受けるため<span class="text-rose-400 font-semibold">等加速度運動</span>。上向き→0→下向き。</li>
+                    <li><strong class="text-amber-300">最高点:</strong> 一瞬だけ鉛直速度が<span class="text-amber-400 font-bold"> <i class="font-serif italic">v</i><sub>y</sub> = 0 </span>になり、速度は水平成分 <i class="font-serif italic">v</i><sub>x</sub> のみになります。</li>
+                    <li><strong class="text-emerald-300">速度の合成:</strong> 常に <i class="font-serif italic">v</i><sub>x</sub> と <i class="font-serif italic">v</i><sub>y</sub> は直交しているため、斜辺 <i class="font-serif italic">v</i> = √(<i class="font-serif italic">v</i><sub>x</sub>² + <i class="font-serif italic">v</i><sub>y</sub>²) が成り立ちます。</li>
+                </ul>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        // Simulation State
+        const state = {
+            v0: 30,           // Initial velocity (m/s)
+            angleDeg: 45,     // Launch angle (degrees)
+            g: 9.8,           // Gravity (m/s^2)
+            time: 0,          // Current simulation time (s)
+            simSpeed: 1.0,    // Time multiplier (Default 1.0x)
+            isPlaying: false,
+            showTriangle: true,
+            showTrace: true,
+            trajectory: [],   // History of positions for tracing
+            maxTime: 0,       // Total time of flight
+            maxHeight: 0,     // Peak altitude
+            maxDistance: 0,   // Total range
+            peakReached: false,
+            dragTarget: null  // Drag target: 'speed' (tip) or 'angle' (center) or null
+        };
+
+        // Canvas Setup
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Handles positions for interaction check
+        let tipHandle = { x: 0, y: 0, radius: 14 };
+        let centerHandle = { x: 0, y: 0, radius: 14 };
+
+        // DOM Elements
+        const btnPlay = document.getElementById('btn-play');
+        const iconPlay = document.getElementById('icon-play');
+        const lblPlay = document.getElementById('lbl-play');
+        const btnReset = document.getElementById('btn-reset');
+        
+        const rngV0 = document.getElementById('rng-v0');
+        const rngAngle = document.getElementById('rng-angle');
+        const valV0 = document.getElementById('val-v0');
+        const valAngle = document.getElementById('val-angle');
+        const valG = document.getElementById('val-g');
+
+        const badgePos = document.getElementById('badge-pos');
+        const badgeYmax = document.getElementById('badge-ymax');
+        const badgeXend = document.getElementById('badge-xend');
+        const badgeVx = document.getElementById('badge-vx');
+        const badgeVy = document.getElementById('badge-vy');
+        const badgeV = document.getElementById('badge-v');
+        const vyStateTag = document.getElementById('vy-state-tag');
+        const peakIndicator = document.getElementById('peak-indicator');
+
+        const calcVx = document.getElementById('calc-vx');
+        const calcVy = document.getElementById('calc-vy');
+        const calcV = document.getElementById('calc-v');
+        const mathVx = document.getElementById('math-vx');
+        const mathVy = document.getElementById('math-vy');
+        const mathV = document.getElementById('math-v');
+
+        const chkTriangle = document.getElementById('chk-triangle');
+        const chkTrace = document.getElementById('chk-trace');
+
+        // Helper Math
+        function toRad(deg) { return deg * Math.PI / 180; }
+        function toDeg(rad) { return rad * 180 / Math.PI; }
+
+        function getPhysicsData(t) {
+            const rad = toRad(state.angleDeg);
+            const vx0 = state.v0 * Math.cos(rad);
+            const vy0 = state.v0 * Math.sin(rad);
+
+            const x = vx0 * t;
+            const y = vy0 * t - 0.5 * state.g * t * t;
+
+            const vx = vx0;
+            const vy = vy0 - state.g * t;
+            const v = Math.sqrt(vx * vx + vy * vy);
+
+            return { x, y, vx, vy, v, vx0, vy0 };
+        }
+
+        function calculateLimits() {
+            const rad = toRad(state.angleDeg);
+            const vy0 = state.v0 * Math.sin(rad);
+            state.maxTime = (2 * vy0) / state.g;
+            state.maxHeight = (vy0 * vy0) / (2 * state.g);
+            const vx0 = state.v0 * Math.cos(rad);
+            state.maxDistance = vx0 * state.maxTime;
+        }
+
+        // Window resize handling
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        }
+
+        function drawArrow(context, fromx, fromy, tox, toy, color, width = 3, label = '') {
+            const headlen = 10;
+            const dx = tox - fromx;
+            const dy = toy - fromy;
+            const angle = Math.atan2(dy, dx);
+            const len = Math.sqrt(dx * dx + dy * dy);
+
+            if (len < 2) return; // Don't draw tiny arrows
+
+            context.save();
+            context.strokeStyle = color;
+            context.fillStyle = color;
+            context.lineWidth = width;
+
+            // Line
+            context.beginPath();
+            context.moveTo(fromx, fromy);
+            context.lineTo(tox, toy);
+            context.stroke();
+
+            // Arrow Head
+            context.beginPath();
+            context.moveTo(tox, toy);
+            context.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
+            context.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
+            context.closePath();
+            context.fill();
+
+            // Label
+            if (label) {
+                context.font = 'bold 12px monospace';
+                context.fillText(label, tox + Math.cos(angle) * 12 - 5, toy + Math.sin(angle) * 12 + 4);
+            }
+
+            context.restore();
+        }
+
+        function render() {
+            const width = canvas.width / window.devicePixelRatio;
+            const height = canvas.height / window.devicePixelRatio;
+
+            ctx.clearRect(0, 0, width, height);
+
+            // Margin & Coordinate System Setup
+            const margin = { left: 60, bottom: 50, top: 50, right: 40 };
+            const worldWidth = Math.max(state.maxDistance * 1.15, 40); // Scaling factor
+            const worldHeight = Math.max(state.maxHeight * 1.4, 25);
+
+            const scaleX = (width - margin.left - margin.right) / worldWidth;
+            const scaleY = (height - margin.top - margin.bottom) / worldHeight;
+            const scale = Math.min(scaleX, scaleY); // Uniform scale
+
+            const originX = margin.left;
+            const originY = height - margin.bottom;
+
+            function toScreenX(x) { return originX + x * scale; }
+            function toScreenY(y) { return originY - y * scale; }
+
+            // Background Grid & Ground
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            
+            // Grid lines & Axis Labels
+            const step = 10;
+            for (let gx = 0; gx <= worldWidth; gx += step) {
+                const sx = toScreenX(gx);
+                ctx.beginPath();
+                ctx.moveTo(sx, 0);
+                ctx.lineTo(sx, height);
+                ctx.stroke();
+
+                // Emphasize every 50m on X-axis with larger white bold text
+                if (gx % 50 === 0) {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 13px font-mono, sans-serif';
+                    ctx.fillText(`${gx}m`, sx - 12, originY + 22);
+                } else {
+                    ctx.fillStyle = '#64748b';
+                    ctx.font = '10px monospace';
+                    ctx.fillText(`${gx}m`, sx - 8, originY + 18);
+                }
+            }
+
+            for (let gy = 0; gy <= worldHeight; gy += step) {
+                const sy = toScreenY(gy);
+                ctx.beginPath();
+                ctx.moveTo(0, sy);
+                ctx.lineTo(width, sy);
+                ctx.stroke();
+
+                if (gy > 0) {
+                    // Emphasize every 20m on Y-axis with larger white bold text
+                    if (gy % 20 === 0) {
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = 'bold 13px font-mono, sans-serif';
+                        ctx.fillText(`${gy}m`, originX - 42, sy + 4);
+                    } else {
+                        ctx.fillStyle = '#64748b';
+                        ctx.font = '10px monospace';
+                        ctx.fillText(`${gy}m`, originX - 35, sy + 3);
+                    }
+                }
+            }
+
+            // Ground Line
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, originY);
+            ctx.lineTo(width, originY);
+            ctx.stroke();
+
+            // Parabolic Trajectory Guide Line (Theoretical path) - Thicker & Brighter
+            ctx.strokeStyle = 'rgba(129, 140, 248, 0.6)';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([6, 5]);
+            ctx.beginPath();
+            for (let t = 0; t <= state.maxTime; t += 0.05) {
+                const p = getPhysicsData(t);
+                const sx = toScreenX(p.x);
+                const sy = toScreenY(p.y);
+                if (t === 0) ctx.moveTo(sx, sy);
+                else ctx.lineTo(sx, sy);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset line dash
+
+            // Peak Altitude Marker Indicator Line
+            const rad = toRad(state.angleDeg);
+            const peakT = (state.v0 * Math.sin(rad)) / state.g;
+            const peakP = getPhysicsData(peakT);
+            const peakSx = toScreenX(peakP.x);
+            const peakSy = toScreenY(peakP.y);
+
+            ctx.strokeStyle = 'rgba(245, 158, 11, 0.5)';
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.moveTo(peakSx, originY);
+            ctx.lineTo(peakSx, peakSy);
+            ctx.lineTo(originX, peakSy);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.fillStyle = '#f59e0b';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillText('最高点 (vy = 0)', peakSx - 38, peakSy - 12);
+
+            // Draw Trajectory Trace Points
+            if (state.showTrace && state.trajectory.length > 0) {
+                ctx.fillStyle = '#818cf8';
+                state.trajectory.forEach((pt, idx) => {
+                    const sx = toScreenX(pt.x);
+                    const sy = toScreenY(pt.y);
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, 2.5, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+
+            // Current Physics State
+            const cur = getPhysicsData(state.time);
+            const ballSx = toScreenX(cur.x);
+            const ballSy = toScreenY(cur.y);
+
+            // Vector Scale (pixels per m/s)
+            const vScale = 1.8;
+            const vxLen = cur.vx * vScale;
+            const vyLen = -cur.vy * vScale; // Note: Canvas Y is inverted (down is positive)
+
+            // Right Angle & Triangle Component Lines
+            if (state.showTriangle) {
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([3, 3]);
+
+                // Rectangle / Right Triangle dotted guides
+                ctx.beginPath();
+                ctx.moveTo(ballSx + vxLen, ballSy);
+                ctx.lineTo(ballSx + vxLen, ballSy + vyLen); // Right side
+                ctx.lineTo(ballSx, ballSy + vyLen);        // Bottom side
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // Right Angle Symbol
+                const size = 6;
+                const signY = vyLen >= 0 ? 1 : -1;
+                ctx.strokeStyle = '#e2e8f0';
+                ctx.beginPath();
+                ctx.moveTo(ballSx + vxLen - size, ballSy + vyLen);
+                ctx.lineTo(ballSx + vxLen - size, ballSy + vyLen - size * signY);
+                ctx.lineTo(ballSx + vxLen, ballSy + vyLen - size * signY);
+                ctx.stroke();
+            }
+
+            // Vector Arrows
+            // 1. Horizontal Velocity Vx (Blue)
+            drawArrow(ctx, ballSx, ballSy, ballSx + vxLen, ballSy, '#3b82f6', 3.5, 'vx');
+            
+            // 2. Vertical Velocity Vy (Rose)
+            drawArrow(ctx, ballSx, ballSy, ballSx, ballSy + vyLen, '#f43f5e', 3.5, 'vy');
+
+            // 3. Composite Velocity V (Emerald / Hypotenuse)
+            const targetX = ballSx + vxLen;
+            const targetY = ballSy + vyLen;
+            drawArrow(ctx, ballSx, ballSy, targetX, targetY, '#10b981', 4, 'v');
+
+            // Handle positions stored for dragging
+            tipHandle.x = targetX;
+            tipHandle.y = targetY;
+
+            centerHandle.x = (ballSx + targetX) / 2;
+            centerHandle.y = (ballSy + targetY) / 2;
+
+            // Display velocity and angle controls ONLY BEFORE launch (when time === 0)
+            if (state.time === 0) {
+                // 1. TIP HANDLE (Speed Adjuster)
+                ctx.save();
+                const isTipActive = state.dragTarget === 'speed';
+                ctx.strokeStyle = isTipActive ? '#34d399' : 'rgba(52, 211, 153, 0.8)';
+                ctx.fillStyle = isTipActive ? 'rgba(52, 211, 153, 0.4)' : 'rgba(52, 211, 153, 0.2)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(tipHandle.x, tipHandle.y, 11, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Tooltip Badge near Vector Tip (Speed)
+                ctx.fillStyle = '#0f172a';
+                ctx.strokeStyle = '#34d399';
+                ctx.lineWidth = 1;
+                const tipText = `初速度 v₀: ${state.v0} m/s`;
+                ctx.font = 'bold 11px sans-serif';
+                const tipWidth = ctx.measureText(tipText).width;
+                const tipBoxX = tipHandle.x + 14;
+                const tipBoxY = tipHandle.y - 20;
+
+                ctx.beginPath();
+                ctx.roundRect(tipBoxX, tipBoxY, tipWidth + 12, 22, 6);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#34d399';
+                ctx.fillText(tipText, tipBoxX + 6, tipBoxY + 15);
+                ctx.restore();
+
+
+                // 2. CENTER HANDLE (Angle Adjuster)
+                ctx.save();
+                const isCenterActive = state.dragTarget === 'angle';
+                ctx.strokeStyle = isCenterActive ? '#a78bfa' : 'rgba(167, 139, 250, 0.8)';
+                ctx.fillStyle = isCenterActive ? 'rgba(167, 139, 250, 0.4)' : 'rgba(167, 139, 250, 0.2)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(centerHandle.x, centerHandle.y, 11, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Tooltip Badge near Center (Angle)
+                ctx.fillStyle = '#0f172a';
+                ctx.strokeStyle = '#a78bfa';
+                ctx.lineWidth = 1;
+                const angleText = `角度 θ: ${state.angleDeg}°`;
+                ctx.font = 'bold 11px sans-serif';
+                const angleWidth = ctx.measureText(angleText).width;
+                const angleBoxX = centerHandle.x - angleWidth - 20;
+                const angleBoxY = centerHandle.y - 22;
+
+                ctx.beginPath();
+                ctx.roundRect(angleBoxX, angleBoxY, angleWidth + 12, 22, 6);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#a78bfa';
+                ctx.fillText(angleText, angleBoxX + 6, angleBoxY + 15);
+                ctx.restore();
+            }
+
+            // Ball Body
+            ctx.fillStyle = '#6366f1';
+            ctx.shadowColor = 'rgba(99, 102, 241, 0.6)';
+            ctx.shadowBlur = 12;
+            ctx.beginPath();
+            ctx.arc(ballSx, ballSy, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0; // Reset shadow
+
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        let lastTimestamp = 0;
+
+        function animate(timestamp) {
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const dt = (timestamp - lastTimestamp) / 1000;
+            lastTimestamp = timestamp;
+
+            if (state.isPlaying) {
+                state.time += dt * state.simSpeed;
+
+                // Record trace
+                const cur = getPhysicsData(state.time);
+                if (state.trajectory.length === 0 || state.time - state.trajectory[state.trajectory.length - 1].t > 0.05) {
+                    state.trajectory.push({ x: cur.x, y: cur.y, t: state.time });
+                }
+
+                // Check Peak reached indicator
+                const peakTime = (state.v0 * Math.sin(toRad(state.angleDeg))) / state.g;
+                if (Math.abs(state.time - peakTime) < 0.1) {
+                    peakIndicator.style.opacity = '1';
+                } else {
+                    peakIndicator.style.opacity = '0';
+                }
+
+                // Landing Check
+                if (state.time >= state.maxTime) {
+                    state.time = state.maxTime;
+                    state.isPlaying = false;
+                    updatePlayButtonUI();
+                }
+            }
+
+            // Update UI metrics
+            updateUI();
+
+            // Render Frame
+            render();
+
+            requestAnimationFrame(animate);
+        }
+
+        function updateUI() {
+            const cur = getPhysicsData(state.time);
+
+            // Format coordinates and metrics
+            const xStr = cur.x.toFixed(1).padStart(5, ' ');
+            const yStr = Math.max(0, cur.y).toFixed(1).padStart(4, ' ');
+            
+            // Position & Fixed Badges
+            badgePos.textContent = `(${xStr}m, ${yStr}m)`;
+            badgeYmax.textContent = `${state.maxHeight.toFixed(1)}m`;
+            badgeXend.textContent = `${state.maxDistance.toFixed(1)}m`;
+
+            badgeVx.textContent = `${cur.vx.toFixed(1)} m/s`;
+            badgeVy.textContent = `${cur.vy.toFixed(1)} m/s`;
+            badgeV.textContent = `${cur.v.toFixed(1)} m/s`;
+
+            // Vy direction tag
+            if (Math.abs(cur.vy) < 0.2) {
+                vyStateTag.textContent = '最高点 (vy ≈ 0)';
+                vyStateTag.className = 'text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded font-bold shrink-0';
+            } else if (cur.vy > 0) {
+                vyStateTag.textContent = '上昇中 (vy > 0)';
+                vyStateTag.className = 'text-[10px] bg-rose-500/20 text-rose-300 px-1.5 py-0.5 rounded shrink-0';
+            } else {
+                vyStateTag.textContent = '下降中 (vy < 0)';
+                vyStateTag.className = 'text-[10px] bg-sky-500/20 text-sky-300 px-1.5 py-0.5 rounded shrink-0';
+            }
+
+            // Formula Breakdown Card
+            calcVx.textContent = `${cur.vx.toFixed(2)} m/s`;
+            calcVy.textContent = `${cur.vy.toFixed(2)} m/s`;
+            calcV.textContent = `${cur.v.toFixed(2)} m/s`;
+
+            mathVx.textContent = cur.vx.toFixed(2);
+            mathVy.textContent = Math.abs(cur.vy).toFixed(2);
+            mathV.textContent = cur.v.toFixed(2);
+        }
+
+        function updatePlayButtonUI() {
+            if (state.isPlaying) {
+                iconPlay.className = 'fa-solid fa-pause';
+                lblPlay.textContent = '一時停止';
+            } else {
+                iconPlay.className = 'fa-solid fa-play';
+                lblPlay.textContent = 'スタート';
+            }
+        }
+
+        function updateSlidersAndState(v0, angle) {
+            // Clamp values
+            state.v0 = Math.min(Math.max(Math.round(v0), 10), 60);
+            state.angleDeg = Math.min(Math.max(Math.round(angle), 15), 90);
+
+            // Update UI Sliders
+            rngV0.value = state.v0;
+            valV0.textContent = `${state.v0} m/s`;
+
+            rngAngle.value = state.angleDeg;
+            valAngle.textContent = `${state.angleDeg}°`;
+
+            resetSimulation();
+        }
+
+        function resetSimulation() {
+            state.time = 0;
+            state.isPlaying = false;
+            state.trajectory = [];
+            peakIndicator.style.opacity = '0';
+            calculateLimits();
+            updatePlayButtonUI();
+            render();
+        }
+
+        // Pointer Event Handling for Handles (Tip = Speed, Center = Angle)
+        function getCanvasPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        function handlePointerDown(e) {
+            if (state.time !== 0 || state.isPlaying) return; // Only allow drag before launch
+
+            const pos = getCanvasPos(e);
+
+            // Check Tip Handle (Speed)
+            const dTip = Math.sqrt((pos.x - tipHandle.x) ** 2 + (pos.y - tipHandle.y) ** 2);
+            if (dTip <= tipHandle.radius) {
+                state.dragTarget = 'speed';
+                canvas.style.cursor = 'grabbing';
+                return;
+            }
+
+            // Check Center Handle (Angle)
+            const dCenter = Math.sqrt((pos.x - centerHandle.x) ** 2 + (pos.y - centerHandle.y) ** 2);
+            if (dCenter <= centerHandle.radius) {
+                state.dragTarget = 'angle';
+                canvas.style.cursor = 'grabbing';
+                return;
+            }
+        }
+
+        function handlePointerMove(e) {
+            if (state.time !== 0) {
+                canvas.style.cursor = 'default';
+                return;
+            }
+
+            const pos = getCanvasPos(e);
+
+            // Hover Cursor
+            if (!state.dragTarget) {
+                const dTip = Math.sqrt((pos.x - tipHandle.x) ** 2 + (pos.y - tipHandle.y) ** 2);
+                const dCenter = Math.sqrt((pos.x - centerHandle.x) ** 2 + (pos.y - centerHandle.y) ** 2);
+                if (dTip <= tipHandle.radius || dCenter <= centerHandle.radius) {
+                    canvas.style.cursor = 'grab';
+                } else {
+                    canvas.style.cursor = 'default';
+                }
+                return;
+            }
+
+            // Origin position on screen
+            const margin = { left: 60, bottom: 50 };
+            const height = canvas.height / window.devicePixelRatio;
+            const originX = margin.left;
+            const originY = height - margin.bottom;
+
+            const dx = pos.x - originX;
+            const dy = originY - pos.y; // Inverted Y axis
+
+            if (state.dragTarget === 'speed') {
+                // Dragging Tip: Adjust SPEED (v0) while keeping ANGLE fixed
+                const vScale = 1.8;
+                const currentVecLen = Math.sqrt(dx * dx + dy * dy);
+                let newV0 = currentVecLen / vScale;
+                updateSlidersAndState(newV0, state.angleDeg);
+            } else if (state.dragTarget === 'angle') {
+                // Dragging Center: Adjust ANGLE while keeping SPEED (v0) fixed
+                let rad = Math.atan2(dy, dx);
+                let angle = toDeg(rad);
+                updateSlidersAndState(state.v0, angle);
+            }
+        }
+
+        function handlePointerUp() {
+            if (state.dragTarget) {
+                state.dragTarget = null;
+                canvas.style.cursor = 'grab';
+            }
+        }
+
+        // Canvas Event Listeners
+        canvas.addEventListener('mousedown', handlePointerDown);
+        canvas.addEventListener('mousemove', handlePointerMove);
+        window.addEventListener('mouseup', handlePointerUp);
+
+        canvas.addEventListener('touchstart', (e) => { handlePointerDown(e); }, { passive: true });
+        canvas.addEventListener('touchmove', (e) => { handlePointerMove(e); }, { passive: true });
+        window.addEventListener('touchend', handlePointerUp);
+
+        // Control Event Listeners
+        btnPlay.addEventListener('click', () => {
+            if (state.time >= state.maxTime) {
+                resetSimulation();
+            }
+            state.isPlaying = !state.isPlaying;
+            updatePlayButtonUI();
+        });
+
+        btnReset.addEventListener('click', resetSimulation);
+
+        rngV0.addEventListener('input', (e) => {
+            state.v0 = parseFloat(e.target.value);
+            valV0.textContent = `${state.v0} m/s`;
+            resetSimulation();
+        });
+
+        rngAngle.addEventListener('input', (e) => {
+            state.angleDeg = parseFloat(e.target.value);
+            valAngle.textContent = `${state.angleDeg}°`;
+            resetSimulation();
+        });
+
+        document.querySelectorAll('.btn-g').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.btn-g').forEach(b => {
+                    b.className = 'btn-g flex-1 py-1 rounded bg-slate-800 text-slate-400 border border-slate-700 text-[11px] font-medium hover:bg-slate-700 transition';
+                });
+                e.target.className = 'btn-g flex-1 py-1 rounded bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 text-[11px] font-medium hover:bg-indigo-600/50 transition font-bold';
+                
+                state.g = parseFloat(e.target.dataset.g);
+                valG.textContent = `${state.g} m/s²`;
+                resetSimulation();
+            });
+        });
+
+        document.querySelectorAll('.btn-speed').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.btn-speed').forEach(b => {
+                    b.classList.remove('bg-indigo-600', 'text-white', 'font-bold');
+                    b.classList.add('hover:bg-slate-700', 'text-slate-300');
+                });
+                e.target.classList.add('bg-indigo-600', 'text-white', 'font-bold');
+                e.target.classList.remove('hover:bg-slate-700', 'text-slate-300');
+
+                state.simSpeed = parseFloat(e.target.dataset.speed);
+            });
+        });
+
+        chkTriangle.addEventListener('change', (e) => {
+            state.showTriangle = e.target.checked;
+            render();
+        });
+
+        chkTrace.addEventListener('change', (e) => {
+            state.showTrace = e.target.checked;
+            render();
+        });
+
+        // Initialize App on Window Load
+        window.onload = function() {
+            resizeCanvas();
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+                render();
+            });
+
+            calculateLimits();
+            resetSimulation();
+            requestAnimationFrame(animate);
+        };
+    </script>
+</body>
+</html>
