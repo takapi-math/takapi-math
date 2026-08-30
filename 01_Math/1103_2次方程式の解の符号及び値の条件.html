@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2次関数の解の配置 シミュレーター</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- KaTeX for math rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            user-select: none;
+        }
+        canvas {
+            touch-action: none;
+        }
+        input[type=range] {
+            accent-color: #10b981;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen pb-12">
+
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-slate-950/90 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div>
+                <h1 class="text-xl font-bold bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">
+                    2次関数の解の配置 シミュレーター
+                </h1>
+                <p class="text-xs text-slate-400">
+                    $f(x) = x^2 + bx + c$ ($a = 1$ 固定) における $D$・軸・$f(k)$ の必要条件可視化
+                </p>
+            </div>
+            <div class="flex items-center gap-2 bg-slate-800/90 p-1.5 rounded-lg text-xs border border-slate-700">
+                <span class="text-slate-400 pl-1">解の条件:</span>
+                <button id="modeDistinctBtn" onclick="setSolutionType('distinct')" class="px-3 py-1 rounded-md font-semibold transition-all bg-emerald-600 text-white shadow">
+                    異なる2つの実数解 ($D > 0$)
+                </button>
+                <button id="modeExistBtn" onclick="setSolutionType('exist')" class="px-3 py-1 rounded-md font-semibold transition-all text-slate-400 hover:text-white">
+                    実数解を持つ ($D \ge 0$)
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+        
+        <!-- Preset Selector -->
+        <section class="mb-5 bg-slate-800/50 border border-slate-700/60 rounded-xl p-3.5">
+            <div class="flex items-center justify-between mb-2">
+                <h2 class="text-xs uppercase tracking-wider text-slate-400 font-semibold">パターンプリセットを選択</h2>
+                <span class="text-xs text-emerald-400 flex items-center gap-1 font-medium">
+                    <span>👆 グラフの頂点や境界線を直接ドラッグできます</span>
+                </span>
+            </div>
+            <div class="flex flex-wrap gap-2" id="presetButtons">
+                <!-- Preset buttons populated dynamically -->
+            </div>
+        </section>
+
+        <!-- Main Layout: Grid (Graph Left 7 cols, Conditions Right 5 cols) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- LEFT PANEL: Interactive Visualizer Graph (7 cols) -->
+            <div class="lg:col-span-7 flex flex-col gap-4">
+
+                <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-4 shadow-lg flex flex-col items-center">
+                    
+                    <!-- Graph Title and Indicators -->
+                    <div class="w-full flex flex-wrap justify-between items-center mb-2 gap-2">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-blue-500 inline-block"></span>
+                            <span id="currentEquation" class="font-mono text-base font-bold text-blue-300">f(x) = x² - 4x + 3</span>
+                        </div>
+                        <div class="text-xs text-slate-400 flex flex-wrap gap-3">
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span> 軸/頂点</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span> 境界線</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span> 解(&lt;基準)</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block"></span> 解(&gt;基準)</span>
+                        </div>
+                    </div>
+
+                    <!-- Interactive Canvas Area -->
+                    <div class="relative w-full aspect-[4/3] bg-slate-950 rounded-lg overflow-hidden border border-slate-800 shadow-inner cursor-crosshair">
+                        <canvas id="graphCanvas" class="w-full h-full block"></canvas>
+                        
+                        <!-- Drag hint overlay -->
+                        <div class="absolute bottom-2 left-2 pointer-events-none bg-slate-900/80 backdrop-blur border border-slate-700/60 text-[11px] text-slate-300 px-2 py-1 rounded">
+                            <span id="dragModeStatus">💡 頂点または緑の境界線をドラッグ移動</span>
+                        </div>
+                    </div>
+
+                    <!-- Boundary Controls Below Canvas -->
+                    <div class="w-full mt-3 p-3 bg-slate-900/80 border border-slate-800 rounded-lg flex flex-col sm:flex-row gap-4 items-center">
+                        <div class="flex-1 w-full">
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-300 font-medium" id="boundaryLabel1">基準値 $k$ (境界線)</span>
+                                <span id="valK1" class="font-mono text-emerald-400 font-bold">0.0</span>
+                            </div>
+                            <input type="range" id="sliderK1" min="-6" max="6" step="0.5" value="0.0" class="w-full">
+                        </div>
+
+                        <div id="boundary2Box" class="flex-1 w-full hidden">
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-300 font-medium">基準値 $q$ (右端)</span>
+                                <span id="valK2" class="font-mono text-emerald-400 font-bold">2.0</span>
+                            </div>
+                            <input type="range" id="sliderK2" min="-6" max="6" step="0.5" value="2.0" class="w-full">
+                        </div>
+                    </div>
+
+                    <!-- Graph Stats Summary -->
+                    <div class="w-full grid grid-cols-3 gap-2 mt-3 text-center text-xs">
+                        <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-800">
+                            <div class="text-slate-400">判別式 $D$</div>
+                            <div id="statD" class="font-mono font-bold text-sm text-slate-200 mt-0.5">4.00</div>
+                        </div>
+                        <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-800">
+                            <div class="text-slate-400">軸の $x$ 座標 ($x_v$)</div>
+                            <div id="statAxis" class="font-mono font-bold text-sm text-amber-400 mt-0.5">2.00</div>
+                        </div>
+                        <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-800">
+                            <div class="text-slate-400" id="statFLabel">端点の値 $f(k)$</div>
+                            <div id="statFVal" class="font-mono font-bold text-sm text-emerald-400 mt-0.5">3.00</div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- RIGHT PANEL: Realtime Condition Check (5 cols) -->
+            <div class="lg:col-span-5 flex flex-col gap-4">
+
+                <!-- 3 Conditions Monitor Card -->
+                <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-5 shadow-xl flex flex-col">
+                    <div class="border-b border-slate-700 pb-3 mb-4 flex items-center justify-between">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-100">必要条件のチェック</h3>
+                            <p class="text-xs text-slate-400 mt-0.5">3要素（$D$, 軸, 端点符号）の成立判定</p>
+                        </div>
+                        <span id="overallResultBadge" class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            条件成立
+                        </span>
+                    </div>
+
+                    <!-- List of Required Conditions -->
+                    <div class="space-y-3.5 flex-1" id="conditionsList">
+                        <!-- Conditions rendered dynamically -->
+                    </div>
+                </div>
+
+                <!-- Explanation & Theory Card -->
+                <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-5 shadow-xl">
+                    <h3 class="text-sm font-bold text-slate-200 border-b border-slate-700 pb-2 mb-3 flex items-center gap-1.5">
+                        <span>💡 理論と解法ポイント</span>
+                    </h3>
+                    <div id="explanationText" class="text-xs sm:text-sm text-slate-300 leading-relaxed space-y-2">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Comprehensive Reference Table -->
+        <section class="mt-8 bg-slate-800/60 border border-slate-700 rounded-xl p-5 shadow-xl">
+            <h2 class="text-base font-bold text-slate-100 mb-3 flex items-center gap-2">
+                <span>📋 解の配置パターンと3条件（$a = 1 > 0$）まとめ一覧</span>
+            </h2>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                    <thead>
+                        <tr class="border-b border-slate-700 text-slate-400 bg-slate-900/60">
+                            <th class="p-2.5 font-semibold">パターン</th>
+                            <th class="p-2.5 font-semibold">目標とする解の配置</th>
+                            <th class="p-2.5 font-semibold text-blue-400">① 判別式 $D$</th>
+                            <th class="p-2.5 font-semibold text-amber-400">② 軸の位置</th>
+                            <th class="p-2.5 font-semibold text-emerald-400">③ 境界の符号 $f(k)$</th>
+                            <th class="p-2.5 font-semibold">要点・解説</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-700/60 text-slate-300">
+                        <tr class="hover:bg-slate-700/30">
+                            <td class="p-2.5 font-bold text-blue-300">① ともに正</td>
+                            <td class="p-2.5">$0 < x_1, x_2$</td>
+                            <td class="p-2.5">$D > 0$</td>
+                            <td class="p-2.5">軸 $> 0$</td>
+                            <td class="p-2.5">$f(0) > 0$</td>
+                            <td class="p-2.5 text-slate-400">基本形 ($k=0$)</td>
+                        </tr>
+                        <tr class="hover:bg-slate-700/30">
+                            <td class="p-2.5 font-bold text-blue-300">② ともに負</td>
+                            <td class="p-2.5">$x_1, x_2 < 0$</td>
+                            <td class="p-2.5">$D > 0$</td>
+                            <td class="p-2.5">軸 $< 0$</td>
+                            <td class="p-2.5">$f(0) > 0$</td>
+                            <td class="p-2.5 text-slate-400">軸が 0 より左側</td>
+                        </tr>
+                        <tr class="hover:bg-slate-700/30 bg-indigo-950/20">
+                            <td class="p-2.5 font-bold text-indigo-300">③ 正と負（異符号）</td>
+                            <td class="p-2.5">$x_1 < 0 < x_2$</td>
+                            <td class="p-2.5 text-slate-500 font-bold">不要 (自動成立)</td>
+                            <td class="p-2.5 text-slate-500 font-bold">不要</td>
+                            <td class="p-2.5 text-emerald-300 font-bold">$f(0) < 0$ のみ！</td>
+                            <td class="p-2.5 text-indigo-300/90">$f(0)<0$ で頂点は必ず $x$ 軸下になり $D>0$ 確約</td>
+                        </tr>
+                        <tr class="hover:bg-slate-700/30">
+                            <td class="p-2.5 font-bold text-emerald-300">④ ともに 2より大</td>
+                            <td class="p-2.5">$2 < x_1, x_2$</td>
+                            <td class="p-2.5">$D > 0$</td>
+                            <td class="p-2.5">軸 $> 2$</td>
+                            <td class="p-2.5">$f(2) > 0$</td>
+                            <td class="p-2.5 text-slate-400">例: $k = 2 \implies f(2) > 0$, 軸 $> 2$</td>
+                        </tr>
+                        <tr class="hover:bg-slate-700/30">
+                            <td class="p-2.5 font-bold text-emerald-300">⑤ ともに 2より小</td>
+                            <td class="p-2.5">$x_1, x_2 < 2$</td>
+                            <td class="p-2.5">$D > 0$</td>
+                            <td class="p-2.5">軸 $< 2$</td>
+                            <td class="p-2.5">$f(2) > 0$</td>
+                            <td class="p-2.5 text-slate-400">例: $k = 2 \implies f(2) > 0$, 軸 $< 2$</td>
+                        </tr>
+                        <tr class="hover:bg-slate-700/30 bg-indigo-950/20">
+                            <td class="p-2.5 font-bold text-indigo-300">⑥ 1より大と1より小</td>
+                            <td class="p-2.5">$x_1 < 1 < x_2$</td>
+                            <td class="p-2.5 text-slate-500 font-bold">不要 (自動成立)</td>
+                            <td class="p-2.5 text-slate-500 font-bold">不要</td>
+                            <td class="p-2.5 text-emerald-300 font-bold">$f(1) < 0$ のみ！</td>
+                            <td class="p-2.5 text-indigo-300/90">$f(1)<0$ で頂点は必ず $x$ 軸下になり $D>0$ 確約 ($k=1$)</td>
+                        </tr>
+                        <tr class="hover:bg-slate-700/30">
+                            <td class="p-2.5 font-bold text-purple-300">⑦ 区間 $(p, q)$ の間</td>
+                            <td class="p-2.5">$p < x_1, x_2 < q$</td>
+                            <td class="p-2.5">$D > 0$</td>
+                            <td class="p-2.5">$p < \text{軸} < q$</td>
+                            <td class="p-2.5">$f(p) > 0$ かつ $f(q) > 0$</td>
+                            <td class="p-2.5 text-slate-400">例: $-3 < x_1, x_2 < 2$</td>
+                        </tr>
+                        <tr class="hover:bg-slate-700/30 bg-rose-950/10">
+                            <td class="p-2.5 font-bold text-rose-300">⑧ 区間 $(p, q)$ を挟む</td>
+                            <td class="p-2.5">$x_1 < p < q < x_2$</td>
+                            <td class="p-2.5 text-slate-500 font-bold">不要 (自動成立)</td>
+                            <td class="p-2.5 text-slate-500 font-bold">不要</td>
+                            <td class="p-2.5 text-emerald-300 font-bold">$f(p) < 0$ かつ $f(q) < 0$</td>
+                            <td class="p-2.5 text-slate-400">両端点で負なら解は区間の外側</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // Presets Configuration (a = 1 fixed)
+        const PRESETS = [
+            { id: 'both_pos', name: '① ともに正', desc: '2解がともに0より大きい (x1, x2 > 0)', vx: 2, vy: -1, k1: 0, k2: null, type: 'single_gt' },
+            { id: 'both_neg', name: '② ともに負', desc: '2解がともに0より小さい (x1, x2 < 0)', vx: -2, vy: -1, k1: 0, k2: null, type: 'single_lt' },
+            { id: 'diff_sign', name: '③ 正と負 (異符号)', desc: '0を跨いで正負に1つずつ (x1 < 0 < x2)', vx: 0.5, vy: -3.25, k1: 0, k2: null, type: 'between_zero' },
+            { id: 'gt_2', name: '④ ともに 2より大', desc: '2解がともに2より大きい (x1, x2 > 2)', vx: 3.5, vy: -0.25, k1: 2, k2: null, type: 'single_gt' },
+            { id: 'lt_2', name: '⑤ ともに 2より小', desc: '2解がともに2より小さい (x1, x2 < 2)', vx: -1, vy: -4, k1: 2, k2: null, type: 'single_lt' },
+            { id: 'straddle_1', name: '⑥ 1より大と1より小', desc: '1を挟んで左右に1つずつ (x1 < 1 < x2)', vx: 1.5, vy: -3.25, k1: 1, k2: null, type: 'straddle_k' },
+            { id: 'between_m3_2', name: '⑦ -3 と 2 の間', desc: '2解がともに -3 < x1, x2 < 2 の範囲にある', vx: -0.5, vy: -2.25, k1: -3, k2: 2, type: 'in_interval' },
+            { id: 'outside_m3_2', name: '⑧ -3未満 と 2より大', desc: '-3 と 2 を挟んで外側に1つずつ (x1 < -3 < 2 < x2)', vx: -0.5, vy: -8.25, k1: -3, k2: 2, type: 'straddle_interval' },
+            { id: 'custom', name: '⚙️ カスタム', desc: '頂点をドラッグして自由に探索', vx: 2, vy: -1, k1: 0, k2: 2, type: 'custom' }
+        ];
+
+        // Global State (a = 1 fixed)
+        let state = {
+            a: 1.0,           // Fixed
+            vx: 2.0,          // Vertex x = -b/2a
+            vy: -1.0,         // Vertex y = c - b^2/4a
+            k1: 0.0,
+            k2: 2.0,
+            currentPreset: 'both_pos',
+            solutionType: 'distinct', // 'distinct' (D > 0) or 'exist' (D >= 0)
+            isInterval: false
+        };
+
+        // Derived parameters (b, c)
+        function getB() { return -2 * state.a * state.vx; }
+        function getC() { return state.a * state.vx * state.vx + state.vy; }
+
+        // Dragging State
+        let dragTarget = null; // 'vertex', 'k1', 'k2', or null
+
+        // Canvas & Context
+        const canvas = document.getElementById('graphCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Coordinate System Mapping
+        const minX = -7, maxX = 7;
+        const minY = -9, maxY = 11;
+
+        function toScreenX(x, width) { return ((x - minX) / (maxX - minX)) * width; }
+        function toScreenY(y, height) { return height - ((y - minY) / (maxY - minY)) * height; }
+        function toMathX(sx, width) { return minX + (sx / width) * (maxX - minX); }
+        function toMathY(sy, height) { return minY + ((height - sy) / height) * (maxY - minY); }
+
+        function init() {
+            renderPresetButtons();
+            bindEvents();
+            loadPreset('both_pos');
+            window.addEventListener('resize', drawGraph);
+        }
+
+        function renderPresetButtons() {
+            const container = document.getElementById('presetButtons');
+            container.innerHTML = PRESETS.map(p => `
+                <button onclick="loadPreset('${p.id}')" id="btn_preset_${p.id}" 
+                        class="px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-150 flex items-center gap-1 bg-slate-800 text-slate-300 border-slate-700 hover:border-slate-500">
+                    ${p.name}
+                </button>
+            `).join('');
+        }
+
+        function setSolutionType(type) {
+            state.solutionType = type;
+            document.getElementById('modeDistinctBtn').className = type === 'distinct' 
+                ? 'px-3 py-1 rounded-md font-semibold transition-all bg-emerald-600 text-white shadow'
+                : 'px-3 py-1 rounded-md font-semibold transition-all text-slate-400 hover:text-white';
+            document.getElementById('modeExistBtn').className = type === 'exist' 
+                ? 'px-3 py-1 rounded-md font-semibold transition-all bg-emerald-600 text-white shadow'
+                : 'px-3 py-1 rounded-md font-semibold transition-all text-slate-400 hover:text-white';
+            update();
+        }
+
+        function bindEvents() {
+            // Slider events
+            document.getElementById('sliderK1').addEventListener('input', (e) => {
+                state.k1 = parseFloat(e.target.value);
+                if (state.isInterval && state.k2 <= state.k1) {
+                    state.k2 = state.k1 + 0.5;
+                    document.getElementById('sliderK2').value = state.k2;
+                }
+                state.currentPreset = 'custom';
+                highlightActivePresetButton();
+                update();
+            });
+
+            document.getElementById('sliderK2').addEventListener('input', (e) => {
+                state.k2 = parseFloat(e.target.value);
+                if (state.k2 <= state.k1) {
+                    state.k1 = state.k2 - 0.5;
+                    document.getElementById('sliderK1').value = state.k1;
+                }
+                state.currentPreset = 'custom';
+                highlightActivePresetButton();
+                update();
+            });
+
+            // Canvas Pointer/Drag Events
+            const handlePointerDown = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const sx = e.clientX - rect.left;
+                const sy = e.clientY - rect.top;
+                const mx = toMathX(sx, rect.width);
+                const my = toMathY(sy, rect.height);
+
+                // Check vertex hit
+                const svx = toScreenX(state.vx, rect.width);
+                const svy = toScreenY(state.vy, rect.height);
+                const distVertex = Math.hypot(sx - svx, sy - svy);
+
+                // Check boundary lines hit (k1, k2)
+                const sk1 = toScreenX(state.k1, rect.width);
+                const distK1 = Math.abs(sx - sk1);
+
+                let distK2 = Infinity;
+                if (state.isInterval) {
+                    const sk2 = toScreenX(state.k2, rect.width);
+                    distK2 = Math.abs(sx - sk2);
+                }
+
+                if (distVertex < 20) {
+                    dragTarget = 'vertex';
+                } else if (distK1 < 15 && distK1 < distK2) {
+                    dragTarget = 'k1';
+                } else if (distK2 < 15) {
+                    dragTarget = 'k2';
+                } else {
+                    // Click anywhere on graph to move vertex
+                    dragTarget = 'vertex';
+                    updateVertexFromMath(mx, my);
+                }
+                
+                canvas.setPointerCapture(e.pointerId);
+            };
+
+            const handlePointerMove = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const sx = e.clientX - rect.left;
+                const sy = e.clientY - rect.top;
+                const mx = toMathX(sx, rect.width);
+                const my = toMathY(sy, rect.height);
+
+                if (!dragTarget) {
+                    // Cursor hover hints
+                    const svx = toScreenX(state.vx, rect.width);
+                    const svy = toScreenY(state.vy, rect.height);
+                    const distVertex = Math.hypot(sx - svx, sy - svy);
+                    const distK1 = Math.abs(sx - toScreenX(state.k1, rect.width));
+                    const distK2 = state.isInterval ? Math.abs(sx - toScreenX(state.k2, rect.width)) : Infinity;
+
+                    if (distVertex < 20 || distK1 < 15 || distK2 < 15) {
+                        canvas.style.cursor = 'grab';
+                    } else {
+                        canvas.style.cursor = 'crosshair';
+                    }
+                    return;
+                }
+
+                canvas.style.cursor = 'grabbing';
+
+                if (dragTarget === 'vertex') {
+                    updateVertexFromMath(mx, my);
+                } else if (dragTarget === 'k1') {
+                    let newK1 = Math.round(mx * 2) / 2;
+                    newK1 = Math.max(-6, Math.min(6, newK1));
+                    state.k1 = newK1;
+                    if (state.isInterval && state.k2 <= state.k1) {
+                        state.k2 = state.k1 + 0.5;
+                        document.getElementById('sliderK2').value = state.k2;
+                    }
+                    document.getElementById('sliderK1').value = state.k1;
+                } else if (dragTarget === 'k2') {
+                    let newK2 = Math.round(mx * 2) / 2;
+                    newK2 = Math.max(-6, Math.min(6, newK2));
+                    state.k2 = newK2;
+                    if (state.k2 <= state.k1) {
+                        state.k1 = state.k2 - 0.5;
+                        document.getElementById('sliderK1').value = state.k1;
+                    }
+                    document.getElementById('sliderK2').value = state.k2;
+                }
+
+                state.currentPreset = 'custom';
+                highlightActivePresetButton();
+                update();
+            };
+
+            const handlePointerUp = (e) => {
+                dragTarget = null;
+                canvas.style.cursor = 'crosshair';
+                try { canvas.releasePointerCapture(e.pointerId); } catch(err){}
+            };
+
+            canvas.addEventListener('pointerdown', handlePointerDown);
+            canvas.addEventListener('pointermove', handlePointerMove);
+            canvas.addEventListener('pointerup', handlePointerUp);
+            canvas.addEventListener('pointercancel', handlePointerUp);
+        }
+
+        function updateVertexFromMath(mx, my) {
+            // Clamp within reasonable range
+            state.vx = Math.max(-6, Math.min(6, Math.round(mx * 10) / 10));
+            state.vy = Math.max(-8, Math.min(8, Math.round(my * 10) / 10));
+        }
+
+        function loadPreset(id) {
+            const p = PRESETS.find(item => item.id === id);
+            if (!p) return;
+
+            state.currentPreset = id;
+            state.vx = p.vx;
+            state.vy = p.vy;
+            state.k1 = p.k1;
+            if (p.k2 !== null) {
+                state.k2 = p.k2;
+                state.isInterval = true;
+            } else {
+                state.isInterval = false;
+            }
+
+            if (p.type === 'in_interval' || p.type === 'straddle_interval') {
+                state.isInterval = true;
+            }
+
+            // Sync UI Sliders
+            document.getElementById('sliderK1').value = state.k1;
+            document.getElementById('sliderK2').value = state.k2;
+
+            highlightActivePresetButton();
+            update();
+        }
+
+        function highlightActivePresetButton() {
+            PRESETS.forEach(p => {
+                const btn = document.getElementById(`btn_preset_${p.id}`);
+                if (!btn) return;
+                if (p.id === state.currentPreset) {
+                    btn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-150 flex items-center gap-1 bg-emerald-600/30 text-emerald-300 border-emerald-500 shadow-md ring-1 ring-emerald-500/50';
+                } else {
+                    btn.className = 'px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-150 flex items-center gap-1 bg-slate-800 text-slate-300 border-slate-700 hover:border-slate-500';
+                }
+            });
+        }
+
+        function update() {
+            const b = getB();
+            const c = getC();
+
+            // Update UI Labels
+            document.getElementById('valK1').innerText = state.k1.toFixed(1);
+            document.getElementById('valK2').innerText = state.k2.toFixed(1);
+
+            // Toggle boundary 2 display
+            const b2Box = document.getElementById('boundary2Box');
+            if (state.isInterval) {
+                b2Box.classList.remove('hidden');
+                document.getElementById('boundaryLabel1').innerText = '基準値 p (左端)';
+            } else {
+                b2Box.classList.add('hidden');
+                document.getElementById('boundaryLabel1').innerText = '基準値 k (境界線)';
+            }
+
+            // Quadratic equation representation: f(x) = x^2 + bx + c
+            const signB = b >= 0 ? `+ ${b.toFixed(1)}` : `- ${Math.abs(b).toFixed(1)}`;
+            const signC = c >= 0 ? `+ ${c.toFixed(1)}` : `- ${Math.abs(c).toFixed(1)}`;
+            
+            let eqStr = 'f(x) = x²';
+            if (Math.abs(b) > 0.01) eqStr += ` ${signB}x`;
+            if (Math.abs(c) > 0.01) eqStr += ` ${signC}`;
+            document.getElementById('currentEquation').innerText = eqStr;
+
+            // Math calculations
+            const D = b * b - 4 * state.a * c; // Note: D = 4*vx^2 - 4*(vx^2 + vy) = -4*vy
+            const axis = state.vx;
+            const fk1 = state.a * state.k1 * state.k1 + b * state.k1 + c;
+            const fk2 = state.a * state.k2 * state.k2 + b * state.k2 + c;
+
+            // Stats Update
+            document.getElementById('statD').innerText = D.toFixed(2);
+            document.getElementById('statAxis').innerText = axis.toFixed(2);
+            document.getElementById('statFLabel').innerText = state.isInterval ? `f(p)=${fk1.toFixed(1)}, f(q)=${fk2.toFixed(1)}` : `端点の値 f(${state.k1})`;
+            document.getElementById('statFVal').innerText = state.isInterval ? `${fk1.toFixed(1)} / ${fk2.toFixed(1)}` : fk1.toFixed(2);
+
+            // Check conditions
+            evaluateConditions(D, axis, fk1, fk2);
+
+            // Render Graph
+            drawGraph();
+
+            // Re-render KaTeX if available
+            if (window.renderMathInElement) {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false}
+                    ]
+                });
+            }
+        }
+
+        function evaluateConditions(D, axis, fk1, fk2) {
+            const listEl = document.getElementById('conditionsList');
+            const expEl = document.getElementById('explanationText');
+            let conditions = [];
+            let explanation = '';
+
+            const reqD = state.solutionType === 'distinct' ? D > 0 : D >= 0;
+            const reqDText = state.solutionType === 'distinct' ? 'D > 0' : 'D \\ge 0';
+            const reqDLabel = state.solutionType === 'distinct' ? '異なる2つの実数解' : '実数解を持つ';
+
+            const p = PRESETS.find(item => item.id === state.currentPreset) || { type: 'custom' };
+
+            // Check pattern types
+            if (state.currentPreset === 'diff_sign' || state.currentPreset === 'straddle_1' || p.type === 'between_zero' || p.type === 'straddle_k') {
+                // 正と負（異符号解）や k を挟む解 (x1 < k < x2): f(k) < 0 のみ必要。Dと軸は「不要」
+                const kStr = state.k1.toString();
+                conditions = [
+                    { name: `① 判別式: ${reqDText}`, pass: true, val: `D = ${D.toFixed(2)}`, notNeeded: true, note: `判定不要（f(${kStr})<0 より自動成立）` },
+                    { name: `② 軸の位置: -\\frac{b}{2a}`, pass: true, val: `軸 = ${axis.toFixed(2)}`, notNeeded: true, note: '判定不要（位置不問）' },
+                    { name: `③ 端点の符号: f(${kStr}) < 0`, pass: fk1 < 0, val: `f(${kStr}) = ${fk1.toFixed(2)}`, required: true }
+                ];
+                explanation = `
+                    <p class="font-bold text-indigo-300">💡 なぜ D や 軸 の条件が「不要」なのか？</p>
+                    <p>下に凸 ($a = 1 > 0$) の放物線において、<span class="text-emerald-400 font-bold">$f(${kStr}) < 0$</span> である場合、頂点は必ず $x$ 軸より下（$y < 0$）になります。</p>
+                    <p class="mt-1">そのため、<strong>判別式 $D > 0$ は自動的に保証</strong>され、さらに $x=${kStr}$ を跨いで左右で $x$ 軸と交わるため（$x_1 < ${kStr} < x_2$）、<strong>軸がどこにあっても $k=${kStr}$ より大きい解と小さい解を1つずつ持ちます</strong>。</p>
+                `;
+            } 
+            else if (state.currentPreset === 'straddle_interval' || p.type === 'straddle_interval') {
+                // 区間を挟む: f(p) < 0 かつ f(q) < 0
+                conditions = [
+                    { name: `① 判別式: ${reqDText}`, pass: true, val: `D = ${D.toFixed(2)}`, notNeeded: true, note: '判定不要（両端負より自動成立）' },
+                    { name: `② 軸の位置`, pass: true, val: `軸 = ${axis.toFixed(2)}`, notNeeded: true, note: '判定不要（位置不問）' },
+                    { name: `③ 端点 p: f(${state.k1}) < 0`, pass: fk1 < 0, val: `f(${state.k1}) = ${fk1.toFixed(2)}`, required: true },
+                    { name: `④ 端点 q: f(${state.k2}) < 0`, pass: fk2 < 0, val: `f(${state.k2}) = ${fk2.toFixed(2)}`, required: true }
+                ];
+                explanation = `
+                    <p class="font-bold text-rose-300">💡 区間 $[p, q]$ を挟む（外側に1つずつ解）条件</p>
+                    <p>両端点 $p, q$ で $f(p) < 0, f(q) < 0$ であれば、下に凸のグラフは $p$ より左と $q$ より右で必ず $x$ 軸を跨ぎます。この場合も $D > 0$ や軸条件は判定不要（自動成立）です。</p>
+                `;
+            }
+            else if (state.isInterval || p.type === 'in_interval') {
+                // 区間内: -3 < x1, x2 < 2
+                conditions = [
+                    { name: `① 判別式: ${reqDText} (${reqDLabel})`, pass: reqD, val: `D = ${D.toFixed(2)}`, required: true },
+                    { name: `② 軸の位置: ${state.k1} < 軸 < ${state.k2}`, pass: axis > state.k1 && axis < state.k2, val: `軸 = ${axis.toFixed(2)}`, required: true },
+                    { name: `③ 端点 p: f(${state.k1}) > 0`, pass: fk1 > 0, val: `f(${state.k1}) = ${fk1.toFixed(2)}`, required: true },
+                    { name: `④ 端点 q: f(${state.k2}) > 0`, pass: fk2 > 0, val: `f(${state.k2}) = ${fk2.toFixed(2)}`, required: true }
+                ];
+                explanation = `
+                    <p class="font-bold text-purple-300">💡 区間 $(p, q)$ 内に2解が存在する条件</p>
+                    <p>解を区間内に閉じ込めるには、<strong>①解が存在する($D>0$)</strong>、<strong>②軸が区間内にある</strong>、<strong>③両端でグラフが浮いている($f(p)>0, f(q)>0$)</strong> の4条件すべてが必要です。</p>
+                `;
+            }
+            else if (p.type === 'single_lt' || (state.currentPreset === 'custom' && axis < state.k1)) {
+                // ともに k より小さい
+                conditions = [
+                    { name: `① 判別式: ${reqDText} (${reqDLabel})`, pass: reqD, val: `D = ${D.toFixed(2)}`, required: true },
+                    { name: `② 軸の位置: 軸 < ${state.k1}`, pass: axis < state.k1, val: `軸 = ${axis.toFixed(2)}`, required: true },
+                    { name: `③ 端点の符号: f(${state.k1}) > 0`, pass: fk1 > 0, val: `f(${state.k1}) = ${fk1.toFixed(2)}`, required: true }
+                ];
+                explanation = `
+                    <p class="font-bold text-blue-300">💡 2解がともに $k$ より小さい条件</p>
+                    <p>放物線が $x = k$ より左側で $x$ 軸と交わるためには、<strong>①実数解が存在し ($D>0$)</strong>、<strong>②軸が $k$ より左にあり (軸 $< k$)</strong>、<strong>③$f(k) > 0$</strong> の3条件が必要です。</p>
+                `;
+            }
+            else {
+                // ともに k より大きい
+                conditions = [
+                    { name: `① 判別式: ${reqDText} (${reqDLabel})`, pass: reqD, val: `D = ${D.toFixed(2)}`, required: true },
+                    { name: `② 軸の位置: 軸 > ${state.k1}`, pass: axis > state.k1, val: `軸 = ${axis.toFixed(2)}`, required: true },
+                    { name: `③ 端点の符号: f(${state.k1}) > 0`, pass: fk1 > 0, val: `f(${state.k1}) = ${fk1.toFixed(2)}`, required: true }
+                ];
+                explanation = `
+                    <p class="font-bold text-blue-300">💡 2解がともに $k$ より大きい条件</p>
+                    <p>放物線が $x = k$ より右側で $x$ 軸と交わるためには、<strong>①実数解が存在し ($D>0$)</strong>、<strong>②軸が $k$ より右にあり (軸 $> k$)</strong>、<strong>③$f(k) > 0$</strong> の3条件が必要です。</p>
+                `;
+            }
+
+            // Render condition items
+            let allActivePass = true;
+
+            listEl.innerHTML = conditions.map(c => {
+                if (c.notNeeded) {
+                    // グレーアウト（判定不要）表示
+                    return `
+                        <div class="p-3 rounded-lg border bg-slate-900/40 border-slate-800 text-slate-500 opacity-70 transition-all flex items-center justify-between">
+                            <div>
+                                <div class="font-semibold text-xs sm:text-sm flex items-center gap-2 text-slate-400">
+                                    <span class="text-xs px-1.5 py-0.5 rounded bg-slate-800 text-slate-500 border border-slate-700">不要</span>
+                                    <span class="line-through decoration-slate-600">${c.name}</span>
+                                </div>
+                                <div class="text-[11px] text-slate-500 mt-1 pl-1 font-sans">${c.note}</div>
+                            </div>
+                            <span class="font-mono text-xs px-2 py-1 bg-slate-950/60 rounded border border-slate-800 text-slate-500">${c.val}</span>
+                        </div>
+                    `;
+                }
+
+                if (!c.pass) allActivePass = false;
+
+                // Active required condition style
+                const containerStyle = c.pass 
+                    ? 'bg-emerald-950/40 border-emerald-500/60 text-emerald-200 shadow-sm shadow-emerald-950 ring-1 ring-emerald-500/30' 
+                    : 'bg-rose-950/40 border-rose-500/60 text-rose-200 shadow-sm shadow-rose-950 ring-1 ring-rose-500/30';
+
+                return `
+                    <div class="p-3 rounded-lg border ${containerStyle} flex items-center justify-between transition-all">
+                        <div>
+                            <div class="font-bold text-xs sm:text-sm flex items-center gap-2">
+                                <span class="text-base">${c.pass ? '✅' : '❌'}</span>
+                                <span class="${c.pass ? 'text-emerald-300' : 'text-rose-300'}">${c.name}</span>
+                            </div>
+                        </div>
+                        <span class="font-mono text-xs font-bold px-2.5 py-1 bg-slate-900/80 rounded border ${c.pass ? 'border-emerald-500/40 text-emerald-300' : 'border-rose-500/40 text-rose-300'}">${c.val}</span>
+                    </div>
+                `;
+            }).join('');
+
+            // Overall badge update
+            const badge = document.getElementById('overallResultBadge');
+            if (allActivePass) {
+                badge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-sm';
+                badge.innerText = '✨ 条件クリア（解の配置成立）';
+            } else {
+                badge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-rose-500/20 text-rose-400 border border-rose-500/40 shadow-sm';
+                badge.innerText = '⚠️ 条件不成立';
+            }
+
+            expEl.innerHTML = explanation;
+        }
+
+        function drawGraph() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+            const width = rect.width;
+            const height = rect.height;
+
+            const b = getB();
+            const c = getC();
+
+            // Clear Background
+            ctx.fillStyle = '#020617';
+            ctx.fillRect(0, 0, width, height);
+
+            // Draw Grid Lines
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = '#1e293b';
+
+            for (let x = Math.ceil(minX); x <= Math.floor(maxX); x++) {
+                const sx = toScreenX(x, width);
+                ctx.beginPath();
+                ctx.moveTo(sx, 0);
+                ctx.lineTo(sx, height);
+                ctx.stroke();
+            }
+            for (let y = Math.ceil(minY); y <= Math.floor(maxY); y++) {
+                const sy = toScreenY(y, height);
+                ctx.beginPath();
+                ctx.moveTo(0, sy);
+                ctx.lineTo(width, sy);
+                ctx.stroke();
+            }
+
+            // Draw Main Axes
+            const originX = toScreenX(0, width);
+            const originY = toScreenY(0, height);
+
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#475569';
+            
+            // X Axis
+            ctx.beginPath();
+            ctx.moveTo(0, originY);
+            ctx.lineTo(width, originY);
+            ctx.stroke();
+
+            // Y Axis
+            ctx.beginPath();
+            ctx.moveTo(originX, 0);
+            ctx.lineTo(originX, height);
+            ctx.stroke();
+
+            // Axis Tick Labels
+            ctx.fillStyle = '#64748b';
+            ctx.font = '10px sans-serif';
+            for (let x = -6; x <= 6; x += 2) {
+                if (x !== 0) ctx.fillText(x.toString(), toScreenX(x, width) - 4, originY + 14);
+            }
+            for (let y = -8; y <= 10; y += 4) {
+                if (y !== 0) ctx.fillText(y.toString(), originX + 6, toScreenY(y, height) + 3);
+            }
+
+            // Draw Boundary Lines (k1, and k2 if interval)
+            drawBoundaryLine(state.k1, state.isInterval ? 'p' : 'k', '#10b981', width, height);
+            if (state.isInterval) {
+                drawBoundaryLine(state.k2, 'q', '#10b981', width, height);
+            }
+
+            // Draw Axis of Symmetry (x = vx)
+            const screenAxisX = toScreenX(state.vx, width);
+            ctx.setLineDash([5, 4]);
+            ctx.strokeStyle = '#f59e0b'; // amber
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(screenAxisX, 0);
+            ctx.lineTo(screenAxisX, height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Label for Axis
+            ctx.fillStyle = '#f59e0b';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillText(`軸 x = ${state.vx.toFixed(1)}`, screenAxisX + 6, 18);
+
+            // Draw Quadratic Curve y = x^2 + bx + c
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#3b82f6'; // blue
+            ctx.beginPath();
+            let first = true;
+            const step = (maxX - minX) / 300;
+
+            for (let x = minX; x <= maxX; x += step) {
+                const y = state.a * x * x + b * x + c;
+                const sx = toScreenX(x, width);
+                const sy = toScreenY(y, height);
+
+                if (first) {
+                    ctx.moveTo(sx, sy);
+                    first = false;
+                } else {
+                    ctx.lineTo(sx, sy);
+                }
+            }
+            ctx.stroke();
+
+            // Draw Vertex Point (Interactive Target)
+            const screenVertexY = toScreenY(state.vy, height);
+            
+            // Outer Glowing Ring for Vertex
+            ctx.fillStyle = 'rgba(245, 158, 11, 0.25)';
+            ctx.beginPath();
+            ctx.arc(screenAxisX, screenVertexY, 12, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#f59e0b';
+            ctx.beginPath();
+            ctx.arc(screenAxisX, screenVertexY, 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.fillStyle = '#fbbf24';
+            ctx.font = 'bold 11px font-mono';
+            ctx.fillText(`頂点 (${state.vx.toFixed(1)}, ${state.vy.toFixed(1)})`, screenAxisX + 10, screenVertexY + 14);
+
+            // Draw Boundary Point f(k1) and f(k2)
+            const fk1 = state.a * state.k1 * state.k1 + b * state.k1 + c;
+            drawBoundaryPoint(state.k1, fk1, width, height);
+
+            if (state.isInterval) {
+                const fk2 = state.a * state.k2 * state.k2 + b * state.k2 + c;
+                drawBoundaryPoint(state.k2, fk2, width, height);
+            }
+
+            // Draw Real Roots (x-intercepts)
+            const D = b * b - 4 * state.a * c;
+            if (D >= 0) {
+                const r1 = (-b - Math.sqrt(D)) / (2 * state.a);
+                const r2 = (-b + Math.sqrt(D)) / (2 * state.a);
+
+                // Compare roots with reference value (k1 or p)
+                const refVal = state.k1;
+
+                drawRootPoint(r1, originY, 'x₁', width, refVal);
+                if (D > 0) {
+                    drawRootPoint(r2, originY, 'x₂', width, refVal);
+                }
+            }
+        }
+
+        function drawBoundaryLine(xVal, label, color, width, height) {
+            const sx = toScreenX(xVal, width);
+            ctx.setLineDash([4, 4]);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(sx, 0);
+            ctx.lineTo(sx, height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Line handle at top
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(sx, 12, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = color;
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillText(`x = ${label} (${xVal.toFixed(1)})`, sx + 8, height - 12);
+        }
+
+        function drawBoundaryPoint(xVal, yVal, width, height) {
+            const sx = toScreenX(xVal, width);
+            const sy = toScreenY(yVal, height);
+
+            const isPos = yVal > 0;
+            const isZero = Math.abs(yVal) < 0.001;
+
+            ctx.fillStyle = isPos ? '#10b981' : (isZero ? '#eab308' : '#f43f5e');
+            ctx.beginPath();
+            ctx.arc(sx, sy, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(sx, sy, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = isPos ? '#34d399' : '#fda4af';
+            ctx.font = 'bold 11px font-mono';
+            const signText = isPos ? `f(${xVal}) > 0` : (isZero ? `f(${xVal}) = 0` : `f(${xVal}) < 0`);
+            ctx.fillText(signText, sx + 8, sy - 8);
+        }
+
+        function drawRootPoint(xVal, originY, name, width, refX) {
+            const sx = toScreenX(xVal, width);
+            
+            // Compare root with boundary value k: > k is Purple, < k is Red
+            const isGreater = xVal > refX;
+            const color = isGreater ? '#a855f7' : '#f43f5e';     // Purple (#a855f7) vs Red (#f43f5e)
+            const textColor = isGreater ? '#e9d5ff' : '#fecdd3'; // Light Purple vs Light Red
+
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(sx, originY, 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            ctx.fillStyle = textColor;
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillText(`${name}=${xVal.toFixed(2)}`, sx - 14, originY + 18);
+        }
+
+        // Initialize App on Load
+        window.onload = init;
+    </script>
+</body>
+</html>
