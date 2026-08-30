@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三角関数・2次関数 解の個数シミュレーター</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- KaTeX imports for mathematical formulas -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .code-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.7);
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen pb-6 text-sm">
+
+    <header class="border-b border-slate-800 bg-slate-900/95 backdrop-blur sticky top-0 z-50 px-4 py-2.5 mb-3">
+        <div class="max-w-7xl mx-auto flex justify-between items-center gap-2">
+            <div>
+                <h1 class="text-base md:text-lg font-bold bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">
+                    三角関数と2次関数の解の個数可視化ツール
+                </h1>
+                <p class="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
+                    <span>方程式:</span>
+                    <span class="tex-math font-semibold text-slate-200">2(\sin\theta)^2 - \sin\theta + 3 = a</span>
+                    <span class="text-slate-500">（<span class="tex-math">x = \sin\theta</span> と置換: <span class="tex-math">2x^2 - x + 3 = a</span>）</span>
+                </p>
+            </div>
+            <span class="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-950 text-blue-300 border border-blue-800">
+                高校数学II
+            </span>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 space-y-2.5">
+
+        <!-- 設定コントロール領域 -->
+        <section class="bg-slate-800/80 border border-slate-700/80 rounded-lg p-3 shadow-md">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 items-center">
+                
+                <!-- θ の範囲選択 -->
+                <div class="lg:col-span-5 space-y-1">
+                    <label class="block text-xs font-semibold text-slate-300">
+                        1. <span class="tex-math">\theta</span> の範囲を選択
+                    </label>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5" id="rangeContainer">
+                        <button data-range="0_2pi" class="range-btn py-1 px-2 rounded text-xs font-medium border transition-all duration-200 bg-blue-600 border-blue-500 text-white shadow">
+                            <span class="tex-math">0 \le \theta < 2\pi</span>
+                        </button>
+                        <button data-range="0_pi" class="range-btn py-1 px-2 rounded text-xs font-medium border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700">
+                            <span class="tex-math">0 \le \theta \le \pi</span>
+                        </button>
+                        <button data-range="0_7pi6" class="range-btn py-1 px-2 rounded text-xs font-medium border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700">
+                            <span class="tex-math">0 \le \theta \le \frac{7}{6}\pi</span>
+                        </button>
+                        <button data-range="0_3pi2" class="range-btn py-1 px-2 rounded text-xs font-medium border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700">
+                            <span class="tex-math">0 \le \theta \le \frac{3}{2}\pi</span>
+                        </button>
+                    </div>
+                </div>
+<body class="bg-slate-900 text-slate-100 min-h-screen pb-4 text-xs">
+
+    <!-- コンパクトヘッダー -->
+    <header class="border-b border-slate-800 bg-slate-900/95 backdrop-blur sticky top-0 z-50 px-2 py-1.5 mb-2">
+        <div class="max-w-md mx-auto flex justify-between items-center">
+            <h1 class="text-xs font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent truncate">
+                三角関数・2次関数の解の個数
+            </h1>
+            <span class="text-[10px] text-slate-400 code-font">2sin²θ - sinθ + 3 = a</span>
+        </div>
+    </header>
+
+    <main class="max-w-md mx-auto px-2 space-y-2">
+
+        <!-- 設定コントロール領域 (コンパクト化) -->
+        <section class="bg-slate-800/90 border border-slate-700/80 rounded-lg p-2 shadow-sm space-y-1.5">
+            <!-- θ の範囲選択 (1行4分割) -->
+            <div>
+                <div class="text-[10px] text-slate-400 mb-1">1. <span class="tex-math">\theta</span> の範囲</div>
+                <div class="grid grid-cols-4 gap-1" id="rangeContainer">
+                    <button data-range="0_2pi" class="range-btn py-1 px-1 rounded text-[10px] font-medium border transition-all bg-blue-600 border-blue-500 text-white text-center truncate">
+                        <span class="tex-math">0 \le \theta < 2\pi</span>
+                    </button>
+                    <button data-range="0_pi" class="range-btn py-1 px-1 rounded text-[10px] font-medium border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 text-center truncate">
+                        <span class="tex-math">0 \le \theta \le \pi</span>
+                    </button>
+                    <button data-range="0_7pi6" class="range-btn py-1 px-1 rounded text-[10px] font-medium border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 text-center truncate">
+                        <span class="tex-math">0 \le \theta \le \frac{7}{6}\pi</span>
+                    </button>
+                    <button data-range="0_3pi2" class="range-btn py-1 px-1 rounded text-[10px] font-medium border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 text-center truncate">
+                        <span class="tex-math">0 \le \theta \le \frac{3}{2}\pi</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- a の値スライダー & 注目値 -->
+            <div class="space-y-1 pt-0.5 border-t border-slate-700/50">
+                <div class="flex justify-between items-center text-[10px]">
+                    <span class="text-slate-400">2. 定数 <span class="tex-math">a</span></span>
+                    <span class="font-bold code-font text-amber-400 bg-slate-950 px-1.5 py-0.5 rounded">
+                        a = <span id="aValueText">2.875</span>
+                    </span>
+                </div>
+
+                <div class="flex items-center gap-1.5">
+                    <input type="range" id="aSlider" min="2.50" max="6.50" step="0.005" value="2.875" class="w-full h-1.5 bg-slate-700 rounded appearance-none cursor-pointer">
+                    <button id="playBtn" class="p-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 shrink-0" title="再生/停止">
+                        <svg id="playIcon" class="w-3 h-3 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        <svg id="pauseIcon" class="w-3 h-3 fill-current hidden" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                    </button>
+                </div>
+
+                <!-- 注目値ボタン (1行横並び) -->
+                <div class="flex items-center justify-between text-[10px] pt-0.5">
+                    <span class="text-slate-500 shrink-0">注目値:</span>
+                    <div class="flex items-center gap-1">
+                        <button class="preset-btn px-1.5 py-0.5 bg-slate-700 hover:bg-slate-600 rounded text-slate-200 code-font" data-value="2.875">23/8</button>
+                        <button class="preset-btn px-1.5 py-0.5 bg-slate-700 hover:bg-slate-600 rounded text-slate-200 code-font" data-value="3.00">3</button>
+                        <button class="preset-btn px-1.5 py-0.5 bg-slate-700 hover:bg-slate-600 rounded text-slate-200 code-font" data-value="3.50">7/2</button>
+                        <button class="preset-btn px-1.5 py-0.5 bg-slate-700 hover:bg-slate-600 rounded text-slate-200 code-font" data-value="4.00">4</button>
+                        <button class="preset-btn px-1.5 py-0.5 bg-slate-700 hover:bg-slate-600 rounded text-slate-200 code-font" data-value="6.00">6</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 解の個数サマリー (コンパクト2列) -->
+        <section class="grid grid-cols-2 gap-1.5">
+            <div class="bg-slate-800/80 border border-blue-500/30 rounded-md p-1.5 flex items-center justify-between">
+                <div>
+                    <div class="text-[10px] font-bold text-slate-200"><span class="tex-math">x</span> の解</div>
+                    <div class="text-[9px] text-slate-400" id="xDomainInline"><span class="tex-math">-1 \le x \le 1</span></div>
+                </div>
+                <div class="text-right">
+                    <span id="xCountBadge" class="text-xl font-extrabold text-blue-400 code-font">1</span>
+                    <span class="text-[10px] text-slate-400">個</span>
+                </div>
+            </div>
+
+            <div class="bg-slate-800/80 border border-emerald-500/30 rounded-md p-1.5 flex items-center justify-between">
+                <div>
+                    <div class="text-[10px] font-bold text-slate-200"><span class="tex-math">\theta</span> の解</div>
+                    <div class="text-[9px] text-slate-400"><span class="tex-math">x = \sin\theta</span></div>
+                </div>
+                <div class="text-right">
+                    <span id="thetaCountBadge" class="text-xl font-extrabold text-emerald-400 code-font">2</span>
+                    <span class="text-[10px] text-slate-400">個</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- グラフエリア (スマホ画面でも常に2列表示) -->
+        <section class="grid grid-cols-2 gap-1.5">
+            
+            <!-- 左: 2次関数グラフ -->
+            <div class="bg-slate-800/70 border border-slate-700/80 rounded-md p-1.5 flex flex-col">
+                <div class="text-[10px] font-bold text-slate-200 mb-1 flex items-center justify-between">
+                    <span class="truncate">2次関数</span>
+                    <span class="text-[9px] text-slate-400 font-normal">y=2x²-x+3</span>
+                </div>
+                
+                <div class="relative w-full aspect-square bg-slate-950 rounded border border-slate-800">
+                    <canvas id="quadraticCanvas" class="w-full h-full block"></canvas>
+                </div>
+
+                <div class="mt-1 p-1 bg-slate-950/80 rounded border border-slate-800/80 text-[9px] code-font text-slate-300 truncate">
+                    <div id="xValueList">x = 0.25</div>
+                </div>
+            </div>
+
+            <!-- 右: 単位円 -->
+            <div class="bg-slate-800/70 border border-slate-700/80 rounded-md p-1.5 flex flex-col">
+                <div class="text-[10px] font-bold text-slate-200 mb-1 flex items-center justify-between">
+                    <span class="truncate">単位円</span>
+                    <span class="text-[9px] text-slate-400 font-normal">x = sinθ</span>
+                </div>
+
+                <div class="relative w-full aspect-square bg-slate-950 rounded border border-slate-800">
+                    <canvas id="unitCircleCanvas" class="w-full h-full block"></canvas>
+                </div>
+
+                <div class="mt-1 p-1 bg-slate-950/80 rounded border border-slate-800/80 text-[9px] code-font text-emerald-300 truncate">
+                    <div id="thetaValueList">θ = ...</div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- 分岐表 (最小限のコンパクト表記) -->
+        <section class="bg-slate-800/60 border border-slate-700/60 rounded-md p-1.5">
+            <div class="text-[10px] font-bold text-slate-200 mb-1">
+                <span class="tex-math">a</span> の範囲による解の個数
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-[10px]">
+                    <thead>
+                        <tr class="border-b border-slate-700 bg-slate-950/60 text-slate-300">
+                            <th class="p-1 font-semibold"><span class="tex-math">a</span> の範囲</th>
+                            <th class="p-1 font-semibold"><span class="tex-math">x</span></th>
+                            <th class="p-1 font-semibold text-emerald-400"><span class="tex-math">\theta</span></th>
+                            <th class="p-1 font-semibold">特徴</th>
+                        </tr>
+                    </thead>
+                    <tbody id="branchTableBody" class="divide-y divide-slate-800/80 text-slate-300">
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // 交点・変数の配色定義
+        const COLOR_X1 = { main: '#a3e635', bg: 'rgba(163, 230, 53, 0.2)', text: '黄緑(①大)' }; // Lime-400
+        const COLOR_X2 = { main: '#f472b6', bg: 'rgba(244, 114, 182, 0.2)', text: 'ピンク(②小)' }; // Pink-400
+
+        // 定義域データ（方程式 2(sinθ)^2 - sinθ + 3 = a に基づく）
+        const DOMAINS = {
+            '0_2pi': {
+                label: '0 \\le \\theta < 2\\pi',
+                minTheta: 0,
+                maxTheta: 2 * Math.PI,
+                includeMax: false,
+                xRangeText: '-1 \\le x \\le 1',
+                xMin: -1,
+                xMax: 1,
+                branches: [
+                    { range: 'a < 23/8', xCount: 0, thetaCount: 0, desc: '頂点より下。実数解なし。' },
+                    { range: 'a = 23/8', xCount: 1, thetaCount: 2, desc: '頂点 x = 1/4 で接する。θは2個。' },
+                    { range: '23/8 < a < 3', xCount: 2, thetaCount: 4, desc: '0 < x < 1/2 に2解。それぞれθが2個ずつで計4個。' },
+                    { range: 'a = 3', xCount: 2, thetaCount: 4, desc: 'x = 0 (θ=0, π) と x = 1/2 (θ=π/6, 5π/6) で計4個。' },
+                    { range: '3 < a < 4', xCount: 2, thetaCount: 4, desc: '-1/2 < x < 0 (θ2個) と 1/2 < x < 1 (θ2個) で計4個。' },
+                    { range: 'a = 4', xCount: 2, thetaCount: 3, desc: 'x = -1/2 (θ=7π/6, 11π/6) と x = 1 (θ=π/2) で計3個。' },
+                    { range: '4 < a < 6', xCount: 1, thetaCount: 2, desc: '-1 < x < -1/2 に1解 (θ2個)。もう1解は x > 1 で範囲外。' },
+                    { range: 'a = 6', xCount: 1, thetaCount: 1, desc: 'x = -1 (θ = 3π/2) の1個。' },
+                    { range: 'a > 6', xCount: 0, thetaCount: 0, desc: '有効な x の解が [-1, 1] 内に存在しない。' }
+                ]
+            },
+            '0_pi': {
+                label: '0 \\le \\theta \\le \\pi',
+                minTheta: 0,
+                maxTheta: Math.PI,
+                includeMax: true,
+                xRangeText: '0 \\le x \\le 1',
+                xMin: 0,
+                xMax: 1,
+                branches: [
+                    { range: 'a < 23/8', xCount: 0, thetaCount: 0, desc: '変域 0 ≤ x ≤ 1 において解なし。' },
+                    { range: 'a = 23/8', xCount: 1, thetaCount: 2, desc: '頂点 x = 1/4 で接する。θは2個。' },
+                    { range: '23/8 < a < 3', xCount: 2, thetaCount: 4, desc: '0 < x < 1/2 に2解。計4個。' },
+                    { range: 'a = 3', xCount: 2, thetaCount: 4, desc: 'x = 0 (θ=0, π) と x = 1/2 (θ=π/6, 5π/6) で計4個。' },
+                    { range: '3 < a < 4', xCount: 1, thetaCount: 2, desc: '1/2 < x < 1 に1解 (θ2個)。(x < 0 は範囲外)' },
+                    { range: 'a = 4', xCount: 1, thetaCount: 1, desc: 'x = 1 (θ = π/2) の1個。' },
+                    { range: 'a > 4', xCount: 0, thetaCount: 0, desc: '変域 0 ≤ x ≤ 1 において解なし。' }
+                ]
+            },
+            '0_7pi6': {
+                label: '0 \\le \\theta \\le \\frac{7}{6}\\pi',
+                minTheta: 0,
+                maxTheta: (7 / 6) * Math.PI,
+                includeMax: true,
+                xRangeText: '-1/2 \\le x \\le 1',
+                xMin: -0.5,
+                xMax: 1,
+                branches: [
+                    { range: 'a < 23/8', xCount: 0, thetaCount: 0, desc: '解なし。' },
+                    { range: 'a = 23/8', xCount: 1, thetaCount: 2, desc: '頂点 x = 1/4 (θ 2個)。' },
+                    { range: '23/8 < a < 3', xCount: 2, thetaCount: 4, desc: '0 < x < 1/2 に2解。計4個。' },
+                    { range: 'a = 3', xCount: 2, thetaCount: 4, desc: 'x = 0 (θ=0, π) と x = 1/2 (θ=π/6, 5π/6) で計4個。' },
+                    { range: '3 < a < 4', xCount: 2, thetaCount: 3, desc: '-1/2 < x < 0 (第3象限のθ1個) と 1/2 < x < 1 (θ2個) で計3個。' },
+                    { range: 'a = 4', xCount: 2, thetaCount: 2, desc: 'x = -1/2 (θ = 7π/6) と x = 1 (θ = π/2) で計2個。' },
+                    { range: 'a > 4', xCount: 0, thetaCount: 0, desc: '解なし (x < -1/2 は範囲外)。' }
+                ]
+            },
+            '0_3pi2': {
+                label: '0 \\le \\theta \\le \\frac{3}{2}\\pi',
+                minTheta: 0,
+                maxTheta: (3 / 2) * Math.PI,
+                includeMax: true,
+                xRangeText: '-1 \\le x \\le 1',
+                xMin: -1,
+                xMax: 1,
+                branches: [
+                    { range: 'a < 23/8', xCount: 0, thetaCount: 0, desc: '解なし。' },
+                    { range: 'a = 23/8', xCount: 1, thetaCount: 2, desc: '頂点 x = 1/4 (θ 2個)。' },
+                    { range: '23/8 < a < 3', xCount: 2, thetaCount: 4, desc: '0 < x < 1/2 に2解。計4個。' },
+                    { range: 'a = 3', xCount: 2, thetaCount: 4, desc: 'x = 0 (θ=0, π) と x = 1/2 (θ=π/6, 5π/6) で計4個。' },
+                    { range: '3 < a < 4', xCount: 2, thetaCount: 3, desc: '-1/2 < x < 0 (第3象限のθ1個) と 1/2 < x < 1 (θ2個) で計3個。' },
+                    { range: 'a = 4', xCount: 2, thetaCount: 2, desc: 'x = -1/2 (θ = 7π/6) と x = 1 (θ = π/2) で計2個。' },
+                    { range: '4 < a < 6', xCount: 1, thetaCount: 1, desc: '-1 < x < -1/2 に1解 (第3象限のθが1個)。' },
+                    { range: 'a = 6', xCount: 1, thetaCount: 1, desc: 'x = -1 (θ = 3π/2 の1個)。' },
+                    { range: 'a > 6', xCount: 0, thetaCount: 0, desc: '解なし。' }
+                ]
+            }
+        };
+
+        // アプリケーション状態
+        let state = {
+            currentDomainKey: '0_2pi',
+            aValue: 2.875,
+            isPlaying: false,
+            animDirection: 1
+        };
+
+        // DOM 要素
+        const aSlider = document.getElementById('aSlider');
+        const aValueText = document.getElementById('aValueText');
+        const xCountBadge = document.getElementById('xCountBadge');
+        const thetaCountBadge = document.getElementById('thetaCountBadge');
+        const xDomainInline = document.getElementById('xDomainInline');
+        const xValueList = document.getElementById('xValueList');
+        const thetaValueList = document.getElementById('thetaValueList');
+        const playBtn = document.getElementById('playBtn');
+        const playIcon = document.getElementById('playIcon');
+        const pauseIcon = document.getElementById('pauseIcon');
+        const branchTableBody = document.getElementById('branchTableBody');
+
+        const quadCanvas = document.getElementById('quadraticCanvas');
+        const unitCanvas = document.getElementById('unitCircleCanvas');
+
+        // 特定の x に対して得られる θ 解の数をカウントする関数
+        function getThetaCountForX(x, domain) {
+            const eps = 1e-7;
+            if (x < -1 - eps || x > 1 + eps) return 0;
+            const clampedX = Math.max(-1, Math.min(1, x));
+            const asinVal = Math.asin(clampedX);
+
+            let candidates = [];
+            if (clampedX >= 0) {
+                candidates.push(asinVal, Math.PI - asinVal);
+            } else {
+                candidates.push(Math.PI - asinVal, 2 * Math.PI + asinVal);
+            }
+
+            let count = 0;
+            const uniqueThetas = [];
+            candidates.forEach(t => {
+                let normT = (t % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+                let isWithin = domain.includeMax ? 
+                    (normT >= domain.minTheta - eps && normT <= domain.maxTheta + eps) : 
+                    (normT >= domain.minTheta - eps && normT < domain.maxTheta - eps);
+
+                if (isWithin && !uniqueThetas.some(st => Math.abs(st - normT) < eps)) {
+                    uniqueThetas.push(normT);
+                    count++;
+                }
+            });
+            return count;
+        }
+
+        // 方程式の解の計算: 2x^2 - x + (3 - a) = 0 
+        function calculateSolutions(a, domainKey) {
+            const domain = DOMAINS[domainKey];
+            const D = 8 * a - 23; // 判別式 (-1)^2 - 4*2*(3-a) = 1 - 24 + 8a = 8a - 23
+            const xSolutions = [];
+            const validXDetails = []; 
+            const thetaSolutions = [];
+
+            if (D >= 0) {
+                const x1 = (1 - Math.sqrt(D)) / 4;
+                const x2 = (1 + Math.sqrt(D)) / 4;
+                const eps = 1e-7;
+
+                // 2つの解（大きい方を先頭に配置: x2 >= x1）
+                let rawXList = [];
+                if (Math.abs(x1 - x2) < eps) {
+                    rawXList = [x2];
+                } else {
+                    rawXList = [x2, x1]; // x2 (大きい方), x1 (小さい方)
+                }
+
+                rawXList.forEach((x, idx) => {
+                    xSolutions.push(x);
+                    const inRange = (x >= domain.xMin - eps && x <= domain.xMax + eps);
+                    
+                    if (inRange) {
+                        const colorObj = (idx === 0) ? COLOR_X1 : COLOR_X2;
+                        
+                        // θ 解の個数を計算
+                        const thetaCount = getThetaCountForX(x, domain);
+
+                        // θ 解の具体的な値をリスト化
+                        const thetasForThisX = [];
+                        if (x >= -1 - eps && x <= 1 + eps) {
+                            const clampedX = Math.max(-1, Math.min(1, x));
+                            const asinVal = Math.asin(clampedX);
+                            let candidates = (clampedX >= 0) ? 
+                                [asinVal, Math.PI - asinVal] : 
+                                [Math.PI - asinVal, 2 * Math.PI + asinVal];
+
+                            candidates.forEach(t => {
+                                let normT = (t % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+                                let isWithin = domain.includeMax ? 
+                                    (normT >= domain.minTheta - eps && normT <= domain.maxTheta + eps) : 
+                                    (normT >= domain.minTheta - eps && normT < domain.maxTheta - eps);
+
+                                if (isWithin && !thetasForThisX.some(st => Math.abs(st - normT) < eps)) {
+                                    thetasForThisX.push(normT);
+                                    thetaSolutions.push({
+                                        theta: normT,
+                                        xVal: x,
+                                        color: colorObj
+                                    });
+                                }
+                            });
+                        }
+
+                        validXDetails.push({
+                            val: x,
+                            thetaCount: thetaCount,
+                            thetaList: thetasForThisX,
+                            color: colorObj,
+                            isFirst: (idx === 0)
+                        });
+                    }
+                });
+            }
+
+            thetaSolutions.sort((a, b) => a.theta - b.theta);
+
+            return {
+                allX: xSolutions,
+                validXDetails: validXDetails,
+                thetaSolutions: thetaSolutions
+            };
+        }
+
+        // 角度フォーマット (Pi -> \pi と表示)
+        function formatAngle(rad) {
+            const deg = Math.round((rad * 180) / Math.PI);
+            const piRatio = rad / Math.PI;
+
+            let radStr = `${piRatio.toFixed(2)}\\pi`;
+            if (Math.abs(piRatio - 0) < 0.01) radStr = "0";
+            else if (Math.abs(piRatio - 0.1666) < 0.02) radStr = "\\pi/6";
+            else if (Math.abs(piRatio - 0.25) < 0.02) radStr = "\\pi/4";
+            else if (Math.abs(piRatio - 0.3333) < 0.02) radStr = "\\pi/3";
+            else if (Math.abs(piRatio - 0.5) < 0.02) radStr = "\\pi/2";
+            else if (Math.abs(piRatio - 0.6666) < 0.02) radStr = "2\\pi/3";
+            else if (Math.abs(piRatio - 0.75) < 0.02) radStr = "3\\pi/4";
+            else if (Math.abs(piRatio - 0.8333) < 0.02) radStr = "5\\pi/6";
+            else if (Math.abs(piRatio - 1.0) < 0.02) radStr = "\\pi";
+            else if (Math.abs(piRatio - 1.1666) < 0.02) radStr = "7\\pi/6";
+            else if (Math.abs(piRatio - 1.25) < 0.02) radStr = "5\\pi/4";
+            else if (Math.abs(piRatio - 1.3333) < 0.02) radStr = "4\\pi/3";
+            else if (Math.abs(piRatio - 1.5) < 0.02) radStr = "3\\pi/2";
+            else if (Math.abs(piRatio - 1.6666) < 0.02) radStr = "5\\pi/3";
+            else if (Math.abs(piRatio - 1.75) < 0.02) radStr = "7\\pi/4";
+            else if (Math.abs(piRatio - 1.8333) < 0.02) radStr = "11\\pi/6";
+
+            return { text: `${radStr} (${deg}°)`, rawRad: radStr };
+        }
+
+        // Canvas 高解像度調整
+        function setupCanvas(canvas) {
+            const rect = canvas.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+            return { ctx, width: rect.width, height: rect.height };
+        }
+
+        // 2次関数グラフ描画 y = 2x^2 - x + 3
+        function drawQuadraticGraph(sol) {
+            const { ctx, width, height } = setupCanvas(quadCanvas);
+            ctx.clearRect(0, 0, width, height);
+
+            const domain = DOMAINS[state.currentDomainKey];
+
+            // 座標変換 (x: -1.5 ~ 1.5, y: 2.0 ~ 6.8)
+            const xMinCoord = -1.5, xMaxCoord = 1.5;
+            const yMinCoord = 2.0, yMaxCoord = 6.8;
+
+            function toScreenX(x) { return ((x - xMinCoord) / (xMaxCoord - xMinCoord)) * width; }
+            function toScreenY(y) { return height - ((y - yMinCoord) / (yMaxCoord - yMinCoord)) * height; }
+
+            // 1. グリッド
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = '#1e293b';
+            for (let x = -1.5; x <= 1.5; x += 0.5) {
+                ctx.beginPath(); ctx.moveTo(toScreenX(x), 0); ctx.lineTo(toScreenX(x), height); ctx.stroke();
+            }
+            for (let y = 2.0; y <= 6.5; y += 1.0) {
+                ctx.beginPath(); ctx.moveTo(0, toScreenY(y)); ctx.lineTo(width, toScreenY(y)); ctx.stroke();
+            }
+
+            // 2. 軸 (x=0)
+            ctx.lineWidth = 1.2;
+            ctx.strokeStyle = '#475569';
+            ctx.beginPath();
+            ctx.moveTo(toScreenX(0), 0); ctx.lineTo(toScreenX(0), height);
+            ctx.stroke();
+
+            // 軸ラベル
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '10px Inter, sans-serif';
+            ctx.fillText('x', width - 12, height - 6);
+            ctx.fillText('y', toScreenX(0) + 4, 10);
+
+            // 3. 有効変域背景ハイライト
+            const domainLeft = toScreenX(domain.xMin);
+            const domainRight = toScreenX(domain.xMax);
+            ctx.fillStyle = 'rgba(59, 130, 246, 0.05)';
+            ctx.fillRect(domainLeft, 0, domainRight - domainLeft, height);
+
+            // 変域の境界線
+            ctx.setLineDash([3, 3]);
+            ctx.strokeStyle = 'rgba(59, 130, 246, 0.35)';
+            ctx.beginPath();
+            ctx.moveTo(domainLeft, 0); ctx.lineTo(domainLeft, height);
+            ctx.moveTo(domainRight, 0); ctx.lineTo(domainRight, height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 4. 2次関数曲線 y = 2x^2 - x + 3
+            // 定義域外（ベースの暗い線）
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = '#334155';
+            ctx.beginPath();
+            for (let px = 0; px <= width; px++) {
+                const x = xMinCoord + (px / width) * (xMaxCoord - xMinCoord);
+                const y = 2 * x * x - x + 3;
+                if (px === 0) ctx.moveTo(px, toScreenY(y));
+                else ctx.lineTo(px, toScreenY(y));
+            }
+            ctx.stroke();
+
+            // 変域内の描画: θ解の個数に応じて【太い線(2個)】と【薄く明るい水色(1個)】に切り替え
+            const step = 0.005;
+            let currX = domain.xMin;
+            while (currX < domain.xMax) {
+                let nextX = Math.min(domain.xMax, currX + step);
+                let midX = (currX + nextX) / 2;
+                let thetaCount = getThetaCountForX(midX, domain);
+
+                ctx.beginPath();
+                ctx.moveTo(toScreenX(currX), toScreenY(2 * currX * currX - currX + 3));
+                ctx.lineTo(toScreenX(nextX), toScreenY(2 * nextX * nextX - nextX + 3));
+
+                if (thetaCount >= 2) {
+                    // θの解が2か所（2個）の部分: もっと太い線 (青色)
+                    ctx.lineWidth = 5.5;
+                    ctx.strokeStyle = '#2563eb';
+                    ctx.setLineDash([]);
+                } else if (thetaCount === 1) {
+                    // θの解が1か所（1個）の部分: もっと薄い（明るい）水色
+                    ctx.lineWidth = 2.5;
+                    ctx.strokeStyle = '#bae6fd'; // 薄く明るいスカイブルー (Sky-200)
+                    ctx.setLineDash([]);
+                } else {
+                    // 0個の部分
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeStyle = '#475569';
+                    ctx.setLineDash([2, 2]);
+                }
+                ctx.stroke();
+                currX = nextX;
+            }
+            ctx.setLineDash([]);
+
+            // 5. 直線 y = a
+            const pyA = toScreenY(state.aValue);
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#f59e0b';
+            ctx.beginPath(); ctx.moveTo(0, pyA); ctx.lineTo(width, pyA); ctx.stroke();
+
+            // 6. 交点と垂線、および「θの解の個数」を目立たせた2行バッジ表記
+            sol.validXDetails.forEach((detail) => {
+                const x = detail.val;
+                const y = 2 * x * x - x + 3;
+                const px = toScreenX(x);
+                const py = toScreenY(y);
+
+                // x軸方向への垂線
+                ctx.setLineDash([2, 2]);
+                ctx.strokeStyle = detail.color.main;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(px, py);
+                ctx.lineTo(px, height);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // 交点ドット
+                ctx.fillStyle = detail.color.main;
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(px, py, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // モバイル用にバッジのサイズをコンパクトに
+                const line1Text = `${detail.isFirst ? '①' : '②'} x=${x.toFixed(2)}`;
+                const line2Text = `θ:${detail.thetaCount}個`;
+
+                const boxWidth = 62;
+                const boxHeight = 26;
+
+                let badgeX = px + 4;
+                let badgeY = py - boxHeight / 2;
+
+                if (badgeX + boxWidth > width - 2) badgeX = px - boxWidth - 4;
+                if (badgeY < 2) badgeY = 2;
+                if (badgeY + boxHeight > height - 2) badgeY = height - boxHeight - 2;
+
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+                ctx.strokeStyle = detail.color.main;
+                ctx.lineWidth = 1;
+
+                ctx.beginPath();
+                if (ctx.roundRect) {
+                    ctx.roundRect(badgeX, badgeY, boxWidth, boxHeight, 3);
+                } else {
+                    ctx.rect(badgeX, badgeY, boxWidth, boxHeight);
+                }
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+                ctx.font = '500 8px JetBrains Mono, monospace';
+                ctx.fillStyle = '#94a3b8';
+                ctx.fillText(line1Text, badgeX + 4, badgeY + 3);
+
+                ctx.font = 'bold 9px Inter, sans-serif';
+                ctx.fillStyle = '#34d399';
+                ctx.fillText(line2Text, badgeX + 4, badgeY + 13);
+            });
+        }
+
+        // 単位円描画
+        function drawUnitCircleGraph(sol) {
+            const { ctx, width, height } = setupCanvas(unitCanvas);
+            ctx.clearRect(0, 0, width, height);
+
+            const domain = DOMAINS[state.currentDomainKey];
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const radius = Math.min(width, height) * 0.36;
+
+            // 1. 座標軸
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = '#334155';
+            ctx.beginPath();
+            ctx.moveTo(centerX - radius - 10, centerY); ctx.lineTo(centerX + radius + 10, centerY);
+            ctx.moveTo(centerX, centerY - radius - 10); ctx.lineTo(centerX, centerY + radius + 10);
+            ctx.stroke();
+
+            // 2. 単位円の「範囲外」を含む全体
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = '#334155';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // 3. 有効な θ 範囲の円弧
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#10b981';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, -domain.maxTheta, -domain.minTheta, false);
+            ctx.stroke();
+
+            // 4. 水平線 y = x
+            sol.validXDetails.forEach((detail) => {
+                const x = detail.val;
+                if (x >= -1 && x <= 1) {
+                    const screenY = centerY - x * radius;
+
+                    ctx.lineWidth = 1;
+                    ctx.strokeStyle = detail.color.main;
+                    ctx.setLineDash([3, 2]);
+                    ctx.beginPath();
+                    ctx.moveTo(centerX - radius - 5, screenY);
+                    ctx.lineTo(centerX + radius + 5, screenY);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            });
+
+            // 5. θ の解の交点
+            sol.thetaSolutions.forEach((item) => {
+                const theta = item.theta;
+                const px = centerX + radius * Math.cos(theta);
+                const py = centerY - radius * Math.sin(theta);
+
+                ctx.fillStyle = item.color.main;
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(px, py, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                const labelRadius = radius + 10;
+                const lx = centerX + labelRadius * Math.cos(theta);
+                const ly = centerY - labelRadius * Math.sin(theta);
+
+                ctx.fillStyle = '#f8fafc';
+                ctx.font = 'bold 8px JetBrains Mono, monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const fmt = formatAngle(theta);
+                ctx.fillText(fmt.text.split(' ')[0], lx, ly);
+            });
+        }
+
+        // 全体UI更新
+        function updateUI() {
+            const domain = DOMAINS[state.currentDomainKey];
+
+            // テキスト＆バッジ
+            aValueText.textContent = state.aValue.toFixed(2);
+            xDomainInline.textContent = domain.xRangeText;
+
+            // 方程式の解の計算
+            const sol = calculateSolutions(state.aValue, state.currentDomainKey);
+
+            xCountBadge.textContent = sol.validXDetails.length;
+            thetaCountBadge.textContent = sol.thetaSolutions.length;
+
+            // テキスト解詳細
+            if (sol.validXDetails.length === 0) {
+                xValueList.textContent = "実数解なし";
+            } else {
+                xValueList.innerHTML = sol.validXDetails.map(d => 
+                    `<span style="color:${d.color.main}">${d.isFirst ? '①' : '②'}x = ${d.val.toFixed(3)} (${d.thetaCount}個)</span>`
+                ).join(', ');
+            }
+
+            if (sol.thetaSolutions.length === 0) {
+                thetaValueList.textContent = "実数解なし";
+            } else {
+                thetaValueList.innerHTML = sol.thetaSolutions.map(item => {
+                    const fmt = formatAngle(item.theta);
+                    return `<span style="color:${item.color.main}">θ = ${fmt.text}</span>`;
+                }).join('<br>');
+            }
+
+            // 描画実行
+            drawQuadraticGraph(sol);
+            drawUnitCircleGraph(sol);
+
+            // 分岐表更新
+            updateBranchTable();
+
+            // KaTeX 再レンダリング
+            if (window.renderMathInElement) {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ],
+                    throwOnError: false
+                });
+            }
+        }
+
+        // 分岐表更新
+        function updateBranchTable() {
+            const domain = DOMAINS[state.currentDomainKey];
+            branchTableBody.innerHTML = '';
+
+            domain.branches.forEach(b => {
+                const tr = document.createElement('tr');
+                
+                let isCurrent = false;
+                const a = state.aValue;
+                if (b.range.includes('a < 23/8') && a < 2.874) isCurrent = true;
+                else if (b.range.includes('a = 23/8') && Math.abs(a - 2.875) < 0.015) isCurrent = true;
+                else if (b.range.includes('23/8 < a < 3') && a > 2.876 && a < 2.999) isCurrent = true;
+                else if (b.range.includes('a = 3') && Math.abs(a - 3.00) < 0.015) isCurrent = true;
+                else if (b.range.includes('3 < a < 4') && a > 3.001 && a < 3.999) isCurrent = true;
+                else if (b.range.includes('a = 4') && Math.abs(a - 4.00) < 0.015) isCurrent = true;
+                else if (b.range.includes('4 < a < 6') && a > 4.001 && a < 5.999) isCurrent = true;
+                else if (b.range.includes('a = 6') && Math.abs(a - 6.00) < 0.015) isCurrent = true;
+                else if (b.range.includes('a > 6') && a > 6.001) isCurrent = true;
+                else if (b.range.includes('a > 4') && a > 4.001) isCurrent = true;
+
+                tr.className = isCurrent ? 
+                    "bg-blue-950/80 border-l-2 border-l-blue-400 font-medium text-white" : 
+                    "hover:bg-slate-800/40 transition-colors";
+
+                tr.innerHTML = `
+                    <td class="p-1 font-mono text-amber-300 text-[9px]">${b.range}</td>
+                    <td class="p-1">${b.xCount}</td>
+                    <td class="p-1 font-bold text-emerald-400">${b.thetaCount}</td>
+                    <td class="p-1 text-[9px] text-slate-300 truncate max-w-[120px]">${b.desc}</td>
+                `;
+                branchTableBody.appendChild(tr);
+            });
+        }
+
+        // イベント設定
+        aSlider.addEventListener('input', (e) => {
+            state.aValue = parseFloat(e.target.value);
+            updateUI();
+        });
+
+        document.querySelectorAll('.range-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.range-btn').forEach(b => {
+                    b.className = "range-btn py-1 px-2 rounded text-xs font-medium border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700";
+                });
+                const target = e.currentTarget;
+                target.className = "range-btn py-1 px-2 rounded text-xs font-medium border transition-all duration-200 bg-blue-600 border-blue-500 text-white shadow";
+                
+                state.currentDomainKey = target.getAttribute('data-range');
+                updateUI();
+            });
+        });
+
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const val = parseFloat(e.target.getAttribute('data-value'));
+                state.aValue = val;
+                aSlider.value = val;
+                updateUI();
+            });
+        });
+
+        // 自動アニメーション
+        let animationFrameId = null;
+        function togglePlay() {
+            state.isPlaying = !state.isPlaying;
+            if (state.isPlaying) {
+                playIcon.classList.add('hidden');
+                pauseIcon.classList.remove('hidden');
+                animate();
+            } else {
+                playIcon.classList.remove('hidden');
+                pauseIcon.classList.add('hidden');
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            }
+        }
+
+        function animate() {
+            if (!state.isPlaying) return;
+
+            let nextA = state.aValue + state.animDirection * 0.01;
+            if (nextA > 6.3) {
+                nextA = 6.3;
+                state.animDirection = -1;
+            } else if (nextA < 2.6) {
+                nextA = 2.6;
+                state.animDirection = 1;
+            }
+
+            state.aValue = nextA;
+            aSlider.value = state.aValue;
+            updateUI();
+
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        playBtn.addEventListener('click', togglePlay);
+
+        window.addEventListener('resize', () => {
+            updateUI();
+        });
+
+        window.onload = function() {
+            document.querySelectorAll('.tex-math').forEach(el => {
+                const rawTex = el.textContent;
+                try {
+                    katex.render(rawTex, el, { throwOnError: false });
+                } catch(e){}
+            });
+            updateUI();
+        };
+    </script>
+</body>
+</html>
