@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>塩酸と炭酸カルシウムの粒子反応シミュレーター</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap');
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #f1f5f9;
+        }
+
+        /* 浮遊するアニメーション（発生したCO2） */
+        @keyframes floatUp {
+            0% { transform: translateY(0); opacity: 0.5; }
+            50% { transform: translateY(-6px); opacity: 1; }
+            100% { transform: translateY(0); opacity: 0.5; }
+        }
+        .animate-float {
+            animation: floatUp 2s ease-in-out infinite;
+        }
+
+        /* 反応失敗（余り）の揺れ */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-3px); }
+            40%, 80% { transform: translateX(3px); }
+        }
+        .animate-shake {
+            animation: shake 0.5s ease-in-out;
+        }
+
+        /* 反応時の発光アニメーション */
+        @keyframes reactFlash {
+            0% { transform: scale(1); filter: brightness(1); }
+            50% { transform: scale(1.08); filter: brightness(1.6); }
+            100% { transform: scale(1); filter: brightness(1); }
+        }
+        .animate-react {
+            animation: reactFlash 0.6s ease-out;
+        }
+
+        /* ビーカーガラス風デザイン */
+        .beaker-glass {
+            background: linear-gradient(180deg, rgba(239,246,255,0.2) 0%, rgba(219,234,254,0.6) 100%);
+            border-left: 6px solid rgba(147, 197, 253, 0.8);
+            border-right: 6px solid rgba(147, 197, 253, 0.8);
+            border-bottom: 8px solid rgba(147, 197, 253, 0.9);
+            border-bottom-left-radius: 2rem;
+            border-bottom-right-radius: 2rem;
+        }
+    </style>
+</head>
+<body class="text-slate-800 pb-12">
+
+    <!-- ヘッダー -->
+    <header class="bg-indigo-600 text-white py-6 shadow-md mb-8">
+        <div class="max-w-6xl mx-auto px-4 text-center">
+            <h1 class="text-2xl md:text-3xl font-black mb-2 flex items-center justify-center gap-3">
+                <i class="fa-solid fa-vial-virus text-yellow-300"></i>
+                ビーカー内で見る：塩酸と炭酸カルシウムの反応
+            </h1>
+            <p class="text-indigo-100 text-sm md:text-base">
+                塩酸 10個に CaCO₃ を載せる！ 1:2 でペアになるとグレーアウトして CO₂ が発生！
+            </p>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+        <!-- 左側：コントローラー & 解説 -->
+        <section class="lg:col-span-5 space-y-6">
+
+            <!-- 化学反応式カード -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h2 class="text-lg font-bold text-slate-700 mb-3 border-b pb-2 flex items-center">
+                    <i class="fa-solid fa-atom text-indigo-500 mr-2"></i>化学反応式
+                </h2>
+                <div class="bg-indigo-50 border border-indigo-200 p-3 rounded-xl text-center font-black text-indigo-900 text-sm md:text-base font-mono shadow-inner">
+                    CaCO₃ + 2HCl &rarr; CaCl₂ + H₂O + CO₂
+                </div>
+            </div>
+
+            <!-- 反応比率ルール説明カード -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h2 class="text-lg font-bold text-slate-700 mb-3 border-b pb-2 flex items-center">
+                    <i class="fa-solid fa-scale-balanced text-indigo-500 mr-2"></i>反応のルール (1 : 2 : 1)
+                </h2>
+                
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                    <div class="flex items-center justify-around bg-white p-3 rounded-lg border shadow-sm">
+                        <!-- CaCO3 1個 -->
+                        <div class="text-center">
+                            <div class="w-10 h-10 bg-amber-500 text-white font-black text-xs rounded-xl flex items-center justify-center mx-auto shadow-sm">
+                                CaCO₃
+                            </div>
+                            <span class="text-xs font-bold text-amber-700 mt-1 block">1 個</span>
+                        </div>
+
+                        <span class="text-lg font-bold text-slate-400">+</span>
+
+                        <!-- HCl 2個 -->
+                        <div class="text-center">
+                            <div class="flex gap-1 justify-center">
+                                <div class="w-8 h-8 bg-blue-500 text-white font-bold text-[10px] rounded-lg flex items-center justify-center shadow-sm">HCl</div>
+                                <div class="w-8 h-8 bg-blue-500 text-white font-bold text-[10px] rounded-lg flex items-center justify-center shadow-sm">HCl</div>
+                            </div>
+                            <span class="text-xs font-bold text-blue-700 mt-1 block">2 個</span>
+                        </div>
+
+                        <span class="text-lg font-bold text-indigo-500">&rarr;</span>
+
+                        <!-- CO2 1個 -->
+                        <div class="text-center">
+                            <div class="w-10 h-10 bg-emerald-500 text-white font-black text-xs rounded-full flex items-center justify-center mx-auto shadow-sm">
+                                CO₂
+                            </div>
+                            <span class="text-xs font-bold text-emerald-700 mt-1 block">1 個</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 操作スライダー -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h2 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2 flex items-center justify-between">
+                    <span><i class="fa-solid fa-sliders text-indigo-500 mr-2"></i>実験条件の設定</span>
+                </h2>
+
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <label for="caco3-slider" class="font-bold text-slate-700 text-sm flex items-center gap-1.5">
+                            <span class="w-3 h-3 bg-amber-500 rounded-sm inline-block"></span>
+                            投入する CaCO<sub>3</sub> の個数:
+                        </label>
+                        <span id="caco3-count-display" class="text-2xl font-black text-amber-600 font-mono">0 個</span>
+                    </div>
+
+                    <input type="range" id="caco3-slider" min="0" max="10" step="1" value="0"
+                        class="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-amber-500">
+
+                    <div class="flex justify-between text-xs font-mono font-bold text-slate-400">
+                        <span>0 個</span>
+                        <span id="caco3-mid-label" class="text-emerald-600">5 個 (ピッタリ)</span>
+                        <span>10 個</span>
+                    </div>
+                </div>
+
+                <!-- ボタン操作 -->
+                <div class="mt-6 pt-4 border-t border-slate-100 flex gap-2">
+                    <button id="btn-auto-play" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-sm">
+                        <i class="fa-solid fa-play"></i> 1個ずつ載せてみる
+                    </button>
+                    <button id="btn-reset" class="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 px-4 rounded-xl text-sm transition">
+                        0個にする
+                    </button>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- 右側：ビーカー＆分子可視化 ＆ グラフ -->
+        <section class="lg:col-span-7 space-y-6">
+
+            <!-- ビーカー・実験容器エリア -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between mb-2 border-b pb-2">
+                    <h2 class="text-lg font-bold text-slate-700 flex items-center">
+                        <i class="fa-solid fa-flask-vial text-indigo-500 mr-2"></i>ビーカー内部
+                    </h2>
+                    <span class="text-xs font-bold bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full border border-blue-200">
+                        塩酸: 10個
+                    </span>
+                </div>
+
+                <!-- ビーカーと上空エリア ＋ 右側サマリーパネル -->
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4 bg-slate-900 rounded-2xl p-4 min-h-[400px]">
+                    
+                    <!-- ビーカー本体エリア (左〜中央) -->
+                    <div class="md:col-span-8 flex flex-col justify-between overflow-hidden">
+                        
+                        <!-- ビーカー本体：内部に CO2 (上段), CaCO3 (中段), HCl (下段) を配置 -->
+                        <div class="beaker-glass p-4 relative flex flex-col justify-between min-h-[340px] h-full">
+                            
+                            <!-- 目盛り線 -->
+                            <div class="absolute left-2 top-4 bottom-4 flex flex-col justify-between text-[9px] font-mono text-slate-400 border-l border-slate-300 pl-1 pointer-events-none">
+                                <span>300ml</span>
+                                <span>200ml</span>
+                                <span>100ml</span>
+                            </div>
+
+                            <div class="pl-5 flex flex-col justify-between h-full">
+                                
+                                <!-- ①【ビーカー上部】：発生した CO2 (気体) ゾーン -->
+                                <div class="bg-slate-900/60 p-1.5 rounded-xl border border-slate-700/60 mb-1">
+                                    <div class="text-[10px] font-bold text-emerald-400 mb-0.5 flex justify-between items-center">
+                                        <span><i class="fa-solid fa-wind mr-1"></i>発生した CO₂ (気体)</span>
+                                        <span id="co2-count-badge" class="bg-emerald-500 text-white px-2 py-0.5 rounded-full font-mono text-[10px] font-bold">0 個</span>
+                                    </div>
+                                    <div id="co2-grid" class="grid grid-cols-5 gap-1.5 h-[30px]">
+                                        <!-- 動的にCO2カードを生成 -->
+                                    </div>
+                                </div>
+
+                                <!-- CaCO3とHClの近接配置コンテナ -->
+                                <div class="space-y-0.5">
+                                    <!-- ②【ビーカー中部】：投入された CaCO3 (固体) ゾーン -->
+                                    <div>
+                                        <div class="text-[10px] font-bold text-amber-300 mb-0.5 flex items-center justify-between">
+                                            <span><i class="fa-solid fa-cubes mr-1"></i>投入された CaCO₃ (固体)</span>
+                                            <span id="caco3-status-text" class="text-slate-300"></span>
+                                        </div>
+                                        <div id="caco3-grid" class="grid grid-cols-5 gap-1.5">
+                                            <!-- 動的にCaCO3カードを生成 -->
+                                        </div>
+                                    </div>
+
+                                    <!-- ③【ビーカー下部】：塩酸 HCl (水溶液) ゾーン -->
+                                    <div>
+                                        <div class="text-[10px] font-bold text-blue-300 mb-0.5 flex justify-between items-center">
+                                            <span><i class="fa-solid fa-flask mr-1"></i>塩酸 HCl (水溶液)</span>
+                                            <span>未反応塩酸: <span id="hcl-left-count" class="text-blue-300 font-bold">10個</span></span>
+                                        </div>
+                                        <div id="hcl-grid" class="grid grid-cols-5 gap-1.5">
+                                            <!-- 動的にHClカードを生成 -->
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- ③【ビーカー右側】：反応後の個数サマリーパネル -->
+                    <div class="md:col-span-4 bg-slate-800/90 rounded-xl p-4 border border-slate-700/80 flex flex-col justify-center space-y-3">
+                        <h3 class="text-xs font-bold text-slate-300 border-b border-slate-700 pb-2 flex items-center gap-1.5">
+                            <i class="fa-solid fa-square-poll-vertical text-indigo-400"></i>
+                            反応後の物質の個数
+                        </h3>
+
+                        <!-- CO2 発生量 -->
+                        <div class="bg-slate-900/80 p-3 rounded-lg border border-emerald-500/30 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <div class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs border border-emerald-500/40">
+                                    CO₂
+                                </div>
+                                <span class="text-xs font-bold text-slate-200">発生した CO₂</span>
+                            </div>
+                            <span id="summary-co2-count" class="text-lg font-black font-mono text-emerald-400">0 個</span>
+                        </div>
+
+                        <!-- CaCO3 残量 -->
+                        <div class="bg-slate-900/80 p-3 rounded-lg border border-amber-500/30 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <div class="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs border border-amber-500/40">
+                                    Ca
+                                </div>
+                                <span class="text-xs font-bold text-slate-200">残った CaCO₃</span>
+                            </div>
+                            <span id="summary-caco3-left" class="text-lg font-black font-mono text-amber-400">0 個</span>
+                        </div>
+
+                        <!-- HCl 残量 -->
+                        <div class="bg-slate-900/80 p-3 rounded-lg border border-blue-500/30 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <div class="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-xs border border-blue-500/40">
+                                    HCl
+                                </div>
+                                <span class="text-xs font-bold text-slate-200">残った HCl</span>
+                            </div>
+                            <span id="summary-hcl-left" class="text-lg font-black font-mono text-blue-400">10 個</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- グラフ表示領域 -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h2 class="text-lg font-bold text-slate-700 mb-1 flex items-center">
+                    <i class="fa-solid fa-chart-line text-indigo-500 mr-2"></i>CaCO₃ の個数 vs CO₂ の発生個数
+                </h2>
+                <p class="text-xs text-slate-500 mb-3">5個（塩酸10個と全ペア）を境目に、グラフが水平（塩酸不足）になります</p>
+
+                <div class="relative w-full h-48">
+                    <canvas id="reactionChart"></canvas>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <script>
+        const initialHclCount = 10; // 固定 10個
+        let previousCaco3Count = 0; // 反応タイミング検出用
+        let currentReactionSets = 0; // 現在反応完了しているペア数
+        let reactionTimer = null; // 反応遅延タイマー
+        
+        // DOM要素
+        const caco3Slider = document.getElementById('caco3-slider');
+        const caco3CountDisplay = document.getElementById('caco3-count-display');
+        
+        const btnAutoPlay = document.getElementById('btn-auto-play');
+        const btnReset = document.getElementById('btn-reset');
+        
+        const co2Grid = document.getElementById('co2-grid');
+        const caco3Grid = document.getElementById('caco3-grid');
+        const hclGrid = document.getElementById('hcl-grid');
+        
+        const co2CountBadge = document.getElementById('co2-count-badge');
+        const hclLeftCount = document.getElementById('hcl-left-count');
+        const caco3StatusText = document.getElementById('caco3-status-text');
+
+        // サマリー用DOM要素
+        const summaryCo2Count = document.getElementById('summary-co2-count');
+        const summaryCaco3Left = document.getElementById('summary-caco3-left');
+        const summaryHclLeft = document.getElementById('summary-hcl-left');
+
+        let reactionChart = null;
+        let isPlaying = false;
+        let animationTimer = null;
+
+        // Chart.js 初期化
+        function initChart() {
+            const ctx = document.getElementById('reactionChart').getContext('2d');
+            
+            reactionChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: '現在の状態',
+                            data: [{ x: 0, y: 0 }],
+                            backgroundColor: '#fbbf24',
+                            borderColor: '#ffffff',
+                            borderWidth: 3,
+                            pointRadius: 11,
+                            pointHoverRadius: 13,
+                            type: 'scatter',
+                            order: 0 // 最前面に表示
+                        },
+                        {
+                            label: '二酸化炭素 CO₂ (個)',
+                            data: [],
+                            borderColor: '#10b981',
+                            borderWidth: 3,
+                            fill: false,
+                            tension: 0,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#10b981',
+                            order: 1 // 背面に配置
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            title: { display: true, text: '投入した CaCO₃ の個数 (個)', font: { weight: 'bold' } },
+                            min: 0, max: 10, ticks: { stepSize: 1 }
+                        },
+                        y: {
+                            title: { display: true, text: '発生した CO₂ の個数 (個)', font: { weight: 'bold' } },
+                            min: 0, max: 10, ticks: { stepSize: 1 }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+            updateChartData();
+        }
+
+        function updateChartData() {
+            if (!reactionChart) return;
+            const dataPoints = [];
+            for (let caco3 = 0; caco3 <= 10; caco3++) {
+                const co2 = Math.min(caco3, Math.floor(initialHclCount / 2));
+                dataPoints.push({ x: caco3, y: co2 });
+            }
+            reactionChart.data.datasets[1].data = dataPoints;
+            reactionChart.update('none');
+        }
+
+        // シミュレーションメイン更新 (追加分のみ差分アニメーション)
+        function updateSimulation(caco3Count, isNewAddition = false) {
+            if (reactionTimer) clearTimeout(reactionTimer);
+            caco3CountDisplay.textContent = `${caco3Count} 個`;
+
+            // 最終的なペア数計算 (1個のCaCO3に2個のHClが必要)
+            const finalReactionSets = Math.min(caco3Count, Math.floor(initialHclCount / 2)); 
+
+            if (caco3Count === 0 || !isNewAddition || caco3Count <= previousCaco3Count) {
+                // 減少・リセット・または即時反映（すでに反応済みの状態を描画）
+                applyReactionState(caco3Count, finalReactionSets);
+            } else {
+                // 【追加時】：既存の反応完了数 (currentReactionSets) はそのまま維持し、
+                // 新しく入った分だけを未反応（橙・水色）として描画
+                renderBeaker(caco3Count, currentReactionSets);
+                updateSummaryAndChart(caco3Count, currentReactionSets);
+
+                // 少し時間をおいて追加分が化学反応を起こす
+                reactionTimer = setTimeout(() => {
+                    applyReactionState(caco3Count, finalReactionSets);
+                }, 600);
+            }
+
+            previousCaco3Count = caco3Count;
+        }
+
+        // 反応完了状態の適用
+        function applyReactionState(caco3Count, reactionSets) {
+            currentReactionSets = reactionSets;
+            const usedHcl = reactionSets * 2;
+            const remainingHcl = initialHclCount - usedHcl;
+            const leftoverCaco3 = caco3Count - reactionSets;
+
+            if (leftoverCaco3 > 0) {
+                caco3StatusText.innerHTML = `<span class="text-rose-400 font-bold"><i class="fa-solid fa-circle-exclamation"></i> ${leftoverCaco3}個が溶け残り！</span>`;
+            } else {
+                caco3StatusText.textContent = `全 ${caco3Count} 個が反応可能`;
+            }
+
+            renderBeaker(caco3Count, reactionSets);
+            updateSummaryAndChart(caco3Count, reactionSets);
+        }
+
+        // サマリー表示とグラフ更新
+        function updateSummaryAndChart(caco3Count, reactionSets) {
+            const usedHcl = reactionSets * 2;
+            const remainingHcl = initialHclCount - usedHcl;
+            const leftoverCaco3 = caco3Count - reactionSets;
+
+            co2CountBadge.textContent = `${reactionSets} 個`;
+            hclLeftCount.textContent = `${remainingHcl} 個`;
+
+            if (summaryCo2Count) summaryCo2Count.textContent = `${reactionSets} 個`;
+            if (summaryCaco3Left) summaryCaco3Left.textContent = `${leftoverCaco3} 個`;
+            if (summaryHclLeft) summaryHclLeft.textContent = `${remainingHcl} 個`;
+
+            if (reactionChart) {
+                reactionChart.data.datasets[0].data = [{ x: caco3Count, y: reactionSets }];
+                reactionChart.update('none');
+            }
+        }
+
+        // CO2 描画
+        function renderCO2(activeReactionSets) {
+            co2Grid.innerHTML = '';
+            for (let col = 0; col < 5; col++) {
+                const isReacted = col < activeReactionSets;
+                const el = document.createElement('div');
+                if (isReacted) {
+                    el.className = 'py-1 bg-emerald-500 text-white font-black text-[10px] rounded-lg text-center shadow-md border border-emerald-300 animate-float flex items-center justify-center';
+                    el.innerHTML = `CO₂`;
+                } else {
+                    el.className = 'py-1 border border-dashed border-slate-700/60 rounded-lg text-center text-[9px] text-slate-600 flex items-center justify-center';
+                    el.textContent = '空き';
+                }
+                co2Grid.appendChild(el);
+            }
+        }
+
+        // ビーカー全体の描画実行
+        function renderBeaker(caco3Count, reactionSets) {
+            renderCO2(reactionSets);
+            renderCaCO3(caco3Count, reactionSets);
+            renderHCl(reactionSets);
+        }
+
+        // CaCO3 描画
+        function renderCaCO3(caco3Count, reactionSets) {
+            caco3Grid.innerHTML = '';
+
+            for (let col = 0; col < 5; col++) {
+                const colBox = document.createElement('div');
+                colBox.className = 'flex flex-col gap-1.5 items-center justify-end';
+
+                // 6〜10個目のオーバーフロー（塩酸不足で反応不能分）用のスペースを最初から確保
+                const overflowIndex = col + 5;
+                const overEl = document.createElement('div');
+                if (overflowIndex < caco3Count) {
+                    overEl.className = 'w-full py-1 bg-amber-500 text-white font-bold text-[9px] rounded-lg text-center border border-amber-400 flex items-center justify-center shadow-sm';
+                    overEl.innerHTML = `CaCO₃`;
+                } else {
+                    // 6個以上投入前の高さ固定用（文字・レイアウトが動かないように透過スペースを確保）
+                    overEl.className = 'w-full py-1 border border-transparent text-[9px] opacity-0 pointer-events-none select-none';
+                    overEl.innerHTML = `CaCO₃`;
+                }
+                colBox.appendChild(overEl);
+
+                // 1〜5個目のCaCO3
+                const caco3Index = col;
+                if (caco3Index < caco3Count) {
+                    const el = document.createElement('div');
+                    const isGray = caco3Index < reactionSets;
+
+                    if (isGray) {
+                        // 反応済み (HClと同時にグレーアウト)
+                        el.className = 'w-full py-2 bg-slate-700/80 text-slate-400 font-bold text-[10px] rounded-lg text-center border border-slate-600 line-through opacity-75 transition-all duration-300';
+                        el.innerHTML = `CaCO₃`;
+                    } else {
+                        // 未反応分（固体として残る / 投入直後）
+                        el.className = 'w-full py-2 bg-amber-500 text-white font-bold text-[10px] rounded-lg text-center shadow-sm border border-amber-400 transition-all duration-300';
+                        el.innerHTML = `CaCO₃`;
+                    }
+                    colBox.appendChild(el);
+                } else {
+                    const emptyEl = document.createElement('div');
+                    emptyEl.className = 'w-full py-2 border-2 border-dashed border-slate-600/50 rounded-lg text-center text-[9px] text-slate-600';
+                    emptyEl.textContent = '空き';
+                    colBox.appendChild(emptyEl);
+                }
+
+                caco3Grid.appendChild(colBox);
+            }
+        }
+
+        // 塩酸 (HCl) 描画
+        function renderHCl(activeReactionSets) {
+            hclGrid.innerHTML = '';
+            const totalRows = 2; // 2行5列 = 10個
+
+            for (let row = 0; row < totalRows; row++) {
+                for (let col = 0; col < 5; col++) {
+                    const isReacted = col < activeReactionSets;
+
+                    const el = document.createElement('div');
+                    if (isReacted) {
+                        // 反応済み (CaCO3と同時にグレーアウト)
+                        el.className = 'py-1.5 bg-slate-800 text-slate-500 font-bold text-[10px] rounded-lg text-center border border-slate-700 opacity-50 line-through transition-all duration-300';
+                        el.innerHTML = `HCl`;
+                    } else {
+                        // 未反応（水色）
+                        el.className = 'py-1.5 bg-blue-500 text-white font-bold text-[10px] rounded-lg text-center shadow-sm border border-blue-400 transition-all duration-300';
+                        el.innerHTML = `HCl`;
+                    }
+                    hclGrid.appendChild(el);
+                }
+            }
+        }
+
+        // イベント
+        caco3Slider.addEventListener('input', (e) => {
+            if (isPlaying) stopAutoPlay();
+            const val = parseInt(e.target.value, 10);
+            const isAdded = val > previousCaco3Count;
+            updateSimulation(val, isAdded);
+        });
+
+        btnAutoPlay.addEventListener('click', () => {
+            if (isPlaying) stopAutoPlay();
+            else startAutoPlay();
+        });
+
+        btnReset.addEventListener('click', () => {
+            if (isPlaying) stopAutoPlay();
+            caco3Slider.value = 0;
+            previousCaco3Count = 0;
+            currentReactionSets = 0;
+            updateSimulation(0, false);
+        });
+
+        function startAutoPlay() {
+            isPlaying = true;
+            btnAutoPlay.innerHTML = `<i class="fa-solid fa-pause"></i> 一時停止`;
+            btnAutoPlay.classList.replace('bg-indigo-600', 'bg-amber-600');
+            btnAutoPlay.classList.replace('hover:bg-indigo-700', 'hover:bg-amber-700');
+
+            caco3Slider.value = 0;
+            previousCaco3Count = 0;
+            currentReactionSets = 0;
+            let currentVal = 0;
+
+            // 1.8秒間隔で1個ずつ進行（投入→0.6秒後反応→観察→次へ）
+            animationTimer = setInterval(() => {
+                currentVal += 1;
+                if (currentVal > 10) {
+                    currentVal = 10;
+                    stopAutoPlay();
+                }
+                caco3Slider.value = currentVal;
+                updateSimulation(currentVal, true);
+            }, 1800);
+        }
+
+        function stopAutoPlay() {
+            isPlaying = false;
+            clearInterval(animationTimer);
+            btnAutoPlay.innerHTML = `<i class="fa-solid fa-play"></i> 1個ずつ載せてみる`;
+            btnAutoPlay.classList.replace('bg-amber-600', 'bg-indigo-600');
+            btnAutoPlay.classList.replace('hover:bg-amber-700', 'hover:bg-indigo-700');
+        }
+
+        window.onload = function() {
+            initChart();
+            previousCaco3Count = 0;
+            currentReactionSets = 0;
+            updateSimulation(0, false); // 初期表示: 0個
+        };
+    </script>
+</body>
+</html>
