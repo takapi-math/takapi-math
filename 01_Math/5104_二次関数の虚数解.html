@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>複素数解の3D可視化シミュレーター</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Three.js and OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <!-- MathJax for rendering TeX equations -->
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #0b0f19;
+            color: #f1f5f9;
+            user-select: none;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.78);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        /* Custom slider styling */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #818cf8;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(129, 140, 248, 0.5);
+        }
+    </style>
+</head>
+<body class="relative min-h-screen">
+
+    <div id="canvas-container"></div>
+
+    <!-- Floating 3D Root Overlay Labels -->
+    <div id="root-label-1" class="absolute z-20 pointer-events-none transform -translate-x-1/2 -translate-y-full mb-3 hidden">
+        <div class="bg-amber-400 text-slate-950 font-mono font-bold text-xs px-2.5 py-1 rounded-md shadow-xl border border-amber-200 flex items-center space-x-1.5 backdrop-blur-md">
+            <span class="w-2 h-2 rounded-full bg-slate-950 inline-block animate-ping"></span>
+            <span id="root-label-1-text">x₁ = 0.00 + 1.00i</span>
+        </div>
+    </div>
+    <div id="root-label-2" class="absolute z-20 pointer-events-none transform -translate-x-1/2 -translate-y-full mb-3 hidden">
+        <div class="bg-amber-400 text-slate-950 font-mono font-bold text-xs px-2.5 py-1 rounded-md shadow-xl border border-amber-200 flex items-center space-x-1.5 backdrop-blur-md">
+            <span class="w-2 h-2 rounded-full bg-slate-950 inline-block animate-ping"></span>
+            <span id="root-label-2-text">x₂ = 0.00 - 1.00i</span>
+        </div>
+    </div>
+
+    <!-- Header Panel -->
+    <div class="absolute top-4 left-4 z-10 glass-panel p-4 rounded-xl max-w-sm sm:max-w-md shadow-2xl">
+        <h1 class="text-lg sm:text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-300">
+            $y = a(x - p)^2 + q$ の複素数解
+        </h1>
+        <p class="text-xs text-slate-300 mt-1.5 leading-relaxed">
+            縦軸を $y$（実数）、水平面を複素平面 $x = u + iv$ とした3D可視化です。<br>
+            実数が存在する曲線（実軸方向・虚軸方向の直交放物線）と $y=0$ （複素平面）との交点が方程式の解となります。
+        </p>
+    </div>
+
+    <!-- Controls Panel -->
+    <div class="absolute bottom-4 left-4 z-10 glass-panel p-4 sm:p-5 rounded-xl w-[calc(100%-2rem)] sm:w-96 shadow-2xl space-y-3">
+        <div class="border-b border-slate-700/60 pb-2">
+            <h2 class="text-xs sm:text-sm font-semibold text-indigo-300 uppercase tracking-wide">パラメータ調整</h2>
+        </div>
+
+        <!-- Slider A -->
+        <div>
+            <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-300 font-medium">係数 $a$ (開き具合):</span>
+                <span id="val-a" class="font-mono text-indigo-400 font-bold">1.0</span>
+            </div>
+            <input id="slider-a" type="range" min="-3" max="3" step="0.1" value="1" 
+                class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+        </div>
+
+        <!-- Slider P -->
+        <div>
+            <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-300 font-medium">頂点の実部 $p$:</span>
+                <span id="val-p" class="font-mono text-indigo-400 font-bold">0.0</span>
+            </div>
+            <input id="slider-p" type="range" min="-4" max="4" step="0.1" value="0" 
+                class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+        </div>
+
+        <!-- Slider Q -->
+        <div>
+            <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-300 font-medium">頂点の高さ $q$:</span>
+                <span id="val-q" class="font-mono text-indigo-400 font-bold">1.0</span>
+            </div>
+            <input id="slider-q" type="range" min="-4" max="4" step="0.1" value="1" 
+                class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+        </div>
+
+        <!-- Display Toggles -->
+        <div class="pt-1 border-t border-slate-700/60 grid grid-cols-3 gap-1.5 text-xs">
+            <label class="flex items-center space-x-1.5 cursor-pointer text-slate-300">
+                <input id="toggle-surface" type="checkbox" checked class="rounded accent-indigo-500">
+                <span>曲面</span>
+            </label>
+            <label class="flex items-center space-x-1.5 cursor-pointer text-slate-300">
+                <input id="toggle-plane" type="checkbox" checked class="rounded accent-indigo-500">
+                <span>$y=0$平面</span>
+            </label>
+            <label class="flex items-center space-x-1.5 cursor-pointer text-slate-300">
+                <input id="toggle-roots" type="checkbox" class="rounded accent-indigo-500">
+                <span>値の表示</span>
+            </label>
+        </div>
+    </div>
+
+    <!-- Info Panel -->
+    <div class="absolute top-4 right-4 z-10 glass-panel p-4 rounded-xl w-72 sm:w-80 shadow-2xl space-y-3">
+        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">計算結果・頂点情報</h3>
+        
+        <!-- Vertex & Condition Info -->
+        <div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700 space-y-1">
+            <div class="text-xs text-slate-400">頂点座標 $(p, q)$: <span id="vertex-val" class="font-mono font-bold text-indigo-300">(0.00, 1.00)</span></div>
+            <div class="text-xs text-slate-400">解の判定値 $-q/a$: <span id="q-over-a-val" class="font-mono font-bold text-amber-300">-1.00</span></div>
+            <div id="disc-status" class="text-xs font-medium text-amber-400 mt-1">共役な2つの複素数解</div>
+        </div>
+
+        <!-- Roots Output -->
+        <div class="bg-slate-800/80 p-3 rounded-lg border border-slate-700">
+            <div class="text-xs text-slate-400 mb-1">方程式 $a(x-p)^2 + q = 0$ の解:</div>
+            <div id="roots-display" class="font-mono text-xs text-indigo-300 space-y-1">
+                <div>$x_1 = 0.00 + 1.00i$</div>
+                <div>$x_2 = 0.00 - 1.00i$</div>
+            </div>
+        </div>
+
+        <!-- Legend / Axis Guide -->
+        <div class="text-xs space-y-1.5 text-slate-300 pt-1 border-t border-slate-700/60">
+            <div class="flex items-center space-x-2">
+                <span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span>
+                <span><b>実軸 Re(x)</b>: 水平赤軸 (実部 $u$)</span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <span class="w-3 h-3 rounded-full bg-blue-500 inline-block"></span>
+                <span><b>虚軸 Im(x)</b>: 水平青軸 (虚部 $v$)</span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <span class="w-3 h-3 rounded-full bg-emerald-400 inline-block"></span>
+                <span><b>y 軸</b>: 垂直緑軸 (関数の値 $y$)</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        let scene, camera, renderer, controls;
+        let saddleMesh, realParabolaLine, imagParabolaLine, complexPlaneMesh;
+        let root1Mesh, root2Mesh, axisGroup;
+        let root1Glow, root2Glow;
+
+        // Parameters for y = a(x - p)^2 + q
+        let paramA = 1.0;
+        let paramP = 0.0;
+        let paramQ = 1.0;
+
+        // Configuration constants
+        const GRID_SIZE = 12;
+        const GRID_SEGMENTS = 80;
+
+        window.onload = function() {
+            initScene();
+            createAxes();
+            createComplexPlane();
+            createSaddleSurface();
+            createOrthogonalCurves();
+            createRootMarkers();
+
+            setupEventListeners();
+            
+            updateAll();
+            animate();
+        };
+
+        function initScene() {
+            const container = document.getElementById('canvas-container');
+
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x0b0f19, 0.025);
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(10, 8, 14);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2 + 0.1;
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(10, 20, 15);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
+
+            const pointLight = new THREE.PointLight(0x818cf8, 1, 30);
+            pointLight.position.set(0, 5, 0);
+            scene.add(pointLight);
+        }
+
+        function createAxes() {
+            axisGroup = new THREE.Group();
+
+            const createThickAxis = (colorHex, start, end, radius = 0.04) => {
+                const direction = new THREE.Vector3().subVectors(end, start);
+                const orientation = new THREE.Matrix4();
+                orientation.lookAt(start, end, new THREE.Object3D().up);
+                
+                const matrix = new THREE.Matrix4();
+                matrix.set(
+                    1, 0, 0, 0,
+                    0, 0, 1, 0,
+                    0, -1, 0, 0,
+                    0, 0, 0, 1
+                );
+                
+                const geom = new THREE.CylinderGeometry(radius, radius, direction.length(), 16);
+                geom.applyMatrix4(matrix);
+                
+                const mat = new THREE.MeshStandardMaterial({
+                    color: colorHex,
+                    roughness: 0.3,
+                    metalness: 0.5,
+                    emissive: colorHex,
+                    emissiveIntensity: 0.2
+                });
+                
+                const mesh = new THREE.Mesh(geom, mat);
+                mesh.position.copy(start);
+                mesh.lookAt(end);
+                return mesh;
+            };
+
+            // Re(x) - Red (Three.js X)
+            axisGroup.add(createThickAxis(0xef4444, new THREE.Vector3(-GRID_SIZE/2, 0, 0), new THREE.Vector3(GRID_SIZE/2, 0, 0)));
+            // Im(x) - Blue (Three.js Z)
+            axisGroup.add(createThickAxis(0x3b82f6, new THREE.Vector3(0, 0, -GRID_SIZE/2), new THREE.Vector3(0, 0, GRID_SIZE/2)));
+            // Y - Green (Three.js Y)
+            axisGroup.add(createThickAxis(0x10b981, new THREE.Vector3(0, -GRID_SIZE/2, 0), new THREE.Vector3(0, GRID_SIZE/2, 0)));
+
+            // 3D Text Labels for Axes
+            const labelRe = createTextSprite("実軸 Re(x)", "#ef4444");
+            labelRe.position.set(GRID_SIZE / 2 + 0.9, 0, 0);
+            axisGroup.add(labelRe);
+
+            const labelIm = createTextSprite("虚軸 Im(x)", "#3b82f6");
+            labelIm.position.set(0, 0, GRID_SIZE / 2 + 0.9);
+            axisGroup.add(labelIm);
+
+            const labelY = createTextSprite("y 軸 (高さ)", "#10b981");
+            labelY.position.set(0, GRID_SIZE / 2 + 0.6, 0);
+            axisGroup.add(labelY);
+
+            scene.add(axisGroup);
+        }
+
+        function createTextSprite(text, colorHex) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.font = 'Bold 24px sans-serif';
+            ctx.fillStyle = colorHex;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, 128, 32);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true });
+            const sprite = new THREE.Sprite(spriteMaterial);
+            sprite.scale.set(3, 0.75, 1);
+            return sprite;
+        }
+
+        function createComplexPlane() {
+            const planeGeo = new THREE.PlaneGeometry(GRID_SIZE, GRID_SIZE);
+            const planeMat = new THREE.MeshStandardMaterial({
+                color: 0x1e293b,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.45,
+                roughness: 0.2,
+                metalness: 0.5
+            });
+            complexPlaneMesh = new THREE.Mesh(planeGeo, planeMat);
+            complexPlaneMesh.rotation.x = Math.PI / 2;
+            scene.add(complexPlaneMesh);
+
+            const gridHelper = new THREE.GridHelper(GRID_SIZE, GRID_SIZE, 0x475569, 0x334155);
+            scene.add(gridHelper);
+        }
+
+        function createSaddleSurface() {
+            const geometry = new THREE.PlaneGeometry(GRID_SIZE, GRID_SIZE, GRID_SEGMENTS, GRID_SEGMENTS);
+            geometry.rotateX(-Math.PI / 2); // Align with XZ plane
+
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x6366f1,
+                side: THREE.DoubleSide,
+                wireframe: false,
+                transparent: true,
+                opacity: 0.65,
+                roughness: 0.3,
+                metalness: 0.2
+            });
+
+            saddleMesh = new THREE.Mesh(geometry, material);
+            scene.add(saddleMesh);
+        }
+
+        function createOrthogonalCurves() {
+            // Real Parabola (v = 0 plane) - Thick Green Tube
+            const realMat = new THREE.MeshStandardMaterial({ 
+                color: 0x22c55e, 
+                emissive: 0x15803d, 
+                emissiveIntensity: 0.5,
+                roughness: 0.2 
+            });
+            realParabolaLine = new THREE.Mesh(new THREE.BufferGeometry(), realMat);
+            scene.add(realParabolaLine);
+
+            // Imaginary Parabola (u = p plane) - Thick Pink Tube
+            const imagMat = new THREE.MeshStandardMaterial({ 
+                color: 0xec4899, 
+                emissive: 0xbe185d, 
+                emissiveIntensity: 0.5,
+                roughness: 0.2 
+            });
+            imagParabolaLine = new THREE.Mesh(new THREE.BufferGeometry(), imagMat);
+            scene.add(imagParabolaLine);
+        }
+
+        function createRootMarkers() {
+            const sphereGeo = new THREE.SphereGeometry(0.18, 32, 32);
+            const rootMat = new THREE.MeshStandardMaterial({
+                color: 0xf59e0b,
+                emissive: 0xd97706,
+                emissiveIntensity: 0.8,
+                roughness: 0.1
+            });
+
+            root1Mesh = new THREE.Mesh(sphereGeo, rootMat);
+            root2Mesh = new THREE.Mesh(sphereGeo, rootMat);
+
+            // Inner glowing rings
+            const glowGeo = new THREE.RingGeometry(0.22, 0.3, 32);
+            const glowMat = new THREE.MeshBasicMaterial({ color: 0xfcb316, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+
+            root1Glow = new THREE.Mesh(glowGeo, glowMat);
+            root1Glow.rotation.x = Math.PI / 2;
+            root1Mesh.add(root1Glow);
+
+            root2Glow = new THREE.Mesh(glowGeo, glowMat);
+            root2Glow.rotation.x = Math.PI / 2;
+            root2Mesh.add(root2Glow);
+
+            scene.add(root1Mesh);
+            scene.add(root2Mesh);
+        }
+
+        function updateSaddleVertices() {
+            const pos = saddleMesh.geometry.attributes.position;
+
+            for (let i = 0; i < pos.count; i++) {
+                const u = pos.getX(i); // Re(x) -> X
+                const v = pos.getZ(i); // Im(x) -> Z
+
+                // y = Re( a * ((u - p) + iv)^2 + q ) = a * ((u - p)^2 - v^2) + q
+                const du = u - paramP;
+                const y = paramA * (du * du - v * v) + paramQ;
+
+                pos.setY(i, y);
+            }
+            pos.needsUpdate = true;
+            saddleMesh.geometry.computeVertexNormals();
+        }
+
+        function updateParabolas() {
+            const step = 0.2;
+            const TUBE_RADIUS = 0.08; // Thickness of the curves
+            const TUBE_RADIAL_SEGMENTS = 8;
+
+            // 1. Real Parabola (v = 0, along X) -> y = a*(u - p)^2 + q
+            const realPoints = [];
+            for (let u = -GRID_SIZE / 2; u <= GRID_SIZE / 2; u += step) {
+                const du = u - paramP;
+                const y = paramA * (du * du) + paramQ;
+                realPoints.push(new THREE.Vector3(u, y, 0));
+            }
+            if (realPoints.length > 1) {
+                const realCurve = new THREE.CatmullRomCurve3(realPoints);
+                if (realParabolaLine.geometry) realParabolaLine.geometry.dispose();
+                realParabolaLine.geometry = new THREE.TubeGeometry(realCurve, 100, TUBE_RADIUS, TUBE_RADIAL_SEGMENTS, false);
+            }
+
+            // 2. Imaginary Parabola (u = p, along Z) -> y = q - a*v^2
+            const imagPoints = [];
+            for (let v = -GRID_SIZE / 2; v <= GRID_SIZE / 2; v += step) {
+                const y = paramQ - paramA * (v * v);
+                imagPoints.push(new THREE.Vector3(paramP, y, v));
+            }
+            if (imagPoints.length > 1) {
+                const imagCurve = new THREE.CatmullRomCurve3(imagPoints);
+                if (imagParabolaLine.geometry) imagParabolaLine.geometry.dispose();
+                imagParabolaLine.geometry = new THREE.TubeGeometry(imagCurve, 100, TUBE_RADIUS, TUBE_RADIAL_SEGMENTS, false);
+            }
+        }
+
+        function updateRoots() {
+            if (Math.abs(paramA) < 0.0001) {
+                root1Mesh.visible = false;
+                root2Mesh.visible = false;
+                return;
+            }
+
+            const val = -paramQ / paramA;
+
+            if (val > 0) {
+                // Two Real Roots: v = 0, u = p ± sqrt(-q/a)
+                const sqrtVal = Math.sqrt(val);
+                root1Mesh.position.set(paramP + sqrtVal, 0, 0);
+                root2Mesh.position.set(paramP - sqrtVal, 0, 0);
+
+                root1Mesh.visible = true;
+                root2Mesh.visible = true;
+            } else if (Math.abs(val) < 0.0001) {
+                // Repeated Root: u = p, v = 0
+                root1Mesh.position.set(paramP, 0, 0);
+                root2Mesh.position.set(paramP, 0, 0);
+
+                root1Mesh.visible = true;
+                root2Mesh.visible = false;
+            } else {
+                // Two Complex Conjugate Roots: u = p, v = ± sqrt(q/a)
+                const imagPart = Math.sqrt(-val);
+                root1Mesh.position.set(paramP, 0, imagPart);
+                root2Mesh.position.set(paramP, 0, -imagPart);
+
+                root1Mesh.visible = true;
+                root2Mesh.visible = true;
+            }
+        }
+
+        function updateInfoPanel() {
+            const vertexValEl = document.getElementById('vertex-val');
+            const qOverAValEl = document.getElementById('q-over-a-val');
+            const discStatusEl = document.getElementById('disc-status');
+            const rootsDisplayEl = document.getElementById('roots-display');
+
+            const label1Text = document.getElementById('root-label-1-text');
+            const label2Text = document.getElementById('root-label-2-text');
+
+            vertexValEl.textContent = `(${paramP.toFixed(2)}, ${paramQ.toFixed(2)})`;
+
+            if (Math.abs(paramA) < 0.0001) {
+                qOverAValEl.textContent = "N/A (a=0)";
+                discStatusEl.textContent = "a ≠ 0 である必要があります";
+                discStatusEl.className = "text-xs font-medium text-slate-400 mt-1";
+                rootsDisplayEl.innerHTML = `<div>解なし / 一次関数</div>`;
+                return;
+            }
+
+            const val = -paramQ / paramA;
+            qOverAValEl.textContent = val.toFixed(2);
+
+            let txt1 = "", txt2 = "";
+
+            if (val > 0) {
+                discStatusEl.textContent = "異なる2つの実数解 (実軸 Re(x) 上の交点)";
+                discStatusEl.className = "text-xs font-medium text-emerald-400 mt-1";
+                const sqrtVal = Math.sqrt(val);
+                const r1 = paramP + sqrtVal;
+                const r2 = paramP - sqrtVal;
+
+                txt1 = `x₁ = ${r1.toFixed(2)}`;
+                txt2 = `x₂ = ${r2.toFixed(2)}`;
+
+                rootsDisplayEl.innerHTML = `
+                    <div>$x_1 = ${r1.toFixed(2)}$</div>
+                    <div>$x_2 = ${r2.toFixed(2)}$</div>
+                `;
+            } else if (Math.abs(val) < 0.0001) {
+                discStatusEl.textContent = "重解 (頂点が y=0 平面に接する)";
+                discStatusEl.className = "text-xs font-medium text-blue-400 mt-1";
+                txt1 = `x = ${paramP.toFixed(2)}`;
+                txt2 = txt1;
+
+                rootsDisplayEl.innerHTML = `
+                    <div>$x_1 = x_2 = ${paramP.toFixed(2)}$</div>
+                `;
+            } else {
+                discStatusEl.textContent = "共役な2つの複素数解 (虚軸 Im(x) 方向の交点)";
+                discStatusEl.className = "text-xs font-medium text-amber-400 mt-1";
+                const imagPart = Math.sqrt(-val);
+
+                txt1 = `x₁ = ${paramP.toFixed(2)} + ${imagPart.toFixed(2)}i`;
+                txt2 = `x₂ = ${paramP.toFixed(2)} - ${imagPart.toFixed(2)}i`;
+
+                rootsDisplayEl.innerHTML = `
+                    <div>$x_1 = ${paramP.toFixed(2)} + ${imagPart.toFixed(2)}i$</div>
+                    <div>$x_2 = ${paramP.toFixed(2)} - ${imagPart.toFixed(2)}i$</div>
+                `;
+            }
+
+            if (label1Text) label1Text.textContent = txt1;
+            if (label2Text) label2Text.textContent = txt2;
+
+            if (window.MathJax && MathJax.typesetPromise) {
+                MathJax.typesetPromise([rootsDisplayEl, discStatusEl]).catch(() => {});
+            }
+        }
+
+        function updateRootLabelPositions() {
+            const l1 = document.getElementById('root-label-1');
+            const l2 = document.getElementById('root-label-2');
+            const showValues = document.getElementById('toggle-roots') ? document.getElementById('toggle-roots').checked : false;
+            
+            if (!showValues || !root1Mesh || !root2Mesh || !root1Mesh.visible) {
+                if (l1) l1.classList.add('hidden');
+                if (l2) l2.classList.add('hidden');
+                return;
+            }
+
+            // Project root 1 position to screen pixels
+            const pos1 = root1Mesh.position.clone().project(camera);
+            if (pos1.z <= 1) {
+                const x1 = (pos1.x * 0.5 + 0.5) * window.innerWidth;
+                const y1 = (-(pos1.y) * 0.5 + 0.5) * window.innerHeight;
+                l1.style.left = `${x1}px`;
+                l1.style.top = `${y1}px`;
+                l1.classList.remove('hidden');
+            } else {
+                l1.classList.add('hidden');
+            }
+
+            // Project root 2 position to screen pixels
+            if (root2Mesh.visible) {
+                const pos2 = root2Mesh.position.clone().project(camera);
+                if (pos2.z <= 1) {
+                    const x2 = (pos2.x * 0.5 + 0.5) * window.innerWidth;
+                    const y2 = (-(pos2.y) * 0.5 + 0.5) * window.innerHeight;
+                    l2.style.left = `${x2}px`;
+                    l2.style.top = `${y2}px`;
+                    l2.classList.remove('hidden');
+                } else {
+                    l2.classList.add('hidden');
+                }
+            } else {
+                l2.classList.add('hidden');
+            }
+        }
+
+        function updateAll() {
+            updateSaddleVertices();
+            updateParabolas();
+            updateRoots();
+            updateInfoPanel();
+        }
+
+        function setupEventListeners() {
+            const sliderA = document.getElementById('slider-a');
+            const sliderP = document.getElementById('slider-p');
+            const sliderQ = document.getElementById('slider-q');
+
+            const valA = document.getElementById('val-a');
+            const valP = document.getElementById('val-p');
+            const valQ = document.getElementById('val-q');
+
+            sliderA.addEventListener('input', (e) => {
+                paramA = parseFloat(e.target.value);
+                valA.textContent = paramA.toFixed(1);
+                updateAll();
+            });
+
+            sliderP.addEventListener('input', (e) => {
+                paramP = parseFloat(e.target.value);
+                valP.textContent = paramP.toFixed(1);
+                updateAll();
+            });
+
+            sliderQ.addEventListener('input', (e) => {
+                paramQ = parseFloat(e.target.value);
+                valQ.textContent = paramQ.toFixed(1);
+                updateAll();
+            });
+
+            document.getElementById('toggle-surface').addEventListener('change', (e) => {
+                saddleMesh.visible = e.target.checked;
+            });
+
+            document.getElementById('toggle-plane').addEventListener('change', (e) => {
+                complexPlaneMesh.visible = e.target.checked;
+            });
+
+            document.getElementById('toggle-roots').addEventListener('change', () => {
+                updateAll();
+            });
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Pulsing animation for active root rings
+            const time = Date.now() * 0.003;
+            if (root1Glow && root2Glow) {
+                const scale = 1 + 0.25 * Math.sin(time * 3);
+                root1Glow.scale.set(scale, scale, scale);
+                root2Glow.scale.set(scale, scale, scale);
+            }
+
+            controls.update();
+            updateRootLabelPositions();
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
