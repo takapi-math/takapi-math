@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高校化学 電気分解マスターシミュレータ</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Zen Maru Gothic', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        anode: '#ef4444',
+                        cathode: '#3b82f6',
+                        chemistry: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            700: '#15803d',
+                            900: '#14532d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glow-anode { filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.6)); }
+        .glow-cathode { filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.6)); }
+        
+        @keyframes floatIon {
+            0% { transform: translateY(0px) translateX(0px); }
+            50% { transform: translateY(-6px) translateX(4px); }
+            100% { transform: translateY(0px) translateX(0px); }
+        }
+        .animate-ion { animation: floatIon 3s infinite ease-in-out; }
+        
+        @keyframes bubbleRise {
+            0% { transform: translateY(0) scale(0.6); opacity: 0; }
+            30% { opacity: 0.9; }
+            100% { transform: translateY(-120px) scale(1.2); opacity: 0; }
+        }
+        .bubble {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            animation: bubbleRise 2.5s infinite linear;
+        }
+
+        /* カスタムスクロールバー */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col">
+
+    <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-40 px-4 py-3 shadow-lg">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-gradient-to-br from-indigo-500 to-purple-600 p-2.5 rounded-xl shadow-md">
+                    <i class="fa-solid font-bold fa-flask-vial text-2xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400">
+                        高校化学 電気分解マスター
+                    </h1>
+                    <p class="text-xs text-slate-400">電極・水溶液の反応優先度とメカニズムを視覚化</p>
+                </div>
+            </div>
+
+            <!-- ヘルプ・ヒントボタン -->
+            <div class="flex items-center gap-2">
+                <button id="btnIonizationModal" class="px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-sm hover:shadow-amber-500/10">
+                    <i class="fa-solid fa-bolt text-amber-400"></i>
+                    イオン化傾向の表
+                </button>
+                <button id="btnPriorityModal" class="px-3 py-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-sm">
+                    <i class="fa-solid fa-list-ol text-indigo-400"></i>
+                    反応優先ルール
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- 左カラム：設定パネル & 反応解釈 (5 cols) -->
+        <section class="lg:col-span-5 flex flex-col gap-5">
+            
+            <!-- 実験条件選択カード -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                <h2 class="text-base font-bold text-slate-200 mb-4 flex items-center gap-2 border-b border-slate-800 pb-2">
+                    <i class="fa-solid fa-sliders text-indigo-400"></i> 実験条件の設定
+                </h2>
+
+                <div class="space-y-4">
+                    <!-- 水溶液選択 -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                            水溶液 (電解質)
+                        </label>
+                        <select id="selectSolution" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-100 focus:outline-none focus:border-indigo-500 transition-colors">
+                            <option value="CuSO4">硫酸銅(II)水溶液 (CuSO₄)</option>
+                            <option value="NaCl">塩化ナトリウム水溶液 (NaCl)</option>
+                            <option value="CuCl2">塩化銅(II)水溶液 (CuCl₂)</option>
+                            <option value="H2SO4">稀硫酸 (H₂SO₄)</option>
+                            <option value="NaOH">水酸化ナトリウム水溶液 (NaOH)</option>
+                            <option value="AgNO3">硝酸銀水溶液 (AgNO₃)</option>
+                            <option value="KI">ヨウ化カリウム水溶液 (KI)</option>
+                            <option value="MoltenNaCl">融解塩化ナトリウム (NaCl 融解塩)</option>
+                        </select>
+                    </div>
+
+                    <!-- 電極選択 (2列) -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <!-- 陽極 Anode -->
+                        <div class="p-3 bg-red-950/30 border border-red-500/30 rounded-xl">
+                            <label class="block text-xs font-bold text-red-400 mb-1 flex items-center gap-1">
+                                <i class="fa-solid fa-plus-circle"></i> 陽極 (＋極)
+                            </label>
+                            <select id="selectAnode" class="w-full bg-slate-950 border border-red-900/50 rounded-lg px-2.5 py-2 text-xs font-bold text-slate-200 focus:outline-none focus:border-red-500">
+                                <option value="Pt">白金 (Pt)</option>
+                                <option value="C">炭素 (C)</option>
+                                <option value="Cu">銅 (Cu)</option>
+                                <option value="Ag">銀 (Ag)</option>
+                            </select>
+                        </div>
+
+                        <!-- 陰極 Cathode -->
+                        <div class="p-3 bg-blue-950/30 border border-blue-500/30 rounded-xl">
+                            <label class="block text-xs font-bold text-blue-400 mb-1 flex items-center gap-1">
+                                <i class="fa-solid fa-minus-circle"></i> 陰極 (－極)
+                            </label>
+                            <select id="selectCathode" class="w-full bg-slate-950 border border-blue-900/50 rounded-lg px-2.5 py-2 text-xs font-bold text-slate-200 focus:outline-none focus:border-blue-500">
+                                <option value="Pt">白金 (Pt)</option>
+                                <option value="C">炭素 (C)</option>
+                                <option value="Cu">銅 (Cu)</option>
+                                <option value="Fe">鉄 (Fe)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 電源スイッチ & 電圧コントロール -->
+                    <div class="pt-2 flex items-center gap-3">
+                        <button id="btnTogglePower" class="flex-1 py-3 px-4 rounded-xl font-black text-sm tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all duration-200 bg-emerald-600 hover:bg-emerald-500 text-white active:scale-98">
+                            <i class="fa-solid fa-power-off text-lg"></i>
+                            <span id="powerText">通電開始 (スイッチON)</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 反応優先順位と決定ロジックの判定結果 -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex-1 flex flex-col">
+                <h2 class="text-base font-bold text-slate-200 mb-3 flex items-center justify-between border-b border-slate-800 pb-2">
+                    <span class="flex items-center gap-2"><i class="fa-solid fa-diagram-project text-purple-400"></i> 反応の判定プロセス</span>
+                    <span id="statusBadge" class="text-xs px-2.5 py-1 rounded-full font-bold bg-slate-800 text-slate-400">待機中</span>
+                </h2>
+
+                <div class="space-y-4 flex-1 text-sm overflow-y-auto pr-1">
+                    <!-- 陽極での反応理由 -->
+                    <div class="p-3.5 bg-slate-950/60 rounded-xl border-l-4 border-red-500 space-y-1.5">
+                        <div class="flex items-center justify-between font-bold text-red-400 text-xs">
+                            <span>【陽極 ＋極】 酸化反応の判定</span>
+                            <span id="anodeRuleTag" class="bg-red-500/10 px-2 py-0.5 rounded text-[10px]">Rule #1</span>
+                        </div>
+                        <p id="anodeReason" class="text-xs text-slate-300 leading-relaxed">
+                            -
+                        </p>
+                        <div class="bg-slate-900 p-2 rounded-lg font-mono text-xs text-red-300 border border-red-950/50 mt-1" id="anodeEquation">
+                            -
+                        </div>
+                    </div>
+
+                    <!-- 陰極での反応理由 -->
+                    <div class="p-3.5 bg-slate-950/60 rounded-xl border-l-4 border-blue-500 space-y-1.5">
+                        <div class="flex items-center justify-between font-bold text-blue-400 text-xs">
+                            <span>【陰極 －極】 還元反応の判定</span>
+                            <span id="cathodeRuleTag" class="bg-blue-500/10 px-2 py-0.5 rounded text-[10px]">Rule #1</span>
+                        </div>
+                        <p id="cathodeReason" class="text-xs text-slate-300 leading-relaxed">
+                            -
+                        </p>
+                        <div class="bg-slate-900 p-2 rounded-lg font-mono text-xs text-blue-300 border border-blue-950/50 mt-1" id="cathodeEquation">
+                            -
+                        </div>
+                    </div>
+
+                    <!-- 全体反応式・変化の要約 -->
+                    <div class="p-3.5 bg-slate-950/80 rounded-xl border border-purple-500/20 space-y-1">
+                        <span class="font-bold text-purple-300 text-xs block">【全体の要約・観察される変化】</span>
+                        <p id="overallSummary" class="text-xs text-slate-300 leading-relaxed">
+                            -
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- 右カラム：イラスト・シミュレータビジュアル (7 cols) -->
+        <section class="lg:col-span-7 flex flex-col gap-5">
+            
+            <!-- ビーカーシミュレーター表示領域 -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 md:p-6 shadow-xl relative overflow-hidden flex flex-col items-center justify-center min-h-[460px]">
+                
+                <!-- 背景グリッド装飾 -->
+                <div class="absolute inset-0 bg-[linear-gradient(to_right,#1f293710_1px,transparent_1px),linear-gradient(to_bottom,#1f293710_1px,transparent_1px)] bg-[size:16px_16px]"></div>
+
+                <!-- 電流・電子の流れガイドヘッダー -->
+                <div class="w-full flex justify-between items-center px-4 mb-2 z-10">
+                    <div class="text-xs font-mono font-bold text-red-400 bg-red-950/40 px-3 py-1 rounded-full border border-red-500/30 flex items-center gap-2">
+                        <span>陽極 (酸化)</span>
+                        <i class="fa-solid fa-arrow-up text-red-400 animate-bounce" id="eFlowAnode" style="display:none;"></i>
+                        <span class="text-[10px] text-red-300 font-normal">e⁻ を放てるか?</span>
+                    </div>
+
+                    <!-- 電源装置イラスト -->
+                    <div class="flex flex-col items-center">
+                        <div id="batteryBox" class="bg-slate-800 border-2 border-slate-600 rounded-lg px-4 py-1.5 flex items-center gap-3 shadow-md">
+                            <span class="text-red-400 font-bold text-lg">＋</span>
+                            <div class="w-10 h-5 bg-slate-950 rounded flex items-center justify-center border border-slate-700">
+                                <div id="powerIndicator" class="w-2.5 h-2.5 rounded-full bg-slate-600"></div>
+                            </div>
+                            <span class="text-blue-400 font-bold text-lg">－</span>
+                        </div>
+                        <span class="text-[10px] text-slate-400 mt-1 font-mono">直流電源 (DC)</span>
+                    </div>
+
+                    <div class="text-xs font-mono font-bold text-blue-400 bg-blue-950/40 px-3 py-1 rounded-full border border-blue-500/30 flex items-center gap-2">
+                        <span class="text-[10px] text-blue-300 font-normal">e⁻ をもらう</span>
+                        <i class="fa-solid fa-arrow-down text-blue-400 animate-bounce" id="eFlowCathode" style="display:none;"></i>
+                        <span>陰極 (還元)</span>
+                    </div>
+                </div>
+
+                <!-- SVG/HTML 統合ビーカーイラスト -->
+                <div class="relative w-full max-w-md h-[340px] flex justify-center items-end z-10 mt-2">
+                    
+                    <!-- 導線 (SVG) -->
+                    <svg class="absolute top-0 w-full h-full pointer-events-none z-0" viewBox="0 0 400 340">
+                        <!-- 陽極へ続く導線 (赤) -->
+                        <path d="M 160 20 L 110 20 L 110 80" fill="none" stroke="#ef4444" stroke-width="4" stroke-dasharray="6 4" class="wire-anode" />
+                        <!-- 陰極へ続く導線 (青) -->
+                        <path d="M 240 20 L 290 20 L 290 80" fill="none" stroke="#3b82f6" stroke-width="4" stroke-dasharray="6 4" class="wire-cathode" />
+                    </svg>
+
+                    <!-- 電子の流れアニメーションドット -->
+                    <div id="electronContainer" class="absolute inset-0 pointer-events-none z-20 hidden">
+                        <!-- JSで電子粒子の動的生成 -->
+                    </div>
+
+                    <!-- ビーカー本体 -->
+                    <div class="relative w-[320px] h-[250px] border-b-4 border-l-4 border-r-4 border-slate-400/60 rounded-b-3xl bg-slate-900/30 backdrop-blur-sm overflow-hidden flex justify-center">
+                        
+                        <!-- 水溶液（液面＋グラデーション） -->
+                        <div id="liquid" class="absolute bottom-0 w-full h-[190px] bg-sky-500/20 transition-all duration-700 flex flex-col justify-end">
+                            <div class="w-full h-2 bg-white/20"></div>
+                        </div>
+
+                        <!-- 水溶液名ラベル -->
+                        <div class="absolute bottom-2 font-bold text-xs text-slate-300 bg-slate-950/80 px-3 py-1 rounded-full border border-slate-700 z-20">
+                            <span id="solutionLabel">CuSO₄ 水溶液</span>
+                        </div>
+
+                        <!-- 陽極 (Anode) 棒 -->
+                        <div id="anodeStick" class="absolute left-[65px] top-0 w-8 h-[170px] bg-slate-400 rounded-b-md shadow-md transition-all duration-500 flex flex-col items-center justify-start pt-2 border border-slate-500 z-10">
+                            <span class="text-[10px] font-black text-slate-900 bg-white/80 px-1 rounded">陽</span>
+                            <!-- 表面付着/溶解アニメ層 -->
+                            <div id="anodeSurface" class="absolute inset-0 rounded-b-md pointer-events-none"></div>
+                        </div>
+
+                        <!-- 陰極 (Cathode) 棒 -->
+                        <div id="cathodeStick" class="absolute right-[65px] top-0 w-8 h-[170px] bg-slate-400 rounded-b-md shadow-md transition-all duration-500 flex flex-col items-center justify-start pt-2 border border-slate-500 z-10">
+                            <span class="text-[10px] font-black text-slate-900 bg-white/80 px-1 rounded">陰</span>
+                            <!-- 表面付着/メッキアニメ層 -->
+                            <div id="cathodeSurface" class="absolute inset-0 rounded-b-md pointer-events-none transition-all duration-500"></div>
+                        </div>
+
+                        <!-- 気体発生用泡コンテナ -->
+                        <div id="anodeBubbles" class="absolute left-[55px] bottom-10 w-10 h-28 pointer-events-none z-20"></div>
+                        <div id="cathodeBubbles" class="absolute right-[55px] bottom-10 w-10 h-28 pointer-events-none z-20"></div>
+
+                        <!-- イオン・分子粒子コンテナ -->
+                        <div id="ionParticles" class="absolute inset-0 pointer-events-none z-15">
+                            <!-- JSで生成 -->
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- リアルタイム現象の注記 -->
+                <div id="liveStatusText" class="mt-3 text-xs font-bold text-center text-amber-300/90 bg-amber-950/30 border border-amber-500/20 px-4 py-1.5 rounded-xl z-10">
+                    スイッチをONにすると電気分解が始まります
+                </div>
+            </div>
+
+            <!-- クイック比較・解説タブ -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                <h3 class="text-sm font-bold text-slate-200 mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-lightbulb text-amber-400"></i> ポイント解説
+                </h3>
+                <p id="quickTip" class="text-xs text-slate-300 leading-relaxed">
+                    電気分解では、**電源の正極につないだ電極が「陽極」**（酸化反応：電子を失う）、**負極につないだ電極が「陰極」**（還元反応：電子を受け取る）になります。
+                </p>
+            </div>
+
+        </section>
+
+    </main>
+
+    <div id="modalIonization" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button id="btnCloseIonModal" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div class="flex items-center gap-3 mb-4">
+                <div class="p-2.5 bg-amber-500/20 text-amber-400 rounded-xl border border-amber-500/30">
+                    <i class="fa-solid fa-bolt text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-slate-100">金属のイオン化傾向</h3>
+                    <p class="text-xs text-slate-400">陽イオンになりやすさの順序 (電気分解での陰極の反応に関係!)</p>
+                </div>
+            </div>
+
+            <!-- 語呂合わせ -->
+            <div class="bg-amber-950/30 border border-amber-500/30 rounded-xl p-3.5 mb-5 text-xs">
+                <span class="font-bold text-amber-400 block mb-1"><i class="fa-solid fa-music"></i> 定番の語呂合わせ:</span>
+                <p class="text-amber-200 font-mono text-sm tracking-wider font-bold">
+                    「貸そうかな まぁあてにすな ひどすぎる借金」
+                </p>
+                <p class="text-slate-400 text-[11px] mt-1">
+                    (K Ca Na Mg Al Zn Fe Ni Sn Pb [H₂] Cu Hg Ag Pt Au)
+                </p>
+            </div>
+
+            <!-- イオン化傾向の一覧カード列 -->
+            <div class="space-y-3">
+                <div class="text-xs text-slate-300 leading-relaxed bg-slate-950 p-3 rounded-xl border border-slate-800">
+                    <span class="text-red-400 font-bold">大（イオンになりやすい）</span>
+                    <div class="flex flex-wrap gap-1.5 my-2 font-mono text-xs font-bold">
+                        <span class="px-2 py-1 bg-slate-800 text-slate-200 rounded border border-slate-700">K</span>
+                        <span class="px-2 py-1 bg-slate-800 text-slate-200 rounded border border-slate-700">Ca</span>
+                        <span class="px-2 py-1 bg-slate-800 text-slate-200 rounded border border-slate-700">Na</span>
+                        <span class="px-2 py-1 bg-slate-800 text-slate-200 rounded border border-slate-700">Mg</span>
+                        <span class="px-2 py-1 bg-slate-800 text-slate-200 rounded border border-slate-700">Al</span>
+                        <span class="px-2 py-1 bg-slate-800 text-slate-200 rounded border border-slate-700">Zn</span>
+                        <span class="px-2 py-1 bg-slate-800 text-slate-200 rounded border border-slate-700">Fe</span>
+                        <span class="px-2 py-1 bg-slate-800 text-slate-200 rounded border border-slate-700">Ni</span>
+                        <span class="px-2 py-1 bg-slate-800 text-slate-200 rounded border border-slate-700">Sn</span>
+                        <span class="px-2 py-1 bg-slate-800 text-slate-200 rounded border border-slate-700">Pb</span>
+                        <span class="px-2 py-1 bg-amber-500/20 text-amber-300 rounded border border-amber-500/50">(H₂)</span>
+                        <span class="px-2 py-1 bg-blue-900/40 text-blue-300 rounded border border-blue-500/40">Cu</span>
+                        <span class="px-2 py-1 bg-blue-900/40 text-blue-300 rounded border border-blue-500/40">Hg</span>
+                        <span class="px-2 py-1 bg-blue-900/40 text-blue-300 rounded border border-blue-500/40">Ag</span>
+                        <span class="px-2 py-1 bg-slate-800 text-slate-200 rounded border border-slate-700">Pt</span>
+                        <span class="px-2 py-1 bg-slate-800 text-slate-200 rounded border border-slate-700">Au</span>
+                    </div>
+                    <span class="text-blue-400 font-bold">小（単体として析出しやすい）</span>
+                </div>
+
+                <!-- 陰極におけるルール説明 -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
+                    <h4 class="font-bold text-indigo-400 flex items-center gap-1.5 text-sm">
+                        <i class="fa-solid fa-circle-info"></i> 電気分解の陰極における重要ポイント
+                    </h4>
+                    <ul class="list-disc list-inside space-y-1.5 text-slate-300">
+                        <li>
+                            <strong class="text-blue-300">H₂ よりイオン化傾向が小さい金属イオン (Cu²⁺, Ag⁺ 等):</strong><br>
+                            水溶液中でも電子を受け取って<span class="text-amber-300 font-bold">金属単体として析出</span>します。
+                        </li>
+                        <li>
+                            <strong class="text-amber-300">H₂ よりイオン化傾向が大きい金属イオン (Na⁺, K⁺, Al³⁺ 等):</strong><br>
+                            水溶液中では水分子(H₂O)の方が電子を受け取りやすいため、金属は析出せず<span class="text-cyan-300 font-bold">水素気体 (H₂) が発生</span>します。
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalPriority" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button id="btnClosePriorityModal" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div class="flex items-center gap-3 mb-4">
+                <div class="p-2.5 bg-indigo-500/20 text-indigo-400 rounded-xl border border-indigo-500/30">
+                    <i class="fa-solid fa-list-ol text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-slate-100">電気分解の反応ルール (優先順位)</h3>
+                    <p class="text-xs text-slate-400">どのような条件でどの物質が反応するかを決める完璧フローチャート</p>
+                </div>
+            </div>
+
+            <div class="space-y-4 text-xs">
+                <!-- 陽極の優先ルール -->
+                <div class="bg-red-950/20 border border-red-500/30 p-4 rounded-xl space-y-2">
+                    <h4 class="font-bold text-red-400 text-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-plus-circle"></i> 【陽極】酸化反応のルール (電子を出す)
+                    </h4>
+                    <ol class="list-decimal list-inside space-y-2 text-slate-300">
+                        <li class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                            <strong class="text-red-300">電極自身をチェック:</strong><br>
+                            電極が <strong class="text-white">Pt, C 以外 (Cu, Ag 等の金属)</strong> の場合 ➔ 電極自体が溶けてイオンになる！<br>
+                            <span class="font-mono text-amber-300 text-[11px]">例: Cu → Cu²⁺ + 2e⁻</span>
+                        </li>
+                        <li class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                            <strong class="text-red-300">水溶液中の陰イオンをチェック (電極が Pt, C の場合):</strong><br>
+                            ・<strong class="text-white">ハロゲン化物イオン (Cl⁻, I⁻)</strong> がある ➔ ハロゲン単体が発生！<br>
+                            <span class="font-mono text-amber-300 text-[11px]">例: 2Cl⁻ → Cl₂ + 2e⁻</span><br>
+                            ・<strong class="text-white">それ以外 (SO₄²⁻, NO₃⁻ や 水溶液のH₂O/OH⁻)</strong> ➔ 水(またはOH⁻)が酸化されて<strong class="text-cyan-300">酸素 O₂</strong> が発生！<br>
+                            <span class="font-mono text-amber-300 text-[11px]">塩基性: 4OH⁻ → 2H₂O + O₂ + 4e⁻</span><br>
+                            <span class="font-mono text-amber-300 text-[11px]">酸性/中性: 2H₂O → O₂ + 4H⁺ + 4e⁻</span>
+                        </li>
+                    </ol>
+                </div>
+
+                <!-- 陰極の優先ルール -->
+                <div class="bg-blue-950/20 border border-blue-500/30 p-4 rounded-xl space-y-2">
+                    <h4 class="font-bold text-blue-400 text-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-minus-circle"></i> 【陰極】還元反応のルール (電子をもらう)
+                    </h4>
+                    <ol class="list-decimal list-inside space-y-2 text-slate-300">
+                        <li class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                            <strong class="text-blue-300">水溶液中の陽イオンをチェック:</strong><br>
+                            ・<strong class="text-white">イオン化傾向が H₂ より小さい金属イオン (Cu²⁺, Ag⁺)</strong> ➔ 金属が析出！<br>
+                            <span class="font-mono text-amber-300 text-[11px]">例: Cu²⁺ + 2e⁻ → Cu</span><br>
+                            ・<strong class="text-white">イオン化傾向が H₂ より大きい金属イオン (Na⁺, K⁺, Mg²⁺, Al³⁺等)</strong> ➔ 水(またはH⁺)が還元されて<strong class="text-cyan-300">水素 H₂</strong> が発生！<br>
+                            <span class="font-mono text-amber-300 text-[11px]">酸性: 2H⁺ + 2e⁻ → H₂</span><br>
+                            <span class="font-mono text-amber-300 text-[11px]">中性/塩基性: 2H₂O + 2e⁻ → H₂ + 2OH⁻</span>
+                        </li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 電解質データベース・反応ロジック
+        const SOLUTIONS = {
+            CuSO4: {
+                name: '硫酸銅(II)水溶液 (CuSO₄)',
+                color: 'rgba(59, 130, 246, 0.35)', // 綺麗な青色
+                ions: ['Cu²⁺', 'SO₄²⁻', 'H⁺', 'OH⁻'],
+                anode: (electrode) => {
+                    if (electrode === 'Cu') {
+                        return {
+                            rule: '電極自体が酸化溶解',
+                            reason: '陽極がCu（Pt・C以外の金属）であるため、電極自体のCuが溶け出します。',
+                            eq: 'Cu → Cu²⁺ + 2e⁻',
+                            product: 'Cu²⁺ が溶出 (電極が細くなる)',
+                            effect: 'dissolve'
+                        };
+                    } else if (electrode === 'Ag') {
+                        return {
+                            rule: '電極自体が酸化溶解',
+                            reason: '陽極がAgであるため、電極自体のAgが溶け出します。',
+                            eq: 'Ag → Ag⁺ + e⁻',
+                            product: 'Ag⁺ が溶出',
+                            effect: 'dissolve'
+                        };
+                    } else {
+                        return {
+                            rule: '水分子 (H₂O) の酸化',
+                            reason: '電極が不活性(Pt/C)で、陰イオンがSO₄²⁻（酸化されにくい酸根）のため、H₂Oが酸化されて酸素が発生します。',
+                            eq: '2H₂O → O₂ + 4H⁺ + 4e⁻',
+                            product: '酸素 O₂ (気体発生)',
+                            effect: 'gas_O2'
+                        };
+                    }
+                },
+                cathode: (electrode) => {
+                    return {
+                        rule: 'Cu²⁺ の還元 (イオン化傾向: Cu < H₂)',
+                        reason: 'Cu²⁺のイオン化傾向はH₂よりも小さいため、優先的に還元されて銅が析出します。',
+                        eq: 'Cu²⁺ + 2e⁻ → Cu',
+                        product: '赤褐色の銅 (Cu) が析出',
+                        effect: 'deposit_Cu'
+                    };
+                },
+                summary: (anodeRes, cathodeRes) => {
+                    return 'Cu²⁺が陰極で消費されます。陽極がCuの場合は「銅の電解精錬」と同じ仕組みになり、水溶液濃度は変化しません。';
+                }
+            },
+            NaCl: {
+                name: '塩化ナトリウム水溶液 (NaCl)',
+                color: 'rgba(224, 242, 254, 0.2)', // ほぼ透明
+                ions: ['Na⁺', 'Cl⁻', 'H⁺', 'OH⁻'],
+                anode: (electrode) => {
+                    if (['Cu', 'Ag'].includes(electrode)) {
+                        return {
+                            rule: '電極自体の酸化溶解',
+                            reason: `陽極が${electrode}のため、電極自身が溶け出します。`,
+                            eq: electrode === 'Cu' ? 'Cu → Cu²⁺ + 2e⁻' : 'Ag → Ag⁺ + e⁻',
+                            product: `${electrode} イオンの溶出`,
+                            effect: 'dissolve'
+                        };
+                    } else {
+                        return {
+                            rule: 'ハロゲン化物イオン (Cl⁻) の酸化',
+                            reason: '電極がPt/Cで、水溶液中にハロゲン化物イオン(Cl⁻)が存在するため、Cl⁻が優先的に酸化されます。',
+                            eq: '2Cl⁻ → Cl₂ + 2e⁻',
+                            product: '塩素 Cl₂ (黄緑色の刺激臭気体)',
+                            effect: 'gas_Cl2'
+                        };
+                    }
+                },
+                cathode: (electrode) => {
+                    return {
+                        rule: 'H₂O の還元 (イオン化傾向: Na > H₂)',
+                        reason: 'Na⁺のイオン化傾向はH₂より非常に大きいため還元されず、水分子(H₂O)が還元されて水素が発生します。',
+                        eq: '2H₂O + 2e⁻ → H₂ + 2OH⁻',
+                        product: '水素 H₂ (気体発生 & 周囲が塩基性に)',
+                        effect: 'gas_H2'
+                    };
+                },
+                summary: () => '工業的に重要な「イオン交換膜法食塩電解」の原理です。陰極付近にはOH⁻が残るためNaOHが生成されます。'
+            },
+            CuCl2: {
+                name: '塩化銅(II)水溶液 (CuCl₂)',
+                color: 'rgba(20, 184, 166, 0.3)', // 青緑色
+                ions: ['Cu²⁺', 'Cl⁻', 'H⁺', 'OH⁻'],
+                anode: (electrode) => {
+                    if (['Cu', 'Ag'].includes(electrode)) {
+                        return {
+                            rule: '電極自体の酸化溶解',
+                            reason: `陽極が${electrode}のため、電極が溶け出します。`,
+                            eq: electrode === 'Cu' ? 'Cu → Cu²⁺ + 2e⁻' : 'Ag → Ag⁺ + e⁻',
+                            product: '金属イオンの溶出',
+                            effect: 'dissolve'
+                        };
+                    } else {
+                        return {
+                            rule: 'Cl⁻ の酸化',
+                            reason: 'Cl⁻が存在するため優先して酸化され、塩素が発生します。',
+                            eq: '2Cl⁻ → Cl₂ + 2e⁻',
+                            product: '塩素 Cl₂ (気体)',
+                            effect: 'gas_Cl2'
+                        };
+                    }
+                },
+                cathode: () => {
+                    return {
+                        rule: 'Cu²⁺ の還元',
+                        reason: 'Cu²⁺が還元され銅が析出します。',
+                        eq: 'Cu²⁺ + 2e⁻ → Cu',
+                        product: '銅 (Cu) 析出',
+                        effect: 'deposit_Cu'
+                    };
+                },
+                summary: () => '陽極からCl₂、陰極からCuが得られます。最も典型的な分かりやすい電気分解の例です。'
+            },
+            H2SO4: {
+                name: '稀硫酸 (H₂SO₄)',
+                color: 'rgba(241, 245, 249, 0.25)',
+                ions: ['H⁺', 'SO₄²⁻'],
+                anode: (electrode) => {
+                    if (['Cu', 'Ag'].includes(electrode)) {
+                        return {
+                            rule: '電極自体の酸化溶解',
+                            reason: `${electrode}電極が溶出します。`,
+                            eq: electrode === 'Cu' ? 'Cu → Cu²⁺ + 2e⁻' : 'Ag → Ag⁺ + e⁻',
+                            product: '金属イオン溶出',
+                            effect: 'dissolve'
+                        };
+                    } else {
+                        return {
+                            rule: 'H₂O の酸化',
+                            reason: 'SO₄²⁻は酸化されにくいため、水分子(H₂O)が酸化されて酸素が発生します。',
+                            eq: '2H₂O → O₂ + 4H⁺ + 4e⁻',
+                            product: '酸素 O₂ (気体)',
+                            effect: 'gas_O2'
+                        };
+                    }
+                },
+                cathode: () => {
+                    return {
+                        rule: 'H⁺ の還元',
+                        reason: '酸性溶液でH⁺が豊富に存在するため、H⁺が直接還元されて水素が発生します。',
+                        eq: '2H⁺ + 2e⁻ → H₂',
+                        product: '水素 H₂ (気体)',
+                        effect: 'gas_H2'
+                    };
+                },
+                summary: () => '実質的に「水の電気分解」を行っていることになります（陽極:陰極の発生気体体積比 = 1 : 2）。'
+            },
+            NaOH: {
+                name: '水酸化ナトリウム水溶液 (NaOH)',
+                color: 'rgba(241, 245, 249, 0.2)',
+                ions: ['Na⁺', 'OH⁻'],
+                anode: (electrode) => {
+                    if (['Cu', 'Ag'].includes(electrode)) {
+                        return {
+                            rule: '電極自体の酸化溶解',
+                            reason: `${electrode}電極が溶出します。`,
+                            eq: electrode === 'Cu' ? 'Cu → Cu²⁺ + 2e⁻' : 'Ag → Ag⁺ + e⁻',
+                            product: '金属イオン溶出',
+                            effect: 'dissolve'
+                        };
+                    } else {
+                        return {
+                            rule: '水酸化物イオン (OH⁻) の酸化',
+                            reason: '塩基性でOH⁻が豊富にあるため、OH⁻が直接酸化されて酸素が発生します。',
+                            eq: '4OH⁻ → 2H₂O + O₂ + 4e⁻',
+                            product: '酸素 O₂ (気体)',
+                            effect: 'gas_O2'
+                        };
+                    }
+                },
+                cathode: () => {
+                    return {
+                        rule: 'H₂O の還元',
+                        reason: 'Na⁺は還元されにくいため、H₂Oが還元されて水素が発生します。',
+                        eq: '2H₂O + 2e⁻ → H₂ + 2OH⁻',
+                        product: '水素 H₂ (気体)',
+                        effect: 'gas_H2'
+                    };
+                },
+                summary: () => 'こちらも実質的に「水の電気分解」となります。水が消費されるため次第にNaOH濃度が高くなります。'
+            },
+            AgNO3: {
+                name: '硝酸銀水溶液 (AgNO₃)',
+                color: 'rgba(248, 250, 252, 0.25)',
+                ions: ['Ag⁺', 'NO₃⁻', 'H⁺', 'OH⁻'],
+                anode: (electrode) => {
+                    if (['Cu', 'Ag'].includes(electrode)) {
+                        return {
+                            rule: '電極自体の酸化溶解',
+                            reason: `${electrode}電極が酸化されて溶出します。`,
+                            eq: electrode === 'Cu' ? 'Cu → Cu²⁺ + 2e⁻' : 'Ag → Ag⁺ + e⁻',
+                            product: '金属イオン溶出',
+                            effect: 'dissolve'
+                        };
+                    } else {
+                        return {
+                            rule: 'H₂O の酸化',
+                            reason: 'NO₃⁻は酸化されにくいため、H₂Oが酸化されて酸素が発生します。',
+                            eq: '2H₂O → O₂ + 4H⁺ + 4e⁻',
+                            product: '酸素 O₂ (気体)',
+                            effect: 'gas_O2'
+                        };
+                    }
+                },
+                cathode: () => {
+                    return {
+                        rule: 'Ag⁺ の還元 (イオン化傾向: Ag < H₂)',
+                        reason: 'Ag⁺は非常に還元されやすいため、銀が電極表面に銀白色に析出します（銀メッキ）。',
+                        eq: 'Ag⁺ + e⁻ → Ag',
+                        product: '銀 (Ag) 析出',
+                        effect: 'deposit_Ag'
+                    };
+                },
+                summary: () => '陰極への「銀メッキ」の基礎となる反応です。'
+            },
+            KI: {
+                name: 'ヨウ化カリウム水溶液 (KI)',
+                color: 'rgba(254, 240, 138, 0.25)', // 淡い黄色
+                ions: ['K⁺', 'I⁻', 'H⁺', 'OH⁻'],
+                anode: (electrode) => {
+                    if (['Cu', 'Ag'].includes(electrode)) {
+                        return {
+                            rule: '電極自体の酸化溶解',
+                            reason: `${electrode}電極が溶出します。`,
+                            eq: electrode === 'Cu' ? 'Cu → Cu²⁺ + 2e⁻' : 'Ag → Ag⁺ + e⁻',
+                            product: '金属イオン溶出',
+                            effect: 'dissolve'
+                        };
+                    } else {
+                        return {
+                            rule: 'ヨウ化物イオン (I⁻) の酸化',
+                            reason: 'ハロゲン化物イオンであるI⁻が優先的に酸化され、ヨウ素(I₂)が生成して褐色になります。',
+                            eq: '2I⁻ → I₂ + 2e⁻',
+                            product: 'ヨウ素 I₂ (褐色に変化)',
+                            effect: 'brown_I2'
+                        };
+                    }
+                },
+                cathode: () => {
+                    return {
+                        rule: 'H₂O の還元',
+                        reason: 'K⁺のイオン化傾向は非常に大きいため、H₂Oが還元されて水素が発生します。',
+                        eq: '2H₂O + 2e⁻ → H₂ + 2OH⁻',
+                        product: '水素 H₂ (気体)',
+                        effect: 'gas_H2'
+                    };
+                },
+                summary: () => '陽極付近は生成したヨウ素(I₂)により褐色になり、デンプンを加えると濃青色（ヨウ素デンプン反応）を示します。'
+            },
+            MoltenNaCl: {
+                name: '融解塩化ナトリウム (NaCl 融解塩)',
+                color: 'rgba(249, 115, 22, 0.35)', // 高熱のオレンジ色
+                ions: ['Na⁺', 'Cl⁻'],
+                anode: (electrode) => {
+                    return {
+                        rule: 'Cl⁻ の酸化 (水が存在しない)',
+                        reason: '水が存在しない融解塩電解のため、唯一の陰イオンであるCl⁻が酸化されます。',
+                        eq: '2Cl⁻ → Cl₂ + 2e⁻',
+                        product: '塩素 Cl₂ (気体)',
+                        effect: 'gas_Cl2'
+                    };
+                },
+                cathode: () => {
+                    return {
+                        rule: 'Na⁺ の直接還元 (水がないため発生!)',
+                        reason: '水が存在しないため、イオン化傾向が大きくてもNa⁺自身が還元されてナトリウム単体が得られます（溶融塩電解）。',
+                        eq: 'Na⁺ + e⁻ → Na',
+                        product: '金属ナトリウム (Na)',
+                        effect: 'deposit_Na'
+                    };
+                },
+                summary: () => 'イオン化傾向の大きいアルカリ金属（Na等）やAlを単体として得るには、水溶液ではなくこの「融解塩電解」が必要です！'
+            }
+        };
+
+        let isPowerOn = false;
+
+        // DOM elements
+        const selectSolution = document.getElementById('selectSolution');
+        const selectAnode = document.getElementById('selectAnode');
+        const selectCathode = document.getElementById('selectCathode');
+        const btnTogglePower = document.getElementById('btnTogglePower');
+        const powerText = document.getElementById('powerText');
+        const powerIndicator = document.getElementById('powerIndicator');
+        const statusBadge = document.getElementById('statusBadge');
+        
+        const anodeReason = document.getElementById('anodeReason');
+        const anodeEquation = document.getElementById('anodeEquation');
+        const anodeRuleTag = document.getElementById('anodeRuleTag');
+        
+        const cathodeReason = document.getElementById('cathodeReason');
+        const cathodeEquation = document.getElementById('cathodeEquation');
+        const cathodeRuleTag = document.getElementById('cathodeRuleTag');
+        
+        const overallSummary = document.getElementById('overallSummary');
+        const liveStatusText = document.getElementById('liveStatusText');
+        const solutionLabel = document.getElementById('solutionLabel');
+        const liquid = document.getElementById('liquid');
+
+        const anodeStick = document.getElementById('anodeStick');
+        const cathodeStick = document.getElementById('cathodeStick');
+        const anodeSurface = document.getElementById('anodeSurface');
+        const cathodeSurface = document.getElementById('cathodeSurface');
+
+        const anodeBubbles = document.getElementById('anodeBubbles');
+        const cathodeBubbles = document.getElementById('cathodeBubbles');
+        const ionParticles = document.getElementById('ionParticles');
+        const eFlowAnode = document.getElementById('eFlowAnode');
+        const eFlowCathode = document.getElementById('eFlowCathode');
+
+        // モーダル
+        const modalIonization = document.getElementById('modalIonization');
+        const modalPriority = document.getElementById('modalPriority');
+        const btnIonizationModal = document.getElementById('btnIonizationModal');
+        const btnPriorityModal = document.getElementById('btnPriorityModal');
+        const btnCloseIonModal = document.getElementById('btnCloseIonModal');
+        const btnClosePriorityModal = document.getElementById('btnClosePriorityModal');
+
+        btnIonizationModal.addEventListener('click', () => modalIonization.classList.remove('hidden'));
+        btnCloseIonModal.addEventListener('click', () => modalIonization.classList.add('hidden'));
+        btnPriorityModal.addEventListener('click', () => modalPriority.classList.remove('hidden'));
+        btnClosePriorityModal.addEventListener('click', () => modalPriority.classList.add('hidden'));
+
+        selectSolution.addEventListener('change', updateSimulation);
+        selectAnode.addEventListener('change', updateSimulation);
+        selectCathode.addEventListener('change', updateSimulation);
+
+        btnTogglePower.addEventListener('click', () => {
+            isPowerOn = !isPowerOn;
+            if (isPowerOn) {
+                btnTogglePower.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+                btnTogglePower.classList.add('bg-red-600', 'hover:bg-red-500');
+                powerText.textContent = '通電停止 (スイッチOFF)';
+                powerIndicator.classList.remove('bg-slate-600');
+                powerIndicator.classList.add('bg-emerald-400', 'shadow-[0_0_8px_#34d399]');
+                statusBadge.textContent = '反応進行中...';
+                statusBadge.className = 'text-xs px-2.5 py-1 rounded-full font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 animate-pulse';
+                eFlowAnode.style.display = 'inline-block';
+                eFlowCathode.style.display = 'inline-block';
+            } else {
+                btnTogglePower.classList.remove('bg-red-600', 'hover:bg-red-500');
+                btnTogglePower.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+                powerText.textContent = '通電開始 (スイッチON)';
+                powerIndicator.classList.remove('bg-emerald-400', 'shadow-[0_0_8px_#34d399]');
+                powerIndicator.classList.add('bg-slate-600');
+                statusBadge.textContent = '待機中';
+                statusBadge.className = 'text-xs px-2.5 py-1 rounded-full font-bold bg-slate-800 text-slate-400';
+                eFlowAnode.style.display = 'none';
+                eFlowCathode.style.display = 'none';
+            }
+            updateSimulation();
+        });
+
+        // 電極の見た目カラー設定
+        function getElectrodeStyle(material) {
+            switch(material) {
+                case 'Pt': return { bg: 'bg-slate-300', border: 'border-slate-400', label: '白金 (Pt)' };
+                case 'C': return { bg: 'bg-slate-800', border: 'border-slate-900', label: '炭素 (C)' };
+                case 'Cu': return { bg: 'bg-amber-700', border: 'border-amber-800', label: '銅 (Cu)' };
+                case 'Ag': return { bg: 'bg-slate-200', border: 'border-slate-300', label: '銀 (Ag)' };
+                case 'Fe': return { bg: 'bg-zinc-600', border: 'border-zinc-700', label: '鉄 (Fe)' };
+                default: return { bg: 'bg-slate-400', border: 'border-slate-500', label: material };
+            }
+        }
+
+        // 泡エフェクトの生成・消去
+        function createBubbles(container, count = 10) {
+            container.innerHTML = '';
+            for (let i = 0; i < count; i++) {
+                const b = document.createElement('div');
+                b.className = 'bubble';
+                const size = Math.random() * 8 + 4;
+                b.style.width = `${size}px`;
+                b.style.height = `${size}px`;
+                b.style.left = `${Math.random() * 30}px`;
+                b.style.animationDelay = `${Math.random() * 2}s`;
+                b.style.animationDuration = `${1.8 + Math.random()}s`;
+                container.appendChild(b);
+            }
+        }
+
+        // イオンパーティクルの描画
+        function renderIons(ionList) {
+            ionParticles.innerHTML = '';
+            const positions = [
+                { top: '30%', left: '25%' },
+                { top: '50%', left: '35%' },
+                { top: '70%', left: '20%' },
+                { top: '40%', left: '65%' },
+                { top: '65%', left: '75%' },
+                { top: '25%', left: '70%' },
+            ];
+
+            ionList.forEach((ion, idx) => {
+                const pos = positions[idx % positions.length];
+                const ionEl = document.createElement('div');
+                
+                let isCation = ion.includes('+');
+                let colorClass = isCation 
+                    ? 'bg-blue-500/20 text-blue-300 border-blue-400/50' 
+                    : 'bg-red-500/20 text-red-300 border-red-400/50';
+
+                ionEl.className = `absolute px-2 py-0.5 rounded-full border text-[11px] font-mono font-bold animate-ion shadow-sm backdrop-blur-xs ${colorClass}`;
+                ionEl.style.top = pos.top;
+                ionEl.style.left = pos.left;
+                ionEl.textContent = ion;
+                ionParticles.appendChild(ionEl);
+            });
+        }
+
+        function updateSimulation() {
+            const solKey = selectSolution.value;
+            const anodeMat = selectAnode.value;
+            const cathodeMat = selectCathode.value;
+
+            const solData = SOLUTIONS[solKey];
+            const anodeRes = solData.anode(anodeMat);
+            const cathodeRes = solData.cathode(cathodeMat);
+
+            // 1. テキスト・ルール解説の更新
+            solutionLabel.textContent = solData.name;
+            liquid.style.backgroundColor = solData.color;
+
+            anodeReason.textContent = anodeRes.reason;
+            anodeEquation.textContent = anodeRes.eq;
+            anodeRuleTag.textContent = anodeRes.rule;
+
+            cathodeReason.textContent = cathodeRes.reason;
+            cathodeEquation.textContent = cathodeRes.eq;
+            cathodeRuleTag.textContent = cathodeRes.rule;
+
+            overallSummary.textContent = solData.summary(anodeRes, cathodeRes);
+
+            // 2. 電極ビジュアル適用
+            const anodeStyle = getElectrodeStyle(anodeMat);
+            anodeStick.className = `absolute left-[65px] top-0 w-8 h-[170px] ${anodeStyle.bg} ${anodeStyle.border} rounded-b-md shadow-md transition-all duration-300 flex flex-col items-center justify-start pt-2 border z-10`;
+
+            const cathodeStyle = getElectrodeStyle(cathodeMat);
+            cathodeStick.className = `absolute right-[65px] top-0 w-8 h-[170px] ${cathodeStyle.bg} ${cathodeStyle.border} rounded-b-md shadow-md transition-all duration-300 flex flex-col items-center justify-start pt-2 border z-10`;
+
+            // リセット
+            anodeSurface.innerHTML = '';
+            cathodeSurface.innerHTML = '';
+            anodeBubbles.innerHTML = '';
+            cathodeBubbles.innerHTML = '';
+
+            // イオンの更新
+            renderIons(solData.ions);
+
+            // 3. 通電中のアニメーション・エフェクト処理
+            if (isPowerOn) {
+                liveStatusText.innerHTML = `<span class="text-emerald-400">【反応中】</span> 陽極: ${anodeRes.product} / 陰極: ${cathodeRes.product}`;
+
+                // 陽極のエフェクト
+                if (anodeRes.effect.startsWith('gas')) {
+                    createBubbles(anodeBubbles, 12);
+                } else if (anodeRes.effect === 'dissolve') {
+                    anodeSurface.innerHTML = `<div class="w-full h-full bg-red-500/30 animate-pulse rounded-b-md border border-red-400"></div>`;
+                }
+
+                // 陰極のエフェクト
+                if (cathodeRes.effect.startsWith('gas')) {
+                    createBubbles(cathodeBubbles, 14);
+                } else if (cathodeRes.effect === 'deposit_Cu') {
+                    cathodeSurface.innerHTML = `<div class="w-full h-full bg-amber-800/80 rounded-b-md border-2 border-amber-600 shadow-[0_0_10px_rgba(217,119,6,0.5)]"></div>`;
+                } else if (cathodeRes.effect === 'deposit_Ag') {
+                    cathodeSurface.innerHTML = `<div class="w-full h-full bg-slate-100/90 rounded-b-md border-2 border-white shadow-[0_0_10px_rgba(255,255,255,0.8)]"></div>`;
+                } else if (cathodeRes.effect === 'deposit_Na') {
+                    cathodeSurface.innerHTML = `<div class="w-full h-full bg-slate-300/80 rounded-b-md border-2 border-slate-200"></div>`;
+                }
+
+            } else {
+                liveStatusText.textContent = 'スイッチをONにすると電気分解が始まります';
+            }
+        }
+
+        // 初期ロード実行
+        window.onload = function() {
+            updateSimulation();
+        };
+    </script>
+</body>
+</html>
