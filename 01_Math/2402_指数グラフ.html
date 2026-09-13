@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>指数関数の対称・平行移動と逆関数ビジュアル学習ツール</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- KaTeX for Math Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+
+        .font-mono-math {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* カスタムスライダー */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: #334155;
+            border-radius: 4px;
+            height: 4px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 14px;
+            width: 14px;
+            border-radius: 50%;
+            background: #38bdf8;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
+            transition: transform 0.1s ease;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.25);
+        }
+
+        /* ガラスモルフィズム風カード */
+        .glass-card {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            min-height: 320px;
+        }
+    </style>
+</head>
+<body class="min-h-screen lg:h-screen flex flex-col overflow-x-hidden lg:overflow-hidden">
+
+    <!-- ヘッダー（シンプル化） -->
+    <header class="border-b border-slate-800 bg-slate-900/90 py-1.5 px-4 shrink-0">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <div class="p-1 bg-sky-500/10 rounded text-sky-400 border border-sky-500/20">
+                    <i data-lucide="line-chart" class="w-4 h-4"></i>
+                </div>
+                <h1 class="font-bold text-sm text-slate-100 flex items-center gap-1.5">
+                    指数関数の移動 (対象移動→平行移動の順で考える)
+                </h1>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-2 lg:p-3 grid grid-cols-1 lg:grid-cols-12 gap-2 min-h-0">
+
+        <!-- 左側：コンパクト操作パネル (4 cols) -->
+        <section class="lg:col-span-4 flex flex-col gap-2 overflow-y-auto pr-0.5">
+            
+            <!-- 1. 底の選択 (リセットボタンをここに配置 + スライダー + プリセット) -->
+            <div class="glass-card rounded-xl p-2.5 shadow-md space-y-2">
+                <div class="flex justify-between items-center">
+                    <span class="text-[11px] font-semibold text-sky-400 uppercase tracking-wider flex items-center gap-1">
+                        <i data-lucide="layers" class="w-3.5 h-3.5"></i> 1. 底 $a$ の選択
+                    </span>
+                    <!-- リセットボタンを底Aの上に移動 -->
+                    <button id="resetAllBtn" class="px-2 py-0.5 text-[11px] font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded transition-all flex items-center gap-1 shadow-sm">
+                        <i data-lucide="rotate-ccw" class="w-3 h-3"></i> リセット
+                    </button>
+                </div>
+
+                <div class="flex justify-between items-center text-[11px]">
+                    <span class="text-slate-400">現在の底:</span>
+                    <span id="aValue" class="font-mono-math text-sky-300 font-bold text-xs">a = 2.0</span>
+                </div>
+
+                <!-- スライダー (1/5 ～ 5) -->
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] text-slate-500 font-mono-math">1/5</span>
+                        <input type="range" id="aSlider" min="0.2" max="5" step="0.05" value="2" class="w-full">
+                        <span class="text-[10px] text-slate-500 font-mono-math">5</span>
+                    </div>
+                </div>
+
+                <!-- プリセットボタン (1/5, 1/4, 1/2, 2, 4) -->
+                <div class="grid grid-cols-5 gap-1 pt-0.5">
+                    <button class="base-btn px-1 py-0.5 text-xs font-medium rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 transition-all text-center" data-base="0.2">
+                        $\frac{1}{5}$
+                    </button>
+                    <button class="base-btn px-1 py-0.5 text-xs font-medium rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 transition-all text-center" data-base="0.25">
+                        $\frac{1}{4}$
+                    </button>
+                    <button class="base-btn px-1 py-0.5 text-xs font-medium rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 transition-all text-center" data-base="0.5">
+                        $\frac{1}{2}$
+                    </button>
+                    <button class="base-btn active-base px-1 py-0.5 text-xs font-medium rounded-lg border border-sky-500 bg-sky-500/20 text-sky-300 transition-all text-center" data-base="2">
+                        2
+                    </button>
+                    <button class="base-btn px-1 py-0.5 text-xs font-medium rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 transition-all text-center" data-base="4">
+                        4
+                    </button>
+                </div>
+            </div>
+
+            <!-- 2. 対称移動 -->
+            <div class="glass-card rounded-xl p-2.5 shadow-md space-y-1.5">
+                <label class="text-[11px] font-semibold text-sky-400 uppercase tracking-wider block flex items-center gap-1">
+                    <i data-lucide="flip-horizontal" class="w-3.5 h-3.5"></i> 2. 対称移動
+                </label>
+                
+                <div class="grid grid-cols-2 gap-1.5 text-xs">
+                    <label class="flex items-center justify-between p-1.5 rounded-lg bg-slate-800/60 border border-slate-700/50 cursor-pointer">
+                        <span class="text-slate-200 text-[11px]">$y$軸対称 ($x \to -x$)</span>
+                        <input type="checkbox" id="syToggle" class="rounded text-sky-500 focus:ring-sky-400 bg-slate-900 border-slate-700">
+                    </label>
+
+                    <label class="flex items-center justify-between p-1.5 rounded-lg bg-slate-800/60 border border-slate-700/50 cursor-pointer">
+                        <span class="text-slate-200 text-[11px]">$x$軸対称 ($y \to -y$)</span>
+                        <input type="checkbox" id="sxToggle" class="rounded text-sky-500 focus:ring-sky-400 bg-slate-900 border-slate-700">
+                    </label>
+                </div>
+            </div>
+
+            <!-- 3. 平行移動 -->
+            <div class="glass-card rounded-xl p-2.5 shadow-md space-y-2">
+                <label class="text-[11px] font-semibold text-sky-400 uppercase tracking-wider block flex items-center gap-1">
+                    <i data-lucide="move" class="w-3.5 h-3.5"></i> 3. 平行移動
+                </label>
+
+                <!-- x軸方向移動 -->
+                <div class="space-y-1">
+                    <div class="flex justify-between text-[11px]">
+                        <span class="text-slate-300">$x$軸方向 ($p$):</span>
+                        <span id="pValue" class="font-mono-math text-sky-400 font-bold">0.0</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] text-slate-500 font-mono-math">-5</span>
+                        <input type="range" id="pSlider" min="-5" max="5" step="0.5" value="0" class="w-full">
+                        <span class="text-[10px] text-slate-500 font-mono-math">+5</span>
+                    </div>
+                </div>
+
+                <!-- y軸方向移動 -->
+                <div class="space-y-1">
+                    <div class="flex justify-between text-[11px]">
+                        <span class="text-slate-300">$y$軸方向 ($q$):</span>
+                        <span id="qValue" class="font-mono-math text-sky-400 font-bold">0.0</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] text-slate-500 font-mono-math">-5</span>
+                        <input type="range" id="qSlider" min="-5" max="5" step="0.5" value="0" class="w-full">
+                        <span class="text-[10px] text-slate-500 font-mono-math">+5</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 表示・非表示切り替え -->
+            <div class="glass-card rounded-xl p-2.5 shadow-md space-y-1.5">
+                <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block flex items-center gap-1">
+                    <i data-lucide="eye" class="w-3.5 h-3.5"></i> 表示切り替え
+                </label>
+                
+                <div class="grid grid-cols-2 gap-1.5 text-[11px]">
+                    <label class="flex items-center gap-1.5 p-1.5 rounded-lg bg-slate-800/40 border border-slate-700/40 cursor-pointer hover:bg-slate-800">
+                        <input type="checkbox" id="showBaseGraph" checked class="rounded text-sky-500 focus:ring-sky-400 bg-slate-900 border-slate-700">
+                        <span class="text-slate-300 truncate">基準 $y=a^x$</span>
+                    </label>
+
+                    <label class="flex items-center gap-1.5 p-1.5 rounded-lg bg-slate-800/40 border border-slate-700/40 cursor-pointer hover:bg-slate-800">
+                        <input type="checkbox" id="showAsymptote" checked class="rounded text-amber-500 focus:ring-amber-400 bg-slate-900 border-slate-700">
+                        <span class="text-slate-300 truncate">漸近線 $y=q$</span>
+                    </label>
+
+                    <label class="flex items-center gap-1.5 p-1.5 rounded-lg bg-slate-800/40 border border-slate-700/40 cursor-pointer hover:bg-slate-800 col-span-2">
+                        <input type="checkbox" id="showInverseGraph" checked class="rounded text-rose-500 focus:ring-rose-400 bg-slate-900 border-slate-700">
+                        <span class="text-slate-300 truncate">逆関数 $y=f^{-1}(x)$ ＆ $y=x$</span>
+                    </label>
+
+                    <label class="flex items-center gap-1.5 p-1.5 rounded-lg bg-slate-800/40 border border-slate-700/40 cursor-pointer hover:bg-slate-800 col-span-2">
+                        <input type="checkbox" id="showPointsTrack" checked class="rounded text-emerald-500 focus:ring-emerald-400 bg-slate-900 border-slate-700">
+                        <span class="text-slate-300 truncate">定点の表示 ($P_1, P_2$)</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 変形ステップ解説 -->
+            <div class="glass-card rounded-xl p-2 shadow-md text-[11px]">
+                <div class="text-emerald-400 font-semibold mb-1 flex items-center gap-1">
+                    <i data-lucide="compass" class="w-3.5 h-3.5"></i> 変形手順
+                </div>
+                <div class="flex flex-col gap-1 text-[10px] text-slate-300">
+                    <div class="flex items-center justify-between bg-slate-800/50 p-1 rounded">
+                        <span>① 基準:</span>
+                        <span id="step1Math"></span>
+                    </div>
+                    <div class="flex flex-col bg-slate-800/50 p-1 rounded">
+                        <div class="flex items-center justify-between">
+                            <span>② 対称:</span>
+                            <span id="step2Math"></span>
+                        </div>
+                        <span id="step2Desc" class="text-[9px] text-slate-400 text-right font-sans"></span>
+                    </div>
+                    <div class="flex flex-col bg-slate-800/50 p-1 rounded">
+                        <div class="flex items-center justify-between">
+                            <span>③ 移動:</span>
+                            <span id="step3Math"></span>
+                        </div>
+                        <span id="step3Desc" class="text-[9px] text-slate-400 text-right font-sans"></span>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- 右側：コンパクト数式 ＋ メイン Canvas (8 cols) -->
+        <section class="lg:col-span-8 flex flex-col gap-2 min-h-0">
+            
+            <!-- 数式スリムバー（高さ88px固定で分数も潰さずゆったり表示） -->
+            <div class="glass-card rounded-xl px-3 py-2 shadow-md border-l-4 border-l-sky-400 flex flex-col justify-between h-[88px] min-h-[88px] max-h-[88px] overflow-hidden shrink-0 text-xs">
+                <div class="flex items-center justify-between gap-x-4">
+                    <div class="flex items-center gap-2 overflow-x-auto py-0.5">
+                        <span class="text-[10px] text-slate-400 font-semibold uppercase shrink-0">変換後:</span>
+                        <div id="targetFormulaMath" class="text-sm font-bold text-sky-300 shrink-0">
+                            <!-- KaTeX Target Formula -->
+                        </div>
+                    </div>
+                    <!-- 同値式表示 ((1/2)^x = 2^-x など) -->
+                    <div id="equivFormulaMath" class="text-xs font-medium text-amber-300/90 shrink-0 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                        <!-- KaTeX Equivalent Formula -->
+                    </div>
+                </div>
+                <div class="flex items-center justify-between text-[11px] pt-1 border-t border-slate-800 shrink-0">
+                    <div>
+                        <span class="text-slate-400">漸近線:</span>
+                        <span id="asymptoteFormulaMath" class="text-amber-400 font-medium ml-1">y = 0</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400">逆関数:</span>
+                        <span id="inverseFormulaMath" class="text-rose-400 font-medium ml-1">y = \log_a(x)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Canvas グラフ描画領域 -->
+            <div class="glass-card rounded-xl p-1 shadow-2xl flex-1 flex flex-col relative overflow-hidden min-h-[350px]">
+                <!-- 凡例 (Overlay, コンパクト) -->
+                <div class="absolute top-2 left-2 z-10 bg-slate-900/85 backdrop-blur-md p-2 rounded-lg border border-slate-700/60 text-[10px] space-y-1 shadow-md">
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-3 h-0.5 bg-sky-400 rounded-full inline-block"></span>
+                        <span class="text-slate-200 font-medium">変換後 $y=f(x)$</span>
+                    </div>
+                    <div id="legendBase" class="flex items-center gap-1.5">
+                        <span class="w-3 h-0.5 bg-slate-400 border-b border-dashed border-slate-400 inline-block"></span>
+                        <span class="text-slate-400">基準 $y=a^x$</span>
+                    </div>
+                    <div id="legendInv" class="flex items-center gap-1.5">
+                        <span class="w-3 h-0.5 bg-rose-500 rounded-full inline-block"></span>
+                        <span class="text-rose-300">逆関数 $y=f^{-1}(x)$</span>
+                    </div>
+                    <div id="legendYeqX" class="flex items-center gap-1.5">
+                        <span class="w-3 h-0.5 bg-purple-400 border-b border-dashed border-purple-400 inline-block"></span>
+                        <span class="text-purple-300">対称軸 $y=x$</span>
+                    </div>
+                </div>
+
+                <!-- Canvas本体 -->
+                <div class="canvas-container flex-1">
+                    <canvas id="graphCanvas" class="w-full h-full rounded-lg cursor-crosshair"></canvas>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <script>
+        /* 状態管理 (State) */
+        const state = {
+            a: 2.0,            // 底
+            sy: false,         // y軸対称 (x -> -x)
+            sx: false,         // x軸対称 (y -> -y)
+            p: 0.0,            // x軸方向平行移動
+            q: 0.0,            // y軸方向平行移動
+            showBase: true,    // 基準グラフ表示
+            showAsymptote: true, // 漸近線表示
+            showInverse: true,  // 逆関数 & y=x表示
+            showPointsTrack: true, // 定点表示
+            
+            // ビューポート設定 (x軸範囲を ±8 に変更)
+            scale: 40,         // 1単位のピクセル数
+            originX: 0,        // 原点のXピクセル
+            originY: 0,        // 原点のYピクセル
+            rangeX: 8,         // 表示領域 [-8, 8] に変更
+            rangeY: 8          // 表示領域 [-8, 8]
+        };
+
+        const canvas = document.getElementById('graphCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // コントロール要素
+        const aSlider = document.getElementById('aSlider');
+        const aValueDisplay = document.getElementById('aValue');
+        const baseBtns = document.querySelectorAll('.base-btn');
+        const syToggle = document.getElementById('syToggle');
+        const sxToggle = document.getElementById('sxToggle');
+        const pSlider = document.getElementById('pSlider');
+        const qSlider = document.getElementById('qSlider');
+        const pValueDisplay = document.getElementById('pValue');
+        const qValueDisplay = document.getElementById('qValue');
+        const resetBtn = document.getElementById('resetAllBtn');
+
+        // 表示切替要素
+        const showBaseCheck = document.getElementById('showBaseGraph');
+        const showAsymptoteCheck = document.getElementById('showAsymptote');
+        const showInverseCheck = document.getElementById('showInverseGraph');
+        const showPointsTrackCheck = document.getElementById('showPointsTrack');
+
+        // 数式表示要素
+        const targetFormulaMath = document.getElementById('targetFormulaMath');
+        const equivFormulaMath = document.getElementById('equivFormulaMath');
+        const asymptoteFormulaMath = document.getElementById('asymptoteFormulaMath');
+        const inverseFormulaMath = document.getElementById('inverseFormulaMath');
+        const step1Math = document.getElementById('step1Math');
+        const step2Math = document.getElementById('step2Math');
+        const step3Math = document.getElementById('step3Math');
+        const step2Desc = document.getElementById('step2Desc');
+        const step3Desc = document.getElementById('step3Desc');
+        const legendBase = document.getElementById('legendBase');
+        const legendInv = document.getElementById('legendInv');
+        const legendYeqX = document.getElementById('legendYeqX');
+
+
+        // 変換後関数 f(x)
+        function evalF(x) {
+            if (state.a <= 0) return NaN;
+            const signX = state.sy ? -1 : 1;
+            const signY = state.sx ? -1 : 1;
+            return signY * Math.pow(state.a, signX * (x - state.p)) + state.q;
+        }
+
+        // 基準関数 f0(x) = a^x
+        function evalBaseF(x) {
+            if (state.a <= 0) return NaN;
+            return Math.pow(state.a, x);
+        }
+
+        // 変換後関数の逆関数 f^-1(x)
+        function evalInvF(x) {
+            if (state.a <= 0 || state.a === 1) return NaN;
+            const signX = state.sy ? -1 : 1;
+            const signY = state.sx ? -1 : 1;
+            const inner = (x - state.q) / signY;
+            if (inner <= 0) return NaN;
+            const logVal = Math.log(inner) / Math.log(state.a);
+            return (1 / signX) * logVal + state.p;
+        }
+
+
+        function formatBaseTeX(a) {
+            if (a <= 0) return `(${a.toFixed(2)})`;
+            if (Math.abs(a - 0.2) < 0.01) return '\\left(\\frac{1}{5}\\right)';
+            if (Math.abs(a - 0.25) < 0.01) return '\\left(\\frac{1}{4}\\right)';
+            if (Math.abs(a - 0.5) < 0.01) return '\\left(\\frac{1}{2}\\right)';
+            return Number.isInteger(a) ? `${a}` : `${a.toFixed(2)}`;
+        }
+
+        function updateMathFormulas() {
+            if (state.a <= 0) {
+                katex.render('\\text{底 } a \\le 0 \\text{ は定義外}', targetFormulaMath);
+                if (equivFormulaMath) equivFormulaMath.innerHTML = '';
+                katex.render('y = 0', asymptoteFormulaMath);
+                katex.render('\\text{なし}', inverseFormulaMath);
+                katex.render('\\text{定義外}', step1Math);
+                katex.render('\\text{定義外}', step2Math);
+                katex.render('\\text{定義外}', step3Math);
+                if (step2Desc) step2Desc.innerText = '-';
+                if (step3Desc) step3Desc.innerText = '-';
+                return;
+            }
+
+            const baseStr = formatBaseTeX(state.a);
+            const signYStr = state.sx ? '-' : '';
+            
+            // 指数部
+            let expStr = '';
+            const signXStr = state.sy ? '-' : '';
+            
+            if (state.p === 0) {
+                expStr = `${signXStr}x`;
+            } else if (state.p > 0) {
+                expStr = state.sy ? `-(x - ${state.p})` : `(x - ${state.p})`;
+            } else {
+                expStr = state.sy ? `-(x + ${Math.abs(state.p)})` : `(x + ${Math.abs(state.p)})`;
+            }
+
+            // q (y移動)
+            let qStr = '';
+            if (state.q > 0) qStr = ` + ${state.q}`;
+            else if (state.q < 0) qStr = ` - ${Math.abs(state.q)}`;
+
+            // 全体式
+            const targetTex = `y = ${signYStr}${baseStr}^{${expStr}}${qStr}`;
+            katex.render(targetTex, targetFormulaMath);
+
+            // 同値な式（(1/2)^x = 2^-x や 2^x = (1/2)^-x）の生成
+            if (equivFormulaMath) {
+                let recA = 1 / state.a;
+                let recBaseStr = formatBaseTeX(recA);
+                
+                // 指数部の符号を逆転させた表現
+                let invExpStr = '';
+                const altSignXStr = state.sy ? '' : '-'; // 符号反転
+                
+                if (state.p === 0) {
+                    invExpStr = `${altSignXStr}x`;
+                } else if (state.p > 0) {
+                    invExpStr = state.sy ? `(x - ${state.p})` : `-(x - ${state.p})`;
+                } else {
+                    invExpStr = state.sy ? `(x + ${Math.abs(state.p)})` : `-(x + ${Math.abs(state.p)})`;
+                }
+                
+                const equivTex = `\\text{同値: } y = ${signYStr}${recBaseStr}^{${invExpStr}}${qStr}`;
+                katex.render(equivTex, equivFormulaMath);
+            }
+
+            // 漸近線
+            const asymptoteTex = `y = ${state.q}`;
+            katex.render(asymptoteTex, asymptoteFormulaMath);
+
+            // 逆関数 TeX
+            if (state.a === 1) {
+                katex.render('\\text{なし (}a=1\\text{)}', inverseFormulaMath);
+            } else {
+                let invSignX = state.sy ? '-' : '';
+                let invInner = '';
+                if (!state.sx && state.q === 0) {
+                    invInner = 'x';
+                } else {
+                    let innerNumerator = '';
+                    if (state.q === 0) innerNumerator = 'x';
+                    else if (state.q > 0) innerNumerator = `x - ${state.q}`;
+                    else innerNumerator = `x + ${Math.abs(state.q)}`;
+
+                    if (state.sx) {
+                        invInner = `-( ${innerNumerator} )`;
+                    } else {
+                        invInner = innerNumerator;
+                    }
+                }
+
+                let invPStr = '';
+                if (state.p > 0) invPStr = ` + ${state.p}`;
+                else if (state.p < 0) invPStr = ` - ${Math.abs(state.p)}`;
+
+                const invTex = `y = ${invSignX}\\log_{${baseStr}}\\left(${invInner}\\right)${invPStr}`;
+                katex.render(invTex, inverseFormulaMath);
+            }
+
+            // ステップ解説の数式更新
+            katex.render(`y = ${baseStr}^x`, step1Math);
+
+            let s2Tex = `y = ${signYStr}${baseStr}^{${state.sy ? '-x' : 'x'}}`;
+            katex.render(s2Tex, step2Math);
+            
+            let s2DescText = [];
+            if (state.sy) s2DescText.push('y軸対称');
+            if (state.sx) s2DescText.push('x軸対称');
+            if (step2Desc) step2Desc.innerText = s2DescText.length > 0 ? `${s2DescText.join('・')}移動` : '対称移動なし';
+
+            katex.render(targetTex, step3Math);
+            let s3DescText = [];
+            if (state.p !== 0) s3DescText.push(`x軸方向: ${state.p > 0 ? '+' : ''}${state.p}`);
+            if (state.q !== 0) s3DescText.push(`y軸方向: ${state.q > 0 ? '+' : ''}${state.q}`);
+            if (step3Desc) step3Desc.innerText = s3DescText.length > 0 ? s3DescText.join(' / ') : '平行移動なし';
+        }
+
+
+        function toScreenX(x) {
+            return state.originX + x * state.scale;
+        }
+
+        function toScreenY(y) {
+            return state.originY - y * state.scale;
+        }
+
+        function toWorldX(px) {
+            return (px - state.originX) / state.scale;
+        }
+
+        function toWorldY(py) {
+            return (state.originY - py) / state.scale;
+        }
+
+        function drawGraph() {
+            // キャンバスサイズ自動調整
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+            
+            ctx.save();
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+            const width = rect.width;
+            const height = rect.height;
+
+            // 原点位置（中央）
+            state.originX = width / 2;
+            state.originY = height / 2;
+
+            // スケール決定（表示範囲 [-rangeX, rangeX] をカバー）
+            const minDim = Math.min(width, height);
+            state.scale = minDim / (state.rangeX * 2);
+
+            // 背景クリア
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, width, height);
+
+            // 1. グリッドと軸の描画
+            drawGrid(width, height);
+
+            // 底 a <= 0 の場合の警告メッセージ表示
+            if (state.a <= 0) {
+                ctx.fillStyle = '#f87171';
+                ctx.font = 'bold 14px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('底 a ≤ 0 のため指数関数は定義されません', width / 2, height / 2 - 20);
+                ctx.restore();
+                return;
+            }
+
+            // 2. y=x 直線の描画 (逆関数トグル時)
+            if (state.showInverse) {
+                drawYEqualsX(width, height);
+            }
+
+            // 3. 漸近線の描画 ($y = q$)
+            if (state.showAsymptote) {
+                drawAsymptote(width, height);
+            }
+
+            // 4. 基準グラフ $y=a^x$ の描画
+            if (state.showBase) {
+                drawCurve(evalBaseF, '#64748b', 1.5, true);
+            }
+
+            // 5. 逆関数グラフ $y=f^{-1}(x)$ の描画（線を1.5に細く変更）
+            if (state.showInverse) {
+                drawCurve(evalInvF, '#f43f5e', 1.5, false);
+            }
+
+            // 6. メイン変換後グラフ $y=f(x)$ の描画
+            drawCurve(evalF, '#38bdf8', 3, false);
+
+            // 7. 特徴点描画
+            if (state.showPointsTrack) {
+                drawTrackPoints();
+            }
+
+            ctx.restore();
+        }
+
+        function drawGrid(width, height) {
+            ctx.lineWidth = 1;
+            
+            // 細い格子線
+            ctx.strokeStyle = '#1e293b';
+            ctx.beginPath();
+            
+            const startX = Math.floor(toWorldX(0));
+            const endX = Math.ceil(toWorldX(width));
+            const startY = Math.floor(toWorldY(height));
+            const endY = Math.ceil(toWorldY(0));
+
+            for (let x = startX; x <= endX; x++) {
+                const px = toScreenX(x);
+                ctx.moveTo(px, 0);
+                ctx.lineTo(px, height);
+            }
+            for (let y = startY; y <= endY; y++) {
+                const py = toScreenY(y);
+                ctx.moveTo(0, py);
+                ctx.lineTo(width, py);
+            }
+            ctx.stroke();
+
+            // メイン座標軸 (x軸 & y軸)
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            
+            // X軸
+            ctx.moveTo(0, state.originY);
+            ctx.lineTo(width, state.originY);
+            // Y軸
+            ctx.moveTo(state.originX, 0);
+            ctx.lineTo(state.originX, height);
+            ctx.stroke();
+
+            // 目盛り数値表記
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '10px "JetBrains Mono", monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+
+            for (let x = startX; x <= endX; x++) {
+                if (x === 0) continue;
+                const px = toScreenX(x);
+                ctx.fillText(x.toString(), px, state.originY + 4);
+            }
+
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            for (let y = startY; y <= endY; y++) {
+                if (y === 0) continue;
+                const py = toScreenY(y);
+                ctx.fillText(y.toString(), state.originX - 6, py);
+            }
+            // 原点 O
+            ctx.fillText('O', state.originX - 6, state.originY + 12);
+        }
+
+        function drawYEqualsX(width, height) {
+            ctx.save();
+            ctx.strokeStyle = '#c084fc';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            
+            const minVal = Math.min(toWorldX(0), toWorldY(height));
+            const maxVal = Math.max(toWorldX(width), toWorldY(0));
+            
+            ctx.moveTo(toScreenX(minVal), toScreenY(minVal));
+            ctx.lineTo(toScreenX(maxVal), toScreenY(maxVal));
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawAsymptote(width, height) {
+            ctx.save();
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 4]);
+            
+            const py = toScreenY(state.q);
+            ctx.beginPath();
+            ctx.moveTo(0, py);
+            ctx.lineTo(width, py);
+            ctx.stroke();
+
+            // Label
+            ctx.fillStyle = '#fbbf24';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText(`漸近線 y = ${state.q}`, width - 15, py - 8);
+
+            ctx.restore();
+        }
+
+        /**
+         * 描画関数 (対数などの境界・定義域切れ防止機能付き)
+         * - stepPx を 0.25px と超高密度化
+         * - 定義域の境界（NaN/非定義から有効数値への遷移点）を二分探索で精密に求め、画面上下端まで完璧に線を伸ばす
+         */
+        function drawCurve(func, color, lineWidth = 2, isDashed = false) {
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = lineWidth;
+            if (isDashed) {
+                ctx.setLineDash([4, 4]);
+            }
+
+            ctx.beginPath();
+
+            const width = canvas.width / window.devicePixelRatio;
+            const stepPx = 0.25; // 画面分解能を大幅にアップ（切れる問題の解決）
+
+            let prevValid = false;
+            let prevPx = 0;
+            let prevPy = 0;
+
+            for (let px = 0; px <= width; px += stepPx) {
+                const x = toWorldX(px);
+                const y = func(x);
+
+                const isValid = !isNaN(y) && isFinite(y);
+
+                if (!isValid) {
+                    prevValid = false;
+                    continue;
+                }
+
+                const py = toScreenY(y);
+
+                if (!prevValid) {
+                    // 無効状態から最初に有効になった場合、定義域の境界付近（漸近線付近）を二分探索
+                    let invalidX = toWorldX(px - stepPx);
+                    let validX = x;
+
+                    // 12回の二分探索で境界を高精度の限界（10^-6オーダー）まで特定
+                    for (let i = 0; i < 12; i++) {
+                        const midX = (invalidX + validX) / 2;
+                        const midY = func(midX);
+                        if (!isNaN(midY) && isFinite(midY)) {
+                            validX = midX;
+                        } else {
+                            invalidX = midX;
+                        }
+                    }
+
+                    const boundaryY = func(validX);
+                    const boundaryPx = toScreenX(validX);
+                    const boundaryPy = toScreenY(boundaryY);
+
+                    ctx.moveTo(boundaryPx, boundaryPy);
+                    ctx.lineTo(px, py);
+                } else {
+                    ctx.lineTo(px, py);
+                }
+
+                prevValid = true;
+                prevPx = px;
+                prevPy = py;
+            }
+
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawTrackPoints() {
+            if (state.a <= 0) return;
+
+            // 基準グラフのキーポイント: P0_1=(0, 1), P0_2=(1, a)
+            const p0_1 = { x: 0, y: 1 };
+            const p0_2 = { x: 1, y: state.a };
+
+            // 変換後の対応点計算
+            const signX = state.sy ? -1 : 1;
+            const signY = state.sx ? -1 : 1;
+
+            const p1_1 = {
+                x: signX * 0 + state.p,
+                y: signY * 1 + state.q
+            };
+            const p1_2 = {
+                x: signX * 1 + state.p,
+                y: signY * state.a + state.q
+            };
+
+            // 基準点の描画
+            if (state.showBase) {
+                drawPointMarker(p0_1.x, p0_1.y, '#94a3b8', '(0, 1)');
+                drawPointMarker(p0_2.x, p0_2.y, '#94a3b8', `(1, ${formatPointVal(state.a)})`);
+            }
+
+            // 変換後点の描画
+            drawPointMarker(p1_1.x, p1_1.y, '#38bdf8', `P1 (${p1_1.x.toFixed(1)}, ${p1_1.y.toFixed(1)})`, true);
+            drawPointMarker(p1_2.x, p1_2.y, '#38bdf8', `P2 (${p1_2.x.toFixed(1)}, ${p1_2.y.toFixed(1)})`, true);
+        }
+
+        function formatPointVal(val) {
+            return Number.isInteger(val) ? `${val}` : val.toFixed(1);
+        }
+
+        function drawPointMarker(x, y, color, label, highlight = false) {
+            const px = toScreenX(x);
+            const py = toScreenY(y);
+
+            ctx.save();
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(px, py, highlight ? 5 : 3.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            if (highlight) {
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            }
+
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillStyle = color;
+            ctx.textAlign = 'left';
+            ctx.fillText(label, px + 7, py - 5);
+            ctx.restore();
+        }
+
+        // 底スライダー
+        aSlider.addEventListener('input', (e) => {
+            state.a = parseFloat(e.target.value);
+            aValueDisplay.innerText = `a = ${state.a.toFixed(1)}`;
+
+            // プリセットボタンとのアクティブ状態の連動
+            baseBtns.forEach(b => {
+                const bVal = parseFloat(b.dataset.base);
+                if (Math.abs(bVal - state.a) < 0.01) {
+                    b.classList.remove('border-slate-700', 'bg-slate-800', 'text-slate-200');
+                    b.classList.add('border-sky-500', 'bg-sky-500/20', 'text-sky-300');
+                } else {
+                    b.classList.remove('border-sky-500', 'bg-sky-500/20', 'text-sky-300');
+                    b.classList.add('border-slate-700', 'bg-slate-800', 'text-slate-200');
+                }
+            });
+
+            updateAll();
+        });
+
+        // 底ボタンの切替
+        baseBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                baseBtns.forEach(b => {
+                    b.classList.remove('border-sky-500', 'bg-sky-500/20', 'text-sky-300');
+                    b.classList.add('border-slate-700', 'bg-slate-800', 'text-slate-200');
+                });
+                btn.classList.remove('border-slate-700', 'bg-slate-800', 'text-slate-200');
+                btn.classList.add('border-sky-500', 'bg-sky-500/20', 'text-sky-300');
+
+                state.a = parseFloat(btn.dataset.base);
+                aSlider.value = state.a;
+                aValueDisplay.innerText = `a = ${state.a.toFixed(1)}`;
+                updateAll();
+            });
+        });
+
+        // 対称移動トグル
+        syToggle.addEventListener('change', (e) => {
+            state.sy = e.target.checked;
+            updateAll();
+        });
+
+        sxToggle.addEventListener('change', (e) => {
+            state.sx = e.target.checked;
+            updateAll();
+        });
+
+        // 平行移動スライダー
+        pSlider.addEventListener('input', (e) => {
+            state.p = parseFloat(e.target.value);
+            pValueDisplay.innerText = (state.p >= 0 ? '+' : '') + state.p.toFixed(1);
+            updateAll();
+        });
+
+        qSlider.addEventListener('input', (e) => {
+            state.q = parseFloat(e.target.value);
+            qValueDisplay.innerText = (state.q >= 0 ? '+' : '') + state.q.toFixed(1);
+            updateAll();
+        });
+
+        // 表示非表示トグル
+        showBaseCheck.addEventListener('change', (e) => {
+            state.showBase = e.target.checked;
+            legendBase.style.opacity = state.showBase ? '1' : '0.3';
+            drawGraph();
+        });
+
+        showAsymptoteCheck.addEventListener('change', (e) => {
+            state.showAsymptote = e.target.checked;
+            drawGraph();
+        });
+
+        showInverseCheck.addEventListener('change', (e) => {
+            state.showInverse = e.target.checked;
+            legendInv.style.opacity = state.showInverse ? '1' : '0.3';
+            legendYeqX.style.opacity = state.showInverse ? '1' : '0.3';
+            drawGraph();
+        });
+
+        showPointsTrackCheck.addEventListener('change', (e) => {
+            state.showPointsTrack = e.target.checked;
+            drawGraph();
+        });
+
+        // リセットボタン
+        resetBtn.addEventListener('click', () => {
+            state.a = 2.0;
+            state.sy = false;
+            state.sx = false;
+            state.p = 0.0;
+            state.q = 0.0;
+
+            aSlider.value = 2.0;
+            aValueDisplay.innerText = "a = 2.0";
+            syToggle.checked = false;
+            sxToggle.checked = false;
+            pSlider.value = 0;
+            qSlider.value = 0;
+            pValueDisplay.innerText = "0.0";
+            qValueDisplay.innerText = "0.0";
+
+            // 底ボタン表示更新
+            baseBtns.forEach(b => {
+                if (parseFloat(b.dataset.base) === 2.0) {
+                    b.classList.remove('border-slate-700', 'bg-slate-800', 'text-slate-200');
+                    b.classList.add('border-sky-500', 'bg-sky-500/20', 'text-sky-300');
+                } else {
+                    b.classList.remove('border-sky-500', 'bg-sky-500/20', 'text-sky-300');
+                    b.classList.add('border-slate-700', 'bg-slate-800', 'text-slate-200');
+                }
+            });
+
+            updateAll();
+        });
+
+        // 全体更新
+        function updateAll() {
+            updateMathFormulas();
+            drawGraph();
+        }
+
+        function renderAllMath() {
+            if (window.renderMathInElement) {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false}
+                    ],
+                    throwOnError: false
+                });
+            }
+        }
+
+        window.addEventListener('resize', drawGraph);
+
+        window.onload = () => {
+            lucide.createIcons();
+            renderAllMath();
+            updateAll();
+        };
+    </script>
+</body>
+</html>
