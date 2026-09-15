@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="ja" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3^n の最高位と対数の小数部分</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'media',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- KaTeX for crisp mathematical formulas -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <style>
+        /* Mobile touch feedback and smoothness optimizations */
+        -webkit-tap-highlight-color: transparent;
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-full pb-8 flex flex-col items-center text-xs">
+
+    <!-- App Bar -->
+    <header class="w-full max-w-md bg-white/80 dark:bg-slate-900/80 backdrop-blur sticky top-0 z-20 border-b border-slate-200 dark:border-slate-800 px-3 py-2 flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+            <div class="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                3ⁿ
+            </div>
+            <div>
+                <h1 class="font-bold text-sm leading-tight">3ⁿ 最高位判定ツール</h1>
+                <p class="text-[10px] text-slate-500 dark:text-slate-400">常用対数の小数部分 α の解析</p>
+            </div>
+        </div>
+        <span class="text-[10px] bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-medium px-2 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900">
+            高校数学II
+        </span>
+    </header>
+
+    <main class="w-full max-w-md p-3 space-y-2.5">
+
+        <!-- Input & Stepper Controls (Compressed Height) -->
+        <section class="bg-white dark:bg-slate-900 rounded-xl p-3 shadow-sm border border-slate-200/80 dark:border-slate-800 space-y-2">
+            <div class="flex items-center justify-between text-xs">
+                <label for="n-input" class="font-semibold text-slate-600 dark:text-slate-300">指数 <span class="text-indigo-600 dark:text-indigo-400 font-bold">n</span> の値</label>
+                <span class="text-[10px] text-slate-400">1 〜 30</span>
+            </div>
+
+            <!-- Stepper Controller -->
+            <div class="flex items-center justify-between gap-1.5">
+                <button onclick="changeN(-5)" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-center text-[11px]">-5</button>
+                <button onclick="changeN(-1)" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 font-bold text-base text-slate-700 dark:text-slate-200 flex items-center justify-center">－</button>
+                
+                <div class="flex-1 relative">
+                    <input type="number" id="n-input" value="20" min="1" max="30"
+                        class="w-full h-9 text-center font-bold text-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none text-indigo-600 dark:text-indigo-400">
+                </div>
+
+                <button onclick="changeN(1)" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 font-bold text-base text-slate-700 dark:text-slate-200 flex items-center justify-center">＋</button>
+                <button onclick="changeN(5)" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-center text-[11px]">+5</button>
+            </div>
+
+            <!-- Quick Slider -->
+            <input type="range" id="n-slider" min="1" max="30" value="20" class="w-full accent-indigo-600 dark:accent-indigo-500 cursor-pointer h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg">
+        </section>
+
+        <!-- Actual Exact Value Card (Placed above Log value) -->
+        <section class="bg-white dark:bg-slate-900 rounded-xl p-2.5 shadow-sm border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-2">
+            <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">3ⁿ 実際の値:</span>
+            <div id="exact-value" class="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-slate-50 dark:bg-slate-950 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto text-right max-w-[220px] whitespace-nowrap hide-scrollbar">
+                -
+            </div>
+        </section>
+
+        <!-- Log Base Value Header Card -->
+        <section class="bg-indigo-900 text-white rounded-xl p-2.5 shadow-md border border-indigo-700">
+            <div class="flex items-center justify-between">
+                <span class="text-[11px] font-semibold text-indigo-200">常用対数の値:</span>
+                <div id="log-total-display" class="font-mono text-xs font-bold text-amber-300">
+                    log₁₀(3²⁰) = 9.5424
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Result Big Display (Compact Height) -->
+        <section class="bg-gradient-to-br from-indigo-600 to-indigo-700 dark:from-indigo-900 dark:to-slate-900 rounded-xl p-3 text-white shadow-md space-y-2.5">
+            <div class="flex items-center justify-between border-b border-indigo-400/30 pb-1.5">
+                <span class="text-[10px] uppercase tracking-wider font-semibold text-indigo-200">判定結果</span>
+                <span id="formula-badge" class="text-[10px] font-mono bg-white/10 px-2 py-0.5 rounded-full text-indigo-100">3²⁰</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2.5 items-center">
+                <!-- Leading Digit Display -->
+                <div class="bg-white/10 backdrop-blur rounded-lg p-2 text-center border border-white/10">
+                    <div class="text-[10px] text-indigo-200 mb-0.5">最高位の数字</div>
+                    <div id="leading-digit" class="text-3xl font-extrabold text-amber-300 drop-shadow-sm">
+                        3
+                    </div>
+                </div>
+
+                <!-- Digit Count -->
+                <div class="bg-white/10 backdrop-blur rounded-lg p-2 text-center border border-white/10">
+                    <div class="text-[10px] text-indigo-200 mb-0.5">全体の桁数</div>
+                    <div id="digit-count" class="text-2xl font-bold text-white">
+                        10 <span class="text-xs font-normal text-indigo-200">桁</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calculated Log Values Summary -->
+            <div class="grid grid-cols-2 gap-2 text-[10px]">
+                <div class="bg-black/20 rounded-lg px-2 py-1 flex justify-between border border-amber-400/20">
+                    <span class="text-amber-200">小数部分 (α):</span>
+                    <span id="val-alpha" class="font-mono font-bold text-amber-300">0.5424</span>
+                </div>
+                <div class="bg-black/20 rounded-lg px-2 py-1 flex justify-between border border-indigo-300/20">
+                    <span class="text-indigo-200">整数部分 (k):</span>
+                    <span id="val-k" class="font-mono font-bold">9</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Visual Log Scale Gauge (Single, Tight Margins) -->
+        <section class="bg-white dark:bg-slate-900 rounded-xl p-3 shadow-sm border border-slate-200/80 dark:border-slate-800 space-y-2">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">小数部分 α の位置</h2>
+                    <p class="text-[9px] text-slate-400">最高位の判定基準 (0 ≦ α < 1)</p>
+                </div>
+                
+                <!-- Lower and Upper log bounds with decimal values below -->
+                <div class="flex items-center gap-1.5 font-mono bg-slate-50 dark:bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800">
+                    <div class="flex flex-col items-center">
+                        <span id="log-lower-label" class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">log₁₀3</span>
+                        <span id="log-lower-val" class="text-[9px] text-slate-500 dark:text-slate-400">0.4771</span>
+                    </div>
+                    <span class="text-[10px] font-bold text-amber-500">≦ α &lt;</span>
+                    <div class="flex flex-col items-center">
+                        <span id="log-upper-label" class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">log₁₀4</span>
+                        <span id="log-upper-val" class="text-[9px] text-slate-500 dark:text-slate-400">0.6021</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Position Gauge Container -->
+            <div class="relative pt-5 pb-5">
+                <!-- Main Track -->
+                <div class="h-3.5 bg-slate-100 dark:bg-slate-800 rounded-full w-full relative overflow-hidden">
+                    <!-- Active Segment Highlight Overlay -->
+                    <div id="active-log-segment" class="absolute top-0 bottom-0 bg-amber-400/40 dark:bg-amber-500/50 transition-all duration-300"></div>
+
+                    <!-- Tick Mark Lines (log10 d) -->
+                    <div class="absolute inset-0 pointer-events-none">
+                        <div class="absolute top-0 bottom-0 w-px bg-slate-300 dark:bg-slate-700" style="left: 0%;"></div>
+                        <div class="absolute top-0 bottom-0 w-px bg-slate-300 dark:bg-slate-700" style="left: 30.103%;"></div>
+                        <div class="absolute top-0 bottom-0 w-px bg-slate-300 dark:bg-slate-700" style="left: 47.712%;"></div>
+                        <div class="absolute top-0 bottom-0 w-px bg-slate-300 dark:bg-slate-700" style="left: 60.206%;"></div>
+                        <div class="absolute top-0 bottom-0 w-px bg-slate-300 dark:bg-slate-700" style="left: 69.897%;"></div>
+                        <div class="absolute top-0 bottom-0 w-px bg-slate-300 dark:bg-slate-700" style="left: 77.815%;"></div>
+                        <div class="absolute top-0 bottom-0 w-px bg-slate-300 dark:bg-slate-700" style="left: 84.510%;"></div>
+                        <div class="absolute top-0 bottom-0 w-px bg-slate-300 dark:bg-slate-700" style="left: 90.309%;"></div>
+                        <div class="absolute top-0 bottom-0 w-px bg-slate-300 dark:bg-slate-700" style="left: 95.424%;"></div>
+                        <div class="absolute top-0 bottom-0 w-px bg-slate-300 dark:bg-slate-700" style="left: 100%;"></div>
+                    </div>
+                </div>
+
+                <!-- Dynamic Position Marker -->
+                <div id="alpha-marker" class="absolute top-0 transform -translate-x-1/2 flex flex-col items-center transition-all duration-300" style="left: 54.24%;">
+                    <span id="marker-val" class="bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow whitespace-nowrap">α = 0.5424</span>
+                    <div class="w-0.5 h-5 bg-amber-500"></div>
+                </div>
+
+                <!-- Numbers Scale Labels -->
+                <div class="relative w-full h-3 mt-1 text-[9px] font-mono text-slate-500 dark:text-slate-400">
+                    <span class="absolute top-0 -translate-x-0" style="left: 0%;">1</span>
+                    <span class="absolute top-0 -translate-x-1/2" style="left: 30.103%;">2</span>
+                    <span class="absolute top-0 -translate-x-1/2" style="left: 47.712%;">3</span>
+                    <span class="absolute top-0 -translate-x-1/2" style="left: 60.206%;">4</span>
+                    <span class="absolute top-0 -translate-x-1/2" style="left: 69.897%;">5</span>
+                    <span class="absolute top-0 -translate-x-1/2" style="left: 77.815%;">6</span>
+                    <span class="absolute top-0 -translate-x-1/2" style="left: 84.510%;">7</span>
+                    <span class="absolute top-0 -translate-x-1/2" style="left: 90.309%;">8</span>
+                    <span class="absolute top-0 -translate-x-1/2" style="left: 95.424%;">9</span>
+                    <span class="absolute top-0 -translate-x-full" style="left: 100%;">10</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Toggleable Section 1: Vertical log10 List (log10 1 to log10 9) -->
+        <details class="group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200/80 dark:border-slate-800 overflow-hidden">
+            <summary class="p-3 text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between cursor-pointer select-none">
+                <span class="flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                    常用対数の値リスト (log₁₀1 〜 log₁₀9)
+                </span>
+                <span class="transform group-open:rotate-180 transition-transform duration-200 text-slate-400">▼</span>
+            </summary>
+            <div class="px-3 pb-3 border-t border-slate-100 dark:border-slate-800/80 pt-2.5 space-y-1 font-mono text-[11px]">
+                <div class="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800 text-slate-400 font-sans text-[10px]">
+                    <span>対数表現 (log₁₀ d)</span>
+                    <span>近似値</span>
+                </div>
+                <div class="flex justify-between py-0.5"><span class="text-slate-600 dark:text-slate-300">log₁₀ 1</span><span class="font-bold text-slate-800 dark:text-slate-100">0.0000</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-slate-600 dark:text-slate-300">log₁₀ 2</span><span class="font-bold text-slate-800 dark:text-slate-100">0.3010</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-slate-600 dark:text-slate-300">log₁₀ 3</span><span class="font-bold text-slate-800 dark:text-slate-100">0.4771</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-slate-600 dark:text-slate-300">log₁₀ 4 (2 log₁₀2)</span><span class="font-bold text-slate-800 dark:text-slate-100">0.6021</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-slate-600 dark:text-slate-300">log₁₀ 5 (1 - log₁₀2)</span><span class="font-bold text-slate-800 dark:text-slate-100">0.6990</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-slate-600 dark:text-slate-300">log₁₀ 6 (log₁₀2 + log₁₀3)</span><span class="font-bold text-slate-800 dark:text-slate-100">0.7782</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-slate-600 dark:text-slate-300">log₁₀ 7</span><span class="font-bold text-slate-800 dark:text-slate-100">0.8451</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-slate-600 dark:text-slate-300">log₁₀ 8 (3 log₁₀2)</span><span class="font-bold text-slate-800 dark:text-slate-100">0.9031</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-slate-600 dark:text-slate-300">log₁₀ 9 (2 log₁₀3)</span><span class="font-bold text-slate-800 dark:text-slate-100">0.9542</span></div>
+            </div>
+        </details>
+
+        <!-- Toggleable Section 2: Mathematical Steps & Explanation -->
+        <details class="group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200/80 dark:border-slate-800 overflow-hidden">
+            <summary class="p-3 text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between cursor-pointer select-none">
+                <span class="flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                    詳細解答・ステップ解説
+                </span>
+                <span class="transform group-open:rotate-180 transition-transform duration-200 text-slate-400">▼</span>
+            </summary>
+            
+            <div class="px-3 pb-3 border-t border-slate-100 dark:border-slate-800/80 pt-2.5 space-y-3">
+                <!-- Log & Exponential Equivalence -->
+                <div class="bg-indigo-50/50 dark:bg-indigo-950/30 rounded-lg p-2.5 border border-indigo-100 dark:border-indigo-900/40 text-xs space-y-2">
+                    <div class="flex items-center justify-between font-mono text-slate-700 dark:text-slate-200 border-b border-indigo-100 dark:border-indigo-900/40 pb-1.5">
+                        <span class="text-slate-500 text-[10px]">10の指数形:</span>
+                        <span id="exp-formula" class="font-bold text-indigo-600 dark:text-indigo-400 text-xs">10⁰ˑ⁵⁴²⁴⁺⁹</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-1.5 text-center">
+                        <!-- 10^alpha breakdown (Left) -->
+                        <div class="bg-white dark:bg-slate-950 p-2 rounded border border-amber-200/80 dark:border-amber-900/40">
+                            <div class="text-[9px] text-slate-400 mb-0.5">小数部分 α → 最高位</div>
+                            <div id="val-10-alpha" class="font-mono font-bold text-amber-500 text-xs">10⁰ˑ⁵⁴²⁴ ≒ 3.4868</div>
+                            <div class="text-[9px] text-slate-500 mt-0.5">最高位は <strong class="text-amber-500">3</strong></div>
+                        </div>
+
+                        <!-- 10^k breakdown (Right) -->
+                        <div class="bg-white dark:bg-slate-950 p-2 rounded border border-indigo-200/80 dark:border-indigo-900/40">
+                            <div class="text-[9px] text-slate-400 mb-0.5">整数部分 k → 桁数</div>
+                            <div id="val-10-k" class="font-mono font-bold text-indigo-600 dark:text-indigo-400 text-xs">10⁹</div>
+                            <div class="text-[9px] text-slate-500 mt-0.5">9 + 1 = <strong class="text-indigo-600 dark:text-indigo-400">10桁</strong></div>
+                        </div>
+                    </div>
+
+                    <!-- Combined Notation -->
+                    <div class="bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-900/50 rounded-lg p-2 text-center font-mono text-slate-800 dark:text-slate-200">
+                        <div id="scientific-notation" class="text-xs font-bold text-slate-900 dark:text-slate-100">
+                            3²⁰ ≒ 3.4868 × 10⁹
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Steps -->
+                <div class="space-y-2 text-xs">
+                    <!-- Step 1 -->
+                    <div class="p-2 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-100 dark:border-slate-800/80">
+                        <div class="font-semibold text-slate-700 dark:text-slate-300 mb-0.5 text-[11px]">① 常用対数をとる</div>
+                        <div id="math-step-1" class="font-mono text-indigo-600 dark:text-indigo-400 overflow-x-auto py-0.5 text-[11px]"></div>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="p-2 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-100 dark:border-slate-800/80">
+                        <div class="font-semibold text-slate-700 dark:text-slate-300 mb-0.5 text-[11px]">② 整数部分と小数部分に分解</div>
+                        <div id="math-step-2" class="font-mono text-indigo-600 dark:text-indigo-400 overflow-x-auto py-0.5 text-[11px]"></div>
+                    </div>
+
+                    <!-- Step 3 -->
+                    <div class="p-2 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-100 dark:border-slate-800/80">
+                        <div class="font-semibold text-slate-700 dark:text-slate-300 mb-0.5 text-[11px]">③ 常用対数の基準値と比較</div>
+                        <div id="math-step-3" class="font-mono text-indigo-600 dark:text-indigo-400 overflow-x-auto py-0.5 text-[11px]"></div>
+                    </div>
+
+                    <!-- Step 4 -->
+                    <div class="p-2 rounded-lg bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40">
+                        <div class="font-semibold text-indigo-900 dark:text-indigo-300 mb-0.5 text-[11px]">④ 最高位と桁数の決定</div>
+                        <div id="math-step-4" class="text-slate-700 dark:text-slate-300 leading-relaxed text-[11px]"></div>
+                    </div>
+                </div>
+            </div>
+        </details>
+
+    </main>
+
+    <script>
+        // Log base 10 reference standard values
+        const LOG10_3 = 0.47712125471966244; // Precise log10(3)
+        const LOG_TABLE = [
+            { d: 1, val: 0.0 },
+            { d: 2, val: 0.3010299956639812 },
+            { d: 3, val: 0.47712125471966244 },
+            { d: 4, val: 0.6020599913279624 },
+            { d: 5, val: 0.6989700043360189 },
+            { d: 6, val: 0.7781512503836436 },
+            { d: 7, val: 0.8450980400142568 },
+            { d: 8, val: 0.9030899869919435 },
+            { d: 9, val: 0.9542425094393249 },
+            { d: 10, val: 1.0 }
+        ];
+
+        // Helper function to convert numbers/symbols to superscript
+        function toSuperscript(str) {
+            const map = {
+                '0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹',
+                '-':'⁻','.':'ˑ','+':'⁺','(':'⁽',')':'⁾'
+            };
+            return String(str).split('').map(ch => map[ch] || ch).join('');
+        }
+
+        // UI elements
+        const inputN = document.getElementById('n-input');
+        const sliderN = document.getElementById('n-slider');
+        const leadingDigitEl = document.getElementById('leading-digit');
+        const digitCountEl = document.getElementById('digit-count');
+        const valKEl = document.getElementById('val-k');
+        const valAlphaEl = document.getElementById('val-alpha');
+        const formulaBadge = document.getElementById('formula-badge');
+        const alphaMarker = document.getElementById('alpha-marker');
+        const markerVal = document.getElementById('marker-val');
+        const logLowerLabel = document.getElementById('log-lower-label');
+        const logLowerVal = document.getElementById('log-lower-val');
+        const logUpperLabel = document.getElementById('log-upper-label');
+        const logUpperVal = document.getElementById('log-upper-val');
+        const exactValueEl = document.getElementById('exact-value');
+        const logTotalDisplay = document.getElementById('log-total-display');
+        const activeLogSegment = document.getElementById('active-log-segment');
+
+        // Exponential Matching Elements
+        const expFormulaEl = document.getElementById('exp-formula');
+        const val10AlphaEl = document.getElementById('val-10-alpha');
+        const val10KEl = document.getElementById('val-10-k');
+        const scientificNotationEl = document.getElementById('scientific-notation');
+
+        // Step math elements
+        const step1 = document.getElementById('math-step-1');
+        const step2 = document.getElementById('math-step-2');
+        const step3 = document.getElementById('math-step-3');
+        const step4 = document.getElementById('math-step-4');
+
+        // Change n function
+        function changeN(delta) {
+            let current = parseInt(inputN.value) || 1;
+            setN(current + delta);
+        }
+
+        function setN(val) {
+            let n = Math.max(1, Math.min(30, val));
+            inputN.value = n;
+            sliderN.value = n;
+            updateCalculations(n);
+        }
+
+        // Main Calculation Engine
+        function updateCalculations(n) {
+            const supN = toSuperscript(n);
+            formulaBadge.textContent = `3${supN}`;
+
+            // Calculate log10(3^n) = n * log10(3)
+            const logVal = n * LOG10_3;
+            const k = Math.floor(logVal); // Integer part
+            const alpha = logVal - k;      // Fractional part
+
+            // Calculate 10^alpha
+            const tenPowAlpha = Math.pow(10, alpha);
+            const supAlpha = toSuperscript(alpha.toFixed(4));
+            const supK = toSuperscript(k);
+
+            // Update Log Value Banner
+            if (logTotalDisplay) {
+                logTotalDisplay.textContent = `log₁₀(3${supN}) = ${logVal.toFixed(4)}`;
+            }
+
+            // Determine total digits: k + 1
+            const digits = k + 1;
+
+            // Find leading digit d where log10(d) <= alpha < log10(d+1)
+            let leadingDigit = 1;
+            let lowerLog = 0;
+            let upperLog = LOG_TABLE[1].val;
+
+            for (let i = 0; i < LOG_TABLE.length - 1; i++) {
+                if (alpha >= LOG_TABLE[i].val && alpha < LOG_TABLE[i + 1].val) {
+                    leadingDigit = LOG_TABLE[i].d;
+                    lowerLog = LOG_TABLE[i].val;
+                    upperLog = LOG_TABLE[i + 1].val;
+                    break;
+                }
+            }
+
+            // Update Primary Cards
+            leadingDigitEl.textContent = leadingDigit;
+            digitCountEl.innerHTML = `${digits} <span class="text-xs font-normal text-indigo-200">桁</span>`;
+            valKEl.textContent = k;
+            valAlphaEl.textContent = alpha.toFixed(4);
+
+            // Update Exponential Equivalence Matching Card (Alpha first)
+            expFormulaEl.textContent = `10${toSuperscript(`(${alpha.toFixed(4)} + ${k})`)}`;
+            val10AlphaEl.textContent = `10${supAlpha} ≒ ${tenPowAlpha.toFixed(4)}`;
+            val10KEl.textContent = `10${supK}`;
+            scientificNotationEl.textContent = `3${supN} ≒ ${tenPowAlpha.toFixed(4)} × 10${supK}`;
+
+            // Update Marker gauge position & Highlight Segment
+            const markerPct = Math.max(0, Math.min(100, alpha * 100));
+            alphaMarker.style.left = `${markerPct}%`;
+            markerVal.textContent = `α = ${alpha.toFixed(4)}`;
+            
+            // Update upper and lower log labels and their decimal values
+            logLowerLabel.textContent = `log₁₀${leadingDigit}`;
+            logLowerVal.textContent = lowerLog.toFixed(4);
+            logUpperLabel.textContent = `log₁₀${leadingDigit + 1}`;
+            logUpperVal.textContent = upperLog.toFixed(4);
+
+            // Highlight exact range interval [log10(d), log10(d+1)) on track
+            if (activeLogSegment) {
+                const segLeft = lowerLog * 100;
+                const segWidth = (upperLog - lowerLog) * 100;
+                activeLogSegment.style.left = `${segLeft}%`;
+                activeLogSegment.style.width = `${segWidth}%`;
+            }
+
+            // Render Math Steps using KaTeX
+            try {
+                katex.render(`\\log_{10}(3^{${n}}) = ${n} \\times \\log_{10}3 \\approx ${logVal.toFixed(4)}`, step1, { displayMode: false });
+                katex.render(`3^{${n}} = 10^{${logVal.toFixed(4)}} = 10^{${alpha.toFixed(4)}} \\times 10^{${k}} \\approx ${tenPowAlpha.toFixed(4)} \\times 10^{${k}}`, step2, { displayMode: false });
+                
+                const dNext = leadingDigit + 1;
+                katex.render(`\\log_{10}(${leadingDigit}) \\approx ${lowerLog.toFixed(4)} \\leqq ${alpha.toFixed(4)} < \\log_{10}(${dNext}) \\approx ${upperLog.toFixed(4)}`, step3, { displayMode: false });
+
+                step4.innerHTML = `
+                    <p class="font-medium">10<sup>${alpha.toFixed(4)}</sup> ≒ <strong>${tenPowAlpha.toFixed(4)}</strong> （${leadingDigit} 以上 ${dNext} 未満）となるため、</p>
+                    <p class="mt-0.5 font-bold text-indigo-600 dark:text-indigo-400">3<sup>${n}</sup> の最高位の数字は <span class="text-amber-500 font-black">${leadingDigit}</span>、全体の桁数は <span class="text-indigo-600 dark:text-indigo-400 font-black">${digits}桁</span> です。</p>
+                `;
+            } catch (e) {
+                step1.textContent = `log10(3${supN}) = ${n} * 0.47712 = ${logVal.toFixed(4)}`;
+                step2.textContent = `3${supN} = 10${supAlpha} * 10${supK} = ${tenPowAlpha.toFixed(4)} * 10${supK}`;
+                step3.textContent = `log10(${leadingDigit}) <= ${alpha.toFixed(4)} < log10(${leadingDigit + 1})`;
+                step4.textContent = `最高位の数字: ${leadingDigit}`;
+            }
+
+            // Calculate Exact BigInt Value
+            try {
+                const exactBig = BigInt(3) ** BigInt(n);
+                const str = exactBig.toString();
+                exactValueEl.textContent = str.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            } catch (err) {
+                exactValueEl.textContent = "-";
+            }
+        }
+
+        // Event Listeners
+        inputN.addEventListener('input', (e) => {
+            let val = parseInt(e.target.value);
+            if (!isNaN(val)) {
+                let clamped = Math.max(1, Math.min(30, val));
+                sliderN.value = clamped;
+                updateCalculations(clamped);
+            }
+        });
+
+        sliderN.addEventListener('input', (e) => {
+            let val = parseInt(e.target.value);
+            inputN.value = val;
+            updateCalculations(val);
+        });
+
+        // Initial compute
+        window.addEventListener('DOMContentLoaded', () => {
+            updateCalculations(20);
+        });
+    </script>
+</body>
+</html>
