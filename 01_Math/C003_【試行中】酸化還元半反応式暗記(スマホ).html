@@ -17,30 +17,14 @@
                 extend: {
                     fontFamily: {
                         sans: ['"Noto Sans JP"', 'Inter', 'sans-serif'],
-                    },
-                    colors: {
-                        ox: {
-                            light: '#f0f7ff',
-                            border: '#bfdbfe',
-                            main: '#2563eb',
-                            dark: '#1e40af',
-                        },
-                        red: {
-                            light: '#fff1f2',
-                            border: '#fecdd3',
-                            main: '#e11d48',
-                            dark: '#9f1239',
-                        }
                     }
                 }
             }
         }
     </script>
     <style>
-        /* Touch safety & mobile optimizations */
         -webkit-tap-highlight-color: transparent;
         
-        /* Subscript / Superscript formatting */
         .formula-text sub, .formula-text sup {
             font-size: 0.65em;
             line-height: 0;
@@ -50,7 +34,6 @@
         .formula-text sup { top: -0.45em; }
         .formula-text sub { bottom: -0.2em; }
 
-        /* Smooth animation for step transitions */
         .highlight-part {
             animation: popIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             display: inline-block;
@@ -61,7 +44,6 @@
             100% { transform: scale(1); opacity: 1; }
         }
 
-        /* Hide scrollbars for clean mobile appearance */
         .no-scrollbar::-webkit-scrollbar {
             display: none;
         }
@@ -70,24 +52,23 @@
             scrollbar-width: none;
         }
 
-        /* Active touch response */
         .touch-active:active {
-            transform: scale(0.97);
-            opacity: 0.9;
+            transform: scale(0.98);
+            opacity: 0.95;
         }
     </style>
 </head>
 <body class="bg-slate-900 text-slate-800 h-full flex flex-col font-sans overflow-hidden">
 
-    <!-- App Header (Compact Mobile Header) -->
-    <header class="bg-slate-900 text-white border-b border-slate-800 shrink-0 z-50 px-4 py-2.5 flex justify-between items-center">
+    <!-- App Header -->
+    <header class="bg-slate-900 text-white border-b border-slate-800 shrink-0 z-50 px-3 py-2 flex justify-between items-center">
         <div class="flex items-center space-x-2">
             <div class="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center text-cyan-400">
                 <i class="fa-solid fa-flask-vial text-lg"></i>
             </div>
             <div>
-                <h1 class="text-sm font-extrabold tracking-tight leading-none text-slate-100">半反応式暗記マスター</h1>
-                <span class="text-[10px] text-slate-400 font-medium">高校化学必修18選</span>
+                <h1 class="text-xs sm:text-sm font-extrabold tracking-tight leading-none text-slate-100">半反応式暗記マスター</h1>
+                <span class="text-[10px] text-cyan-400 font-semibold">教科書掲載 全22反応・色変化対応</span>
             </div>
         </div>
         
@@ -106,149 +87,155 @@
     <main class="flex-1 relative flex flex-col min-h-0 bg-slate-950">
 
         <!-- ================= FLASHCARD VIEW ================= -->
-        <div id="view-flashcard" class="flex-1 flex flex-col p-3 max-w-md mx-auto w-full min-h-0 justify-between gap-2.5">
+        <div id="view-flashcard" class="flex-1 flex flex-col p-2.5 max-w-md mx-auto w-full min-h-0 justify-between gap-2">
             
             <!-- Top Controls Toolbar -->
-            <div class="bg-slate-800/90 border border-slate-700/80 rounded-xl p-1.5 flex justify-between items-center gap-1 shrink-0">
+            <div class="bg-slate-800/90 border border-slate-700/80 rounded-xl p-1.5 flex justify-between items-center gap-1 shrink-0 overflow-x-auto no-scrollbar">
                 <!-- Category Selector -->
-                <div class="flex p-0.5 bg-slate-900 rounded-lg text-xs font-semibold">
-                    <button onclick="setCategory('all')" id="btn-cat-all" class="px-2.5 py-1 rounded-md text-slate-100 bg-slate-700 transition">全種</button>
-                    <button onclick="setCategory('ox')" id="btn-cat-ox" class="px-2.5 py-1 rounded-md text-slate-400 hover:text-blue-300 transition">酸化剤</button>
-                    <button onclick="setCategory('red')" id="btn-cat-red" class="px-2.5 py-1 rounded-md text-slate-400 hover:text-rose-300 transition">還元剤</button>
+                <div class="flex p-0.5 bg-slate-900 rounded-lg text-[11px] font-semibold shrink-0">
+                    <button onclick="setCategory('all')" id="btn-cat-all" class="px-2 py-1 rounded-md text-slate-100 bg-slate-700 transition">全22</button>
+                    <button onclick="setCategory('ox')" id="btn-cat-ox" class="px-2 py-1 rounded-md text-slate-400 hover:text-blue-300 transition">酸化剤</button>
+                    <button onclick="setCategory('red')" id="btn-cat-red" class="px-2 py-1 rounded-md text-slate-400 hover:text-rose-300 transition">還元剤</button>
+                    <button onclick="setCategory('color')" id="btn-cat-color" class="px-2 py-1 rounded-md text-slate-400 hover:text-amber-300 transition flex items-center gap-1">
+                        <i class="fa-solid fa-palette text-[10px] text-amber-400"></i> 色変化
+                    </button>
                 </div>
                 
                 <!-- Shuffle Toggle & Counter -->
-                <div class="flex items-center gap-2 pr-1">
-                    <button onclick="toggleRandomMode()" id="btn-random" class="px-2 py-1 rounded-lg text-xs border border-slate-700 bg-slate-800 text-slate-300 flex items-center gap-1 transition active:scale-95">
+                <div class="flex items-center gap-1.5 shrink-0 pr-1">
+                    <button onclick="toggleRandomMode()" id="btn-random" class="px-2 py-1 rounded-lg text-[11px] border border-slate-700 bg-slate-800 text-slate-300 flex items-center gap-1 transition active:scale-95">
                         <i class="fa-solid fa-shuffle text-slate-500 text-[10px]" id="icon-random"></i> 
                         <span id="label-random">順送り</span>
                     </button>
-                    <span class="text-xs font-bold text-cyan-400 font-mono" id="card-counter">1/18</span>
+                    <span class="text-xs font-bold text-cyan-400 font-mono" id="card-counter">1/22</span>
                 </div>
             </div>
 
-            <!-- Main Flashcard Container (Swipeable & Clickable) -->
+            <!-- Main Flashcard Container -->
             <div id="flashcard-box" 
-                 class="flex-1 bg-slate-900 rounded-2xl border-2 border-slate-700 shadow-xl p-4 flex flex-col justify-between items-center relative overflow-hidden select-none touch-active cursor-pointer min-h-0" 
+                 class="flex-1 bg-slate-900 rounded-2xl border-2 border-slate-700 shadow-xl p-3.5 flex flex-col justify-between items-center relative overflow-hidden select-none touch-active cursor-pointer min-h-0" 
                  onclick="handleCardClick(event)">
                 
-                <!-- Card Header: Category Badge & Details -->
-                <div class="w-full flex justify-between items-center z-10">
-                    <div id="type-badge" class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold tracking-wide uppercase bg-blue-950 text-blue-300 border border-blue-800 flex items-center gap-1">
-                        <i class="fa-solid fa-bolt text-[10px]"></i> 酸化剤
+                <!-- Card Header -->
+                <div class="w-full flex justify-between items-start z-10 gap-2">
+                    <div class="flex flex-col gap-1 items-start">
+                        <div id="type-badge" class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wide uppercase bg-blue-950 text-blue-300 border border-blue-800 flex items-center gap-1">
+                            <i class="fa-solid fa-bolt text-[9px]"></i> 酸化剤
+                        </div>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <!-- Hint Button -->
-                        <button onclick="event.stopPropagation(); toggleHint();" class="px-2 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-bold transition flex items-center gap-1 active:scale-95">
-                            <i class="fa-solid fa-lightbulb text-amber-400"></i> ヒント
-                        </button>
-                        <div class="text-right">
-                            <div id="item-title" class="text-base font-extrabold text-white leading-tight">過酸化水素</div>
-                            <div id="item-note" class="text-[11px] font-medium text-slate-400">酸性条件</div>
+
+                    <div class="flex flex-col items-end">
+                        <div class="flex items-center gap-1.5">
+                            <button onclick="event.stopPropagation(); toggleHint();" class="px-2 py-0.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-[11px] font-bold transition flex items-center gap-1 active:scale-95">
+                                <i class="fa-solid fa-lightbulb text-amber-400"></i> 酸化数
+                            </button>
+                        </div>
+                        <div class="text-right mt-1">
+                            <div id="item-title" class="text-base font-black text-white leading-tight">過マンガン酸カリウム</div>
+                            <div id="item-note" class="text-[11px] font-bold text-slate-400">酸性条件</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Hint Display Box (Pre-reserved slot to prevent layout shift) -->
-                <div id="hint-box" class="w-full h-8 flex items-center justify-center z-10 my-0.5 transition-all duration-200 opacity-0 invisible">
-                    <span class="font-extrabold text-amber-400">💡 酸化数変化:</span> <span id="hint-text" class="font-bold font-mono text-amber-100"></span>
+                <!-- Color Change Badge Indicator (Visible when colored reaction) -->
+                <div id="color-badge-container" class="w-full z-10 my-1 bg-slate-950/80 border border-amber-500/30 rounded-xl p-2 flex flex-col items-center justify-center transition-all">
+                    <div class="text-[10px] font-bold text-amber-400 flex items-center gap-1 mb-1">
+                        <i class="fa-solid fa-palette"></i> 色の変化 (反応前 → 反応後)
+                    </div>
+                    <div id="color-chips" class="flex items-center justify-center gap-2 text-xs font-bold text-slate-200">
+                        <!-- Dynamic color chips injected here -->
+                    </div>
                 </div>
 
-                <!-- Card Body: Step Title & Formula -->
-                <div class="my-auto text-center w-full flex flex-col justify-center items-center py-2 z-10">
-                    <!-- Progress Step Tag -->
-                    <div id="step-description" class="text-xs font-bold tracking-wider text-cyan-400 bg-cyan-950/80 px-3 py-1 rounded-full border border-cyan-800/50 mb-4 transition-all max-w-[90%] truncate">
+                <!-- Hint Display Box -->
+                <div id="hint-box" class="w-full h-7 flex items-center justify-center z-10 my-0.5 transition-all duration-200 opacity-0 invisible">
+                    <span class="font-extrabold text-amber-400 text-xs">💡 酸化数変化:</span> <span id="hint-text" class="font-bold font-mono text-amber-100 text-xs ml-1"></span>
+                </div>
+
+                <!-- Card Body -->
+                <div class="my-auto text-center w-full flex flex-col justify-center items-center py-1 z-10">
+                    <div id="step-description" class="text-[11px] font-bold tracking-wide text-cyan-300 bg-cyan-950/80 px-3 py-1 rounded-full border border-cyan-800/50 mb-3 transition-all max-w-[95%] truncate">
                         Step 1: 反応前の物質
                     </div>
 
-                    <!-- Chemical Reaction Scrollable Display -->
                     <div class="w-full py-2 px-1 text-center">
-                        <div id="formula-display" class="formula-text font-black text-white leading-snug tracking-wide w-full flex flex-col justify-center items-center min-h-[72px]">
-                            <!-- Dynamic equation content injected here -->
+                        <div id="formula-display" class="formula-text font-black text-white leading-relaxed tracking-wide w-full flex flex-col justify-center items-center min-h-[64px]">
                         </div>
                     </div>
                     
-                    <p class="text-[10px] text-slate-500 mt-2 flex items-center gap-1">
+                    <p class="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
                         <i class="fa-solid fa-hand-pointer text-slate-600"></i> タップで次のステップへ
                     </p>
                 </div>
 
-                <!-- Card Footer: Progress Bar Dots -->
-                <div class="w-full space-y-1.5 z-10">
-                    <div class="flex justify-between items-center text-[11px] font-bold text-slate-400 px-0.5">
-                        <span class="text-slate-500 text-[10px]">ステップ完了度</span>
+                <!-- Card Footer -->
+                <div class="w-full space-y-1 z-10">
+                    <div class="flex justify-between items-center text-[10px] font-bold text-slate-400 px-0.5">
+                        <span class="text-slate-500">ステップ完了度</span>
                         <span id="step-number-text" class="text-cyan-400 font-mono">1 / 5</span>
                     </div>
-                    <!-- Step Progress Indicator Bars -->
                     <div id="step-dots" class="grid grid-cols-5 gap-1.5 h-1.5">
-                        <!-- Filled dynamically by JS -->
                     </div>
                 </div>
 
-                <!-- Background Watermark Glow -->
+                <!-- Background Glow -->
                 <div id="bg-glow" class="absolute -right-10 -bottom-10 w-40 h-40 bg-blue-600/10 rounded-full blur-2xl pointer-events-none"></div>
             </div>
 
-            <!-- Navigation Control Panel (Thumb-friendly bottom controls) -->
+            <!-- Navigation Control Panel -->
             <div class="grid grid-cols-12 gap-2 shrink-0">
-                <!-- Prev Button -->
-                <button onclick="prevCard()" class="col-span-3 bg-slate-800 active:bg-slate-700 text-slate-200 border border-slate-700 font-bold py-3 px-2 rounded-xl shadow-md text-xs transition flex flex-col items-center justify-center gap-0.5 active:scale-95">
-                    <i class="fa-solid fa-chevron-left text-sm text-slate-400"></i>
+                <button onclick="prevCard()" class="col-span-3 bg-slate-800 active:bg-slate-700 text-slate-200 border border-slate-700 font-bold py-2.5 px-2 rounded-xl shadow-md text-xs transition flex flex-col items-center justify-center gap-0.5 active:scale-95">
+                    <i class="fa-solid fa-chevron-left text-xs text-slate-400"></i>
                     <span>前へ</span>
                 </button>
                 
-                <!-- Main Action Button (Next Step) -->
-                <button onclick="nextStep()" class="col-span-6 bg-gradient-to-r from-emerald-600 to-teal-600 active:from-emerald-500 active:to-teal-500 text-white font-extrabold py-3 px-3 rounded-xl shadow-lg shadow-emerald-950/40 text-sm transition flex items-center justify-center gap-2 active:scale-95 border border-emerald-500/30">
+                <button onclick="nextStep()" class="col-span-6 bg-gradient-to-r from-emerald-600 to-teal-600 active:from-emerald-500 active:to-teal-500 text-white font-extrabold py-2.5 px-3 rounded-xl shadow-lg shadow-emerald-950/40 text-xs sm:text-sm transition flex items-center justify-center gap-2 active:scale-95 border border-emerald-500/30">
                     <span id="btn-next-step-label">次へ進む</span>
-                    <i class="fa-solid fa-circle-chevron-right text-base"></i>
+                    <i class="fa-solid fa-circle-chevron-right text-sm"></i>
                 </button>
 
-                <!-- Next Button -->
-                <button onclick="nextCard()" class="col-span-3 bg-slate-800 active:bg-slate-700 text-slate-200 border border-slate-700 font-bold py-3 px-2 rounded-xl shadow-md text-xs transition flex flex-col items-center justify-center gap-0.5 active:scale-95">
-                    <i class="fa-solid fa-chevron-right text-sm text-slate-400"></i>
+                <button onclick="nextCard()" class="col-span-3 bg-slate-800 active:bg-slate-700 text-slate-200 border border-slate-700 font-bold py-2.5 px-2 rounded-xl shadow-md text-xs transition flex flex-col items-center justify-center gap-0.5 active:scale-95">
+                    <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
                     <span>次へ</span>
                 </button>
             </div>
 
-            <!-- Gesture Hint Footer -->
-            <div class="text-center text-[10px] text-slate-500 pt-0.5 shrink-0 flex items-center justify-center gap-3">
-                <span>👈 スワイプで切り替え 👉</span>
+            <div class="text-center text-[10px] text-slate-500 pt-0.5 shrink-0">
+                <span>👈 左右スワイプで物質切替 ｜ タップで分解手順 👉</span>
             </div>
 
         </div>
 
-        <!-- ================= LIST VIEW (HIDDEN BY DEFAULT) ================= -->
+        <!-- ================= LIST VIEW ================= -->
         <div id="view-list" class="hidden absolute inset-0 flex flex-col p-3 max-w-md mx-auto w-full h-full overflow-hidden">
             
-            <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 flex justify-between items-center shrink-0 mb-3 shadow-md">
-                <h2 class="font-extrabold text-sm text-slate-100 flex items-center gap-2">
-                    <i class="fa-solid fa-book-open text-cyan-400"></i> 半反応式 一覧リスト
+            <div class="bg-slate-800 p-2.5 rounded-xl border border-slate-700 flex justify-between items-center shrink-0 mb-2 shadow-md">
+                <h2 class="font-extrabold text-xs sm:text-sm text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-book-open text-cyan-400"></i> 教科書記載 全22種一覧
                 </h2>
-                <span class="text-xs bg-slate-900 text-cyan-400 font-mono font-bold px-2 py-0.5 rounded-full border border-slate-700">全18種</span>
+                <span class="text-xs bg-slate-900 text-cyan-400 font-mono font-bold px-2 py-0.5 rounded-full border border-slate-700">全22式</span>
             </div>
 
             <!-- Scrollable List Container -->
-            <div class="flex-1 overflow-y-auto no-scrollbar space-y-4 pb-12">
+            <div class="flex-1 overflow-y-auto no-scrollbar space-y-3 pb-12">
                 
                 <!-- Oxidizing Agents Section -->
                 <div class="bg-slate-900 rounded-xl border border-blue-900/60 overflow-hidden shadow-md">
-                    <div class="bg-blue-950 px-3.5 py-2 text-blue-300 font-extrabold text-xs flex justify-between items-center border-b border-blue-900/50">
-                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-bolt text-blue-400"></i> 主な酸化剤</span>
-                        <span class="text-[10px] bg-blue-900/80 text-blue-200 px-2 py-0.5 rounded-md">e⁻を受ける</span>
+                    <div class="bg-blue-950 px-3 py-1.5 text-blue-300 font-extrabold text-xs flex justify-between items-center border-b border-blue-900/50">
+                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-bolt text-blue-400"></i> 酸化剤 (e⁻を受け取る)</span>
+                        <span class="text-[10px] bg-blue-900/80 text-blue-200 px-1.5 py-0.5 rounded">12式</span>
                     </div>
                     <div class="divide-y divide-slate-800/80" id="list-ox-items">
-                        <!-- Populated by JS -->
                     </div>
                 </div>
 
                 <!-- Reducing Agents Section -->
                 <div class="bg-slate-900 rounded-xl border border-rose-900/60 overflow-hidden shadow-md">
-                    <div class="bg-rose-950 px-3.5 py-2 text-rose-300 font-extrabold text-xs flex justify-between items-center border-b border-rose-900/50">
-                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-fire text-rose-400"></i> 主な還元剤</span>
-                        <span class="text-[10px] bg-rose-900/80 text-rose-200 px-2 py-0.5 rounded-md">e⁻を与える</span>
+                    <div class="bg-rose-950 px-3 py-1.5 text-rose-300 font-extrabold text-xs flex justify-between items-center border-b border-rose-900/50">
+                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-fire text-rose-400"></i> 還元剤 (e⁻を放出する)</span>
+                        <span class="text-[10px] bg-rose-900/80 text-rose-200 px-1.5 py-0.5 rounded">10式</span>
                     </div>
                     <div class="divide-y divide-slate-800/80" id="list-red-items">
-                        <!-- Populated by JS -->
                     </div>
                 </div>
 
@@ -258,284 +245,410 @@
     </main>
 
     <script>
-        // High School Chemistry Half-Reaction Dataset
+        // High School Chemistry Dataset (All 22 textbook reactions + precise color changes)
         const REACTION_DATA = [
-            // --- 酸化剤 (Oxidizing Agents) ---
+            // --- 酸化剤 (12式) ---
             {
                 id: "ox-1",
                 category: "ox",
-                name: "過酸化水素",
-                condition: "酸性中",
-                hint: "O の酸化数: -1 → -2",
+                name: "オゾン",
+                condition: "酸性条件",
+                hint: "O の酸化数: 0 → -2",
+                colorChange: null,
                 steps: [
-                    { desc: "Step 1: 反応前の物質", html: "H<sub>2</sub>O<sub>2</sub>" },
-                    { desc: "Step 2: 反応後の生成物", html: "H<sub>2</sub>O<sub>2</sub> &rarr; 2 H<sub>2</sub>O" },
-                    { desc: "Step 3: 電子(e⁻)の追加", html: "H<sub>2</sub>O<sub>2</sub> + <span class='text-rose-400 font-bold highlight-part'>2 e<sup>-</sup></span> &rarr; 2 H<sub>2</sub>O" },
-                    { desc: "Step 4: 水素イオン(H⁺)の追加", html: "H<sub>2</sub>O<sub>2</sub> + 2 e<sup>-</sup> + <span class='text-cyan-400 font-bold highlight-part'>2 H<sup>+</sup></span> &rarr; 2 H<sub>2</sub>O" },
-                    { desc: "Step 5: 半反応式の完成", html: "H<sub>2</sub>O<sub>2</sub> + 2 e<sup>-</sup> + 2 H<sup>+</sup> &rarr; 2 H<sub>2</sub>O" }
+                    { desc: "Step 1: 反応前の物質", html: "O<sub>3</sub>" },
+                    { desc: "Step 2: 生成物(O₂とH₂O)", html: "O<sub>3</sub> &rarr; O<sub>2</sub> + H<sub>2</sub>O" },
+                    { desc: "Step 3: 電子(e⁻)を追加", html: "O<sub>3</sub> + <span class='text-rose-400 font-bold highlight-part'>2 e<sup>-</sup></span> &rarr; O<sub>2</sub> + H<sub>2</sub>O" },
+                    { desc: "Step 4: 水素イオン(H⁺)で電荷を合わせる", html: "O<sub>3</sub> + <span class='text-cyan-400 font-bold highlight-part'>2 H<sup>+</sup></span> + 2 e<sup>-</sup> &rarr; O<sub>2</sub> + H<sub>2</sub>O" },
+                    { desc: "Step 5: 完成式", html: "O<sub>3</sub> + 2 H<sup>+</sup> + 2 e<sup>-</sup> &rarr; O<sub>2</sub> + H<sub>2</sub>O" }
                 ]
             },
             {
                 id: "ox-2",
                 category: "ox",
-                name: "過マンガン酸カリウム",
-                condition: "酸性中",
-                hint: "Mn の酸化数: +7 → +2",
+                name: "オゾン",
+                condition: "中性・塩基性条件",
+                hint: "O の酸化数: 0 → -2",
+                colorChange: null,
                 steps: [
-                    { desc: "Step 1: 反応前の物質", html: "MnO<sub>4</sub><sup>-</sup>" },
-                    { desc: "Step 2: 反応後の生成物", html: "MnO<sub>4</sub><sup>-</sup> &rarr; Mn<sup>2+</sup>" },
-                    { desc: "Step 3: 電子(e⁻)の追加", html: "MnO<sub>4</sub><sup>-</sup> + <span class='text-rose-400 font-bold highlight-part'>5 e<sup>-</sup></span> &rarr; Mn<sup>2+</sup>" },
-                    { desc: "Step 4: 水素イオン(H⁺)の追加", html: "MnO<sub>4</sub><sup>-</sup> + 5 e<sup>-</sup> + <span class='text-cyan-400 font-bold highlight-part'>8 H<sup>+</sup></span> &rarr; Mn<sup>2+</sup>" },
-                    { desc: "Step 5: H₂OでOの数を合わせて完成", html: "MnO<sub>4</sub><sup>-</sup> + 5 e<sup>-</sup> + 8 H<sup>+</sup> &rarr; Mn<sup>2+</sup> + <span class='text-emerald-400 font-bold highlight-part'>4 H<sub>2</sub>O</span>" }
+                    { desc: "Step 1: 反応前の物質", html: "O<sub>3</sub>" },
+                    { desc: "Step 2: 生成物(O₂とOH⁻)", html: "O<sub>3</sub> &rarr; O<sub>2</sub> + 2 OH<sup>-</sup>" },
+                    { desc: "Step 3: H₂Oを加える", html: "O<sub>3</sub> + <span class='text-emerald-400 font-bold highlight-part'>H<sub>2</sub>O</span> &rarr; O<sub>2</sub> + 2 OH<sup>-</sup>" },
+                    { desc: "Step 4: 電子(e⁻)で電荷を合わせる", html: "O<sub>3</sub> + H<sub>2</sub>O + <span class='text-rose-400 font-bold highlight-part'>2 e<sup>-</sup></span> &rarr; O<sub>2</sub> + 2 OH<sup>-</sup>" },
+                    { desc: "Step 5: 完成式", html: "O<sub>3</sub> + H<sub>2</sub>O + 2 e<sup>-</sup> &rarr; O<sub>2</sub> + 2 OH<sup>-</sup>" }
                 ]
             },
             {
                 id: "ox-3",
                 category: "ox",
-                name: "酸化マンガン(IV)",
-                condition: "酸性中",
-                hint: "Mn の酸化数: +4 → +2",
+                name: "塩素",
+                condition: "Cl₂",
+                hint: "Cl の酸化数: 0 → -1",
+                colorChange: {
+                    from: "淡黄緑色 (Cl₂)",
+                    to: "無色 (Cl⁻)",
+                    fromBg: "#84cc16",
+                    toBg: "#94a3b8"
+                },
                 steps: [
-                    { desc: "Step 1: 反応前の物質", html: "MnO<sub>2</sub>" },
-                    { desc: "Step 2: 反応後の生成物", html: "MnO<sub>2</sub> &rarr; Mn<sup>2+</sup>" },
-                    { desc: "Step 3: 電子(e⁻)の追加", html: "MnO<sub>2</sub> + <span class='text-rose-400 font-bold highlight-part'>2 e<sup>-</sup></span> &rarr; Mn<sup>2+</sup>" },
-                    { desc: "Step 4: 水素イオン(H⁺)の追加", html: "MnO<sub>2</sub> + 2 e<sup>-</sup> + <span class='text-cyan-400 font-bold highlight-part'>4 H<sup>+</sup></span> &rarr; Mn<sup>2+</sup>" },
-                    { desc: "Step 5: H₂OでOの数を合わせて完成", html: "MnO<sub>2</sub> + 2 e<sup>-</sup> + 4 H<sup>+</sup> &rarr; Mn<sup>2+</sup> + <span class='text-emerald-400 font-bold highlight-part'>2 H<sub>2</sub>O</span>" }
+                    { desc: "Step 1: 反応前の物質", html: "Cl<sub>2</sub>" },
+                    { desc: "Step 2: 塩化物イオン(Cl⁻)の生成", html: "Cl<sub>2</sub> &rarr; 2 Cl<sup>-</sup>" },
+                    { desc: "Step 3: 電子(e⁻)を追加", html: "Cl<sub>2</sub> + <span class='text-rose-400 font-bold highlight-part'>2 e<sup>-</sup></span> &rarr; 2 Cl<sup>-</sup>" },
+                    { desc: "Step 4: 完成式", html: "Cl<sub>2</sub> + 2 e<sup>-</sup> &rarr; 2 Cl<sup>-</sup>" },
+                    { desc: "Step 5: 完成式", html: "Cl<sub>2</sub> + 2 e<sup>-</sup> &rarr; 2 Cl<sup>-</sup>" }
                 ]
             },
             {
                 id: "ox-4",
                 category: "ox",
                 name: "濃硝酸",
-                condition: "(濃)HNO₃",
+                condition: "濃HNO₃",
                 hint: "N の酸化数: +5 → +4",
+                colorChange: {
+                    from: "無色 (HNO₃溶液)",
+                    to: "赤褐色気体 (NO₂)",
+                    fromBg: "#94a3b8",
+                    toBg: "#b45309"
+                },
                 steps: [
-                    { desc: "Step 1: 反応前の物質", html: "(濃)HNO<sub>3</sub>" },
-                    { desc: "Step 2: 反応後の生成物", html: "(濃)HNO<sub>3</sub> &rarr; NO<sub>2</sub>" },
-                    { desc: "Step 3: 電子(e⁻)の追加", html: "(濃)HNO<sub>3</sub> + <span class='text-rose-400 font-bold highlight-part'>e<sup>-</sup></span> &rarr; NO<sub>2</sub>" },
-                    { desc: "Step 4: 水素イオン(H⁺)の追加", html: "(濃)HNO<sub>3</sub> + e<sup>-</sup> + <span class='text-cyan-400 font-bold highlight-part'>H<sup>+</sup></span> &rarr; NO<sub>2</sub>" },
-                    { desc: "Step 5: H₂OでOの数を合わせて完成", html: "(濃)HNO<sub>3</sub> + e<sup>-</sup> + H<sup>+</sup> &rarr; NO<sub>2</sub> + <span class='text-emerald-400 font-bold highlight-part'>H<sub>2</sub>O</span>" }
+                    { desc: "Step 1: 反応前の物質", html: "HNO<sub>3</sub>" },
+                    { desc: "Step 2: 二酸化窒素(NO₂)の生成", html: "HNO<sub>3</sub> &rarr; NO<sub>2</sub>" },
+                    { desc: "Step 3: 電子(e⁻)を追加", html: "HNO<sub>3</sub> + <span class='text-rose-400 font-bold highlight-part'>e<sup>-</sup></span> &rarr; NO<sub>2</sub>" },
+                    { desc: "Step 4: H⁺とH₂Oでバランス調整", html: "HNO<sub>3</sub> + H<sup>+</sup> + e<sup>-</sup> &rarr; NO<sub>2</sub> + <span class='text-emerald-400 font-bold highlight-part'>H<sub>2</sub>O</span>" },
+                    { desc: "Step 5: 完成式", html: "HNO<sub>3</sub> + H<sup>+</sup> + e<sup>-</sup> &rarr; NO<sub>2</sub> + H<sub>2</sub>O" }
                 ]
             },
             {
                 id: "ox-5",
                 category: "ox",
                 name: "希硝酸",
-                condition: "(希)HNO₃",
+                condition: "希HNO₃",
                 hint: "N の酸化数: +5 → +2",
+                colorChange: {
+                    from: "無色 (HNO₃溶液)",
+                    to: "無色気体 (NO) ※空気中で赤褐色のNO₂へ",
+                    fromBg: "#94a3b8",
+                    toBg: "#cbd5e1"
+                },
                 steps: [
-                    { desc: "Step 1: 反応前の物質", html: "(希)HNO<sub>3</sub>" },
-                    { desc: "Step 2: 反応後の生成物", html: "(希)HNO<sub>3</sub> &rarr; NO" },
-                    { desc: "Step 3: 電子(e⁻)の追加", html: "(希)HNO<sub>3</sub> + <span class='text-rose-400 font-bold highlight-part'>3 e<sup>-</sup></span> &rarr; NO" },
-                    { desc: "Step 4: 水素イオン(H⁺)の追加", html: "(希)HNO<sub>3</sub> + 3 e<sup>-</sup> + <span class='text-cyan-400 font-bold highlight-part'>3 H<sup>+</sup></span> &rarr; NO" },
-                    { desc: "Step 5: H₂OでOの数を合わせて完成", html: "(希)HNO<sub>3</sub> + 3 e<sup>-</sup> + 3 H<sup>+</sup> &rarr; NO + <span class='text-emerald-400 font-bold highlight-part'>2 H<sub>2</sub>O</span>" }
+                    { desc: "Step 1: 反応前の物質", html: "HNO<sub>3</sub>" },
+                    { desc: "Step 2: 一酸化窒素(NO)の生成", html: "HNO<sub>3</sub> &rarr; NO" },
+                    { desc: "Step 3: 電子(e⁻)を追加", html: "HNO<sub>3</sub> + <span class='text-rose-400 font-bold highlight-part'>3 e<sup>-</sup></span> &rarr; NO" },
+                    { desc: "Step 4: H⁺とH₂Oでバランス調整", html: "HNO<sub>3</sub> + <span class='text-cyan-400 font-bold highlight-part'>3 H<sup>+</sup></span> + 3 e<sup>-</sup> &rarr; NO + <span class='text-emerald-400 font-bold highlight-part'>2 H<sub>2</sub>O</span>" },
+                    { desc: "Step 5: 完成式", html: "HNO<sub>3</sub> + 3 H<sup>+</sup> + 3 e<sup>-</sup> &rarr; NO + 2 H<sub>2</sub>O" }
                 ]
             },
             {
                 id: "ox-6",
                 category: "ox",
                 name: "熱濃硫酸",
-                condition: "(熱濃)H₂SO₄",
+                condition: "加熱した濃H₂SO₄",
                 hint: "S の酸化数: +6 → +4",
+                colorChange: null,
                 steps: [
-                    { desc: "Step 1: 反応前の物質", html: "(熱濃)H<sub>2</sub>SO<sub>4</sub>" },
-                    { desc: "Step 2: 反応後の生成物", html: "(熱濃)H<sub>2</sub>SO<sub>4</sub> &rarr; SO<sub>2</sub>" },
-                    { desc: "Step 3: 電子(e⁻)の追加", html: "(熱濃)H<sub>2</sub>SO<sub>4</sub> + <span class='text-rose-400 font-bold highlight-part'>2 e<sup>-</sup></span> &rarr; SO<sub>2</sub>" },
-                    { desc: "Step 4: 水素イオン(H⁺)の追加", html: "(熱濃)H<sub>2</sub>SO<sub>4</sub> + 2 e<sup>-</sup> + <span class='text-cyan-400 font-bold highlight-part'>2 H<sup>+</sup></span> &rarr; SO<sub>2</sub>" },
-                    { desc: "Step 5: H₂OでOの数を合わせて完成", html: "(熱濃)H<sub>2</sub>SO<sub>4</sub> + 2 e<sup>-</sup> + 2 H<sup>+</sup> &rarr; SO<sub>2</sub> + <span class='text-emerald-400 font-bold highlight-part'>2 H<sub>2</sub>O</span>" }
+                    { desc: "Step 1: 反応前の物質", html: "H<sub>2</sub>SO<sub>4</sub>" },
+                    { desc: "Step 2: 二酸化硫黄(SO₂)の生成", html: "H<sub>2</sub>SO<sub>4</sub> &rarr; SO<sub>2</sub>" },
+                    { desc: "Step 3: 電子(e⁻)を追加", html: "H<sub>2</sub>SO<sub>4</sub> + <span class='text-rose-400 font-bold highlight-part'>2 e<sup>-</sup></span> &rarr; SO<sub>2</sub>" },
+                    { desc: "Step 4: H⁺とH₂Oでバランス調整", html: "H<sub>2</sub>SO<sub>4</sub> + <span class='text-cyan-400 font-bold highlight-part'>2 H<sup>+</sup></span> + 2 e<sup>-</sup> &rarr; SO<sub>2</sub> + <span class='text-emerald-400 font-bold highlight-part'>2 H<sub>2</sub>O</span>" },
+                    { desc: "Step 5: 完成式", html: "H<sub>2</sub>SO<sub>4</sub> + 2 H<sup>+</sup> + 2 e<sup>-</sup> &rarr; SO<sub>2</sub> + 2 H<sub>2</sub>O" }
                 ]
             },
             {
                 id: "ox-7",
                 category: "ox",
-                name: "二クロム酸カリウム",
-                condition: "酸性中",
-                hint: "Cr の酸化数: +6 → +3",
+                name: "過マンガン酸カリウム",
+                condition: "酸性条件",
+                hint: "Mn の酸化数: +7 → +2",
+                colorChange: {
+                    from: "赤紫色 (MnO₄⁻)",
+                    to: "淡桃色 / ほぼ無色 (Mn²⁺)",
+                    fromBg: "#a855f7",
+                    toBg: "#fbcfe8"
+                },
                 steps: [
-                    { desc: "Step 1: 反応前の物質", html: "Cr<sub>2</sub>O<sub>7</sub><sup>2-</sup>" },
-                    { desc: "Step 2: 反応後の生成物", html: "Cr<sub>2</sub>O<sub>7</sub><sup>2-</sup> &rarr; 2 Cr<sup>3+</sup>" },
-                    { desc: "Step 3: 電子(e⁻)の追加", html: "Cr<sub>2</sub>O<sub>7</sub><sup>2-</sup> + <span class='text-rose-400 font-bold highlight-part'>6 e<sup>-</sup></span> &rarr; 2 Cr<sup>3+</sup>" },
-                    { desc: "Step 4: 水素イオン(H⁺)の追加", html: "Cr<sub>2</sub>O<sub>7</sub><sup>2-</sup> + 6 e<sup>-</sup> + <span class='text-cyan-400 font-bold highlight-part'>14 H<sup>+</sup></span> &rarr; 2 Cr<sup>3+</sup>" },
-                    { desc: "Step 5: H₂OでOの数を合わせて完成", html: "Cr<sub>2</sub>O<sub>7</sub><sup>2-</sup> + 6 e<sup>-</sup> + 14 H<sup>+</sup> &rarr; 2 Cr<sup>3+</sup> + <span class='text-emerald-400 font-bold highlight-part'>7 H<sub>2</sub>O</span>" }
+                    { desc: "Step 1: 反応前の物質", html: "MnO<sub>4</sub><sup>-</sup>" },
+                    { desc: "Step 2: マンガン(II)イオン(Mn²⁺)の生成", html: "MnO<sub>4</sub><sup>-</sup> &rarr; Mn<sup>2+</sup>" },
+                    { desc: "Step 3: 電子(e⁻)を追加", html: "MnO<sub>4</sub><sup>-</sup> + <span class='text-rose-400 font-bold highlight-part'>5 e<sup>-</sup></span> &rarr; Mn<sup>2+</sup>" },
+                    { desc: "Step 4: H⁺とH₂OでOの数を合わせる", html: "MnO<sub>4</sub><sup>-</sup> + <span class='text-cyan-400 font-bold highlight-part'>8 H<sup>+</sup></span> + 5 e<sup>-</sup> &rarr; Mn<sup>2+</sup> + <span class='text-emerald-400 font-bold highlight-part'>4 H<sub>2</sub>O</span>" },
+                    { desc: "Step 5: 完成式", html: "MnO<sub>4</sub><sup>-</sup> + 8 H<sup>+</sup> + 5 e<sup>-</sup> &rarr; Mn<sup>2+</sup> + 4 H<sub>2</sub>O" }
                 ]
             },
             {
                 id: "ox-8",
                 category: "ox",
-                name: "ハロゲン単体 (X₂)",
-                condition: "17族元素",
-                hint: "X の酸化数: 0 → -1",
+                name: "過マンガン酸カリウム",
+                condition: "中性・塩基性条件",
+                hint: "Mn の酸化数: +7 → +4",
+                colorChange: {
+                    from: "赤紫色 (MnO₄⁻)",
+                    to: "黒褐色沈殿 (MnO₂)",
+                    fromBg: "#a855f7",
+                    toBg: "#451a03"
+                },
                 steps: [
-                    { desc: "Step 1: 反応前の物質", html: "X<sub>2</sub>" },
-                    { desc: "Step 2: 反応後の生成物", html: "X<sub>2</sub> &rarr; 2 X<sup>-</sup>" },
-                    { desc: "Step 3: 電子(e⁻)の追加", html: "X<sub>2</sub> + <span class='text-rose-400 font-bold highlight-part'>2 e<sup>-</sup></span> &rarr; 2 X<sup>-</sup>" },
-                    { desc: "Step 4: H⁺の調整不要", html: "X<sub>2</sub> + 2 e<sup>-</sup> &rarr; 2 X<sup>-</sup>" },
-                    { desc: "Step 5: 半反応式の完成", html: "X<sub>2</sub> + 2 e<sup>-</sup> &rarr; 2 X<sup>-</sup>" }
+                    { desc: "Step 1: 反応前の物質", html: "MnO<sub>4</sub><sup>-</sup>" },
+                    { desc: "Step 2: 二酸化マンガン(MnO₂)の生成", html: "MnO<sub>4</sub><sup>-</sup> &rarr; MnO<sub>2</sub>" },
+                    { desc: "Step 3: 電子(e⁻)を追加", html: "MnO<sub>4</sub><sup>-</sup> + <span class='text-rose-400 font-bold highlight-part'>3 e<sup>-</sup></span> &rarr; MnO<sub>2</sub>" },
+                    { desc: "Step 4: H₂OとOH⁻でバランス調整", html: "MnO<sub>4</sub><sup>-</sup> + <span class='text-emerald-400 font-bold highlight-part'>2 H<sub>2</sub>O</span> + 3 e<sup>-</sup> &rarr; MnO<sub>2</sub> + <span class='text-cyan-400 font-bold highlight-part'>4 OH<sup>-</sup></span>" },
+                    { desc: "Step 5: 完成式", html: "MnO<sub>4</sub><sup>-</sup> + 2 H<sub>2</sub>O + 3 e<sup>-</sup> &rarr; MnO<sub>2</sub> + 4 OH<sup>-</sup>" }
                 ]
             },
             {
                 id: "ox-9",
                 category: "ox",
-                name: "二酸化硫黄 (酸化剤として)",
-                condition: "H₂S等に対して",
+                name: "ニクロム酸カリウム",
+                condition: "酸性条件",
+                hint: "Cr の酸化数: +6 → +3",
+                colorChange: {
+                    from: "赤橙色 (Cr₂O₇²⁻)",
+                    to: "緑色 (Cr³⁺)",
+                    fromBg: "#f97316",
+                    toBg: "#22c55e"
+                },
+                steps: [
+                    { desc: "Step 1: 反応前の物質", html: "Cr<sub>2</sub>O<sub>7</sub><sup>2-</sup>" },
+                    { desc: "Step 2: クロム(III)イオン(2 Cr³⁺)の生成", html: "Cr<sub>2</sub>O<sub>7</sub><sup>2-</sup> &rarr; 2 Cr<sup>3+</sup>" },
+                    { desc: "Step 3: 電子(e⁻)を追加", html: "Cr<sub>2</sub>O<sub>7</sub><sup>2-</sup> + <span class='text-rose-400 font-bold highlight-part'>6 e<sup>-</sup></span> &rarr; 2 Cr<sup>3+</sup>" },
+                    { desc: "Step 4: H⁺とH₂OでOの数を合わせる", html: "Cr<sub>2</sub>O<sub>7</sub><sup>2-</sup> + <span class='text-cyan-400 font-bold highlight-part'>14 H<sup>+</sup></span> + 6 e<sup>-</sup> &rarr; 2 Cr<sup>3+</sup> + <span class='text-emerald-400 font-bold highlight-part'>7 H<sub>2</sub>O</span>" },
+                    { desc: "Step 5: 完成式", html: "Cr<sub>2</sub>O<sub>7</sub><sup>2-</sup> + 14 H<sup>+</sup> + 6 e<sup>-</sup> &rarr; 2 Cr<sup>3+</sup> + 7 H<sub>2</sub>O" }
+                ]
+            },
+            {
+                id: "ox-10",
+                category: "ox",
+                name: "過酸化水素",
+                condition: "酸性条件 (酸化剤)",
+                hint: "O の酸化数: -1 → -2",
+                colorChange: null,
+                steps: [
+                    { desc: "Step 1: 反応前の物質", html: "H<sub>2</sub>O<sub>2</sub>" },
+                    { desc: "Step 2: 水(2 H₂O)の生成", html: "H<sub>2</sub>O<sub>2</sub> &rarr; 2 H<sub>2</sub>O" },
+                    { desc: "Step 3: 電子(e⁻)を追加", html: "H<sub>2</sub>O<sub>2</sub> + <span class='text-rose-400 font-bold highlight-part'>2 e<sup>-</sup></span> &rarr; 2 H<sub>2</sub>O" },
+                    { desc: "Step 4: H⁺で電荷を調和させる", html: "H<sub>2</sub>O<sub>2</sub> + <span class='text-cyan-400 font-bold highlight-part'>2 H<sup>+</sup></span> + 2 e<sup>-</sup> &rarr; 2 H<sub>2</sub>O" },
+                    { desc: "Step 5: 完成式", html: "H<sub>2</sub>O<sub>2</sub> + 2 H<sup>+</sup> + 2 e<sup>-</sup> &rarr; 2 H<sub>2</sub>O" }
+                ]
+            },
+            {
+                id: "ox-11",
+                category: "ox",
+                name: "過酸化水素",
+                condition: "中性・塩基性条件 (酸化剤)",
+                hint: "O の酸化数: -1 → -2",
+                colorChange: null,
+                steps: [
+                    { desc: "Step 1: 反応前の物質", html: "H<sub>2</sub>O<sub>2</sub>" },
+                    { desc: "Step 2: 水酸化物イオン(2 OH⁻)の生成", html: "H<sub>2</sub>O<sub>2</sub> &rarr; 2 OH<sup>-</sup>" },
+                    { desc: "Step 3: 電子(e⁻)を追加", html: "H<sub>2</sub>O<sub>2</sub> + <span class='text-rose-400 font-bold highlight-part'>2 e<sup>-</sup></span> &rarr; 2 OH<sup>-</sup>" },
+                    { desc: "Step 4: 完成式", html: "H<sub>2</sub>O<sub>2</sub> + 2 e<sup>-</sup> &rarr; 2 OH<sup>-</sup>" },
+                    { desc: "Step 5: 完成式", html: "H<sub>2</sub>O<sub>2</sub> + 2 e<sup>-</sup> &rarr; 2 OH<sup>-</sup>" }
+                ]
+            },
+            {
+                id: "ox-12",
+                category: "ox",
+                name: "二酸化硫黄",
+                condition: "酸化剤として働く場合",
                 hint: "S の酸化数: +4 → 0",
+                colorChange: {
+                    from: "無色 (SO₂気体)",
+                    to: "黄色沈殿 (S)",
+                    fromBg: "#94a3b8",
+                    toBg: "#eab308"
+                },
                 steps: [
                     { desc: "Step 1: 反応前の物質", html: "SO<sub>2</sub>" },
-                    { desc: "Step 2: 反応後の生成物", html: "SO<sub>2</sub> &rarr; S" },
-                    { desc: "Step 3: 電子(e⁻)の追加", html: "SO<sub>2</sub> + <span class='text-rose-400 font-bold highlight-part'>4 e<sup>-</sup></span> &rarr; S" },
-                    { desc: "Step 4: 水素イオン(H⁺)の追加", html: "SO<sub>2</sub> + 4 e<sup>-</sup> + <span class='text-cyan-400 font-bold highlight-part'>4 H<sup>+</sup></span> &rarr; S" },
-                    { desc: "Step 5: H₂OでOの数を合わせて完成", html: "SO<sub>2</sub> + 4 e<sup>-</sup> + 4 H<sup>+</sup> &rarr; S + <span class='text-emerald-400 font-bold highlight-part'>2 H<sub>2</sub>O</span>" }
+                    { desc: "Step 2: 硫黄(S)単体の生成", html: "SO<sub>2</sub> &rarr; S" },
+                    { desc: "Step 3: 電子(e⁻)を追加", html: "SO<sub>2</sub> + <span class='text-rose-400 font-bold highlight-part'>4 e<sup>-</sup></span> &rarr; S" },
+                    { desc: "Step 4: H⁺とH₂Oでバランス調整", html: "SO<sub>2</sub> + <span class='text-cyan-400 font-bold highlight-part'>4 H<sup>+</sup></span> + 4 e<sup>-</sup> &rarr; S + <span class='text-emerald-400 font-bold highlight-part'>2 H<sub>2</sub>O</span>" },
+                    { desc: "Step 5: 完成式", html: "SO<sub>2</sub> + 4 H<sup>+</sup> + 4 e<sup>-</sup> &rarr; S + 2 H<sub>2</sub>O" }
                 ]
             },
 
-            // --- 還元剤 (Reducing Agents) ---
+            // --- 還元剤 (10式) ---
             {
                 id: "red-1",
                 category: "red",
-                name: "ナトリウム (金属)",
-                condition: "Na",
+                name: "ナトリウム",
+                condition: "金属Na",
                 hint: "Na の酸化数: 0 → +1",
+                colorChange: null,
                 steps: [
                     { desc: "Step 1: 反応前の物質", html: "Na" },
-                    { desc: "Step 2: 反応後の生成物", html: "Na &rarr; Na<sup>+</sup>" },
+                    { desc: "Step 2: ナトリウムイオン(Na⁺)の生成", html: "Na &rarr; Na<sup>+</sup>" },
                     { desc: "Step 3: 電子(e⁻)の放出", html: "Na &rarr; Na<sup>+</sup> + <span class='text-rose-400 font-bold highlight-part'>e<sup>-</sup></span>" },
-                    { desc: "Step 4: 電荷調整完了", html: "Na &rarr; Na<sup>+</sup> + e<sup>-</sup>" },
-                    { desc: "Step 5: 半反応式の完成", html: "Na &rarr; Na<sup>+</sup> + e<sup>-</sup>" }
+                    { desc: "Step 4: 完成式", html: "Na &rarr; Na<sup>+</sup> + e<sup>-</sup>" },
+                    { desc: "Step 5: 完成式", html: "Na &rarr; Na<sup>+</sup> + e<sup>-</sup>" }
                 ]
             },
             {
                 id: "red-2",
                 category: "red",
-                name: "スズ(II)イオン",
-                condition: "Sn²⁺",
-                hint: "Sn の酸化数: +2 → +4",
+                name: "マグネシウム",
+                condition: "金属Mg",
+                hint: "Mg の酸化数: 0 → +2",
+                colorChange: null,
                 steps: [
-                    { desc: "Step 1: 反応前の物質", html: "Sn<sup>2+</sup>" },
-                    { desc: "Step 2: 反応後の生成物", html: "Sn<sup>2+</sup> &rarr; Sn<sup>4+</sup>" },
-                    { desc: "Step 3: 電子(e⁻)の放出", html: "Sn<sup>2+</sup> &rarr; Sn<sup>4+</sup> + <span class='text-rose-400 font-bold highlight-part'>2 e<sup>-</sup></span>" },
-                    { desc: "Step 4: 電荷調整完了", html: "Sn<sup>2+</sup> &rarr; Sn<sup>4+</sup> + 2 e<sup>-</sup>" },
-                    { desc: "Step 5: 半反応式の完成", html: "Sn<sup>2+</sup> &rarr; Sn<sup>4+</sup> + 2 e<sup>-</sup>" }
+                    { desc: "Step 1: 反応前の物質", html: "Mg" },
+                    { desc: "Step 2: マグネシウムイオン(Mg²⁺)の生成", html: "Mg &rarr; Mg<sup>2+</sup>" },
+                    { desc: "Step 3: 電子(e⁻)の放出", html: "Mg &rarr; Mg<sup>2+</sup> + <span class='text-rose-400 font-bold highlight-part'>2 e<sup>-</sup></span>" },
+                    { desc: "Step 4: 完成式", html: "Mg &rarr; Mg<sup>2+</sup> + 2 e<sup>-</sup>" },
+                    { desc: "Step 5: 完成式", html: "Mg &rarr; Mg<sup>2+</sup> + 2 e<sup>-</sup>" }
                 ]
             },
             {
                 id: "red-3",
                 category: "red",
-                name: "鉄(II)イオン",
-                condition: "Fe²⁺",
-                hint: "Fe の酸化数: +2 → +3",
+                name: "水素",
+                condition: "H₂気体",
+                hint: "H の酸化数: 0 → +1",
+                colorChange: null,
                 steps: [
-                    { desc: "Step 1: 反応前の物質", html: "Fe<sup>2+</sup>" },
-                    { desc: "Step 2: 反応後の生成物", html: "Fe<sup>2+</sup> &rarr; Fe<sup>3+</sup>" },
-                    { desc: "Step 3: 電子(e⁻)の放出", html: "Fe<sup>2+</sup> &rarr; Fe<sup>3+</sup> + <span class='text-rose-400 font-bold highlight-part'>e<sup>-</sup></span>" },
-                    { desc: "Step 4: 電荷調整完了", html: "Fe<sup>2+</sup> &rarr; Fe<sup>3+</sup> + e<sup>-</sup>" },
-                    { desc: "Step 5: 半反応式の完成", html: "Fe<sup>2+</sup> &rarr; Fe<sup>3+</sup> + e<sup>-</sup>" }
+                    { desc: "Step 1: 反応前の物質", html: "H<sub>2</sub>" },
+                    { desc: "Step 2: 水素イオン(2 H⁺)の生成", html: "H<sub>2</sub> &rarr; 2 H<sup>+</sup>" },
+                    { desc: "Step 3: 電子(e⁻)の放出", html: "H<sub>2</sub> &rarr; 2 H<sup>+</sup> + <span class='text-rose-400 font-bold highlight-part'>2 e<sup>-</sup></span>" },
+                    { desc: "Step 4: 完成式", html: "H<sub>2</sub> &rarr; 2 H<sup>+</sup> + 2 e<sup>-</sup>" },
+                    { desc: "Step 5: 完成式", html: "H<sub>2</sub> &rarr; 2 H<sup>+</sup> + 2 e<sup>-</sup>" }
                 ]
             },
             {
                 id: "red-4",
                 category: "red",
-                name: "ヨウ化物イオン",
-                condition: "I⁻",
-                hint: "I の酸化数: -1 → 0",
+                name: "硫化水素",
+                condition: "H₂S",
+                hint: "S の酸化数: -2 → 0",
+                colorChange: {
+                    from: "無色 (H₂S気体)",
+                    to: "黄色沈殿 (S)",
+                    fromBg: "#94a3b8",
+                    toBg: "#eab308"
+                },
                 steps: [
-                    { desc: "Step 1: 反応前の物質", html: "2 I<sup>-</sup>" },
-                    { desc: "Step 2: 反応後の生成物", html: "2 I<sup>-</sup> &rarr; I<sub>2</sub>" },
-                    { desc: "Step 3: 電子(e⁻)の放出", html: "2 I<sup>-</sup> &rarr; I<sub>2</sub> + <span class='text-rose-400 font-bold highlight-part'>2 e<sup>-</sup></span>" },
-                    { desc: "Step 4: 電荷調整完了", html: "2 I<sup>-</sup> &rarr; I<sub>2</sub> + 2 e<sup>-</sup>" },
-                    { desc: "Step 5: 半反応式の完成", html: "2 I<sup>-</sup> &rarr; I<sub>2</sub> + 2 e<sup>-</sup>" }
+                    { desc: "Step 1: 反応前の物質", html: "H<sub>2</sub>S" },
+                    { desc: "Step 2: 硫黄(S)単体の生成", html: "H<sub>2</sub>S &rarr; S" },
+                    { desc: "Step 3: H⁺とe⁻の放出", html: "H<sub>2</sub>S &rarr; S + <span class='text-cyan-400 font-bold highlight-part'>2 H<sup>+</sup></span> + <span class='text-rose-400 font-bold highlight-part'>2 e<sup>-</sup></span>" },
+                    { desc: "Step 4: 完成式", html: "H<sub>2</sub>S &rarr; S + 2 H<sup>+</sup> + 2 e<sup>-</sup>" },
+                    { desc: "Step 5: 完成式", html: "H<sub>2</sub>S &rarr; S + 2 H<sup>+</sup> + 2 e<sup>-</sup>" }
                 ]
             },
             {
                 id: "red-5",
                 category: "red",
-                name: "硫化水素",
-                condition: "H₂S",
-                hint: "S の酸化数: -2 → 0",
+                name: "シュウ酸",
+                condition: "(COOH)₂ / H₂C₂O₄",
+                hint: "C の酸化数: +3 → +4",
+                colorChange: null,
                 steps: [
-                    { desc: "Step 1: 反応前の物質", html: "H<sub>2</sub>S" },
-                    { desc: "Step 2: 反応後の生成物", html: "H<sub>2</sub>S &rarr; S" },
-                    { desc: "Step 3: 電子(e⁻)の放出", html: "H<sub>2</sub>S &rarr; S + <span class='text-rose-400 font-bold highlight-part'>2 e<sup>-</sup></span>" },
-                    { desc: "Step 4: 水素イオン(H⁺)の放出", html: "H<sub>2</sub>S &rarr; S + 2 e<sup>-</sup> + <span class='text-cyan-400 font-bold highlight-part'>2 H<sup>+</sup></span>" },
-                    { desc: "Step 5: 半反応式の完成", html: "H<sub>2</sub>S &rarr; S + 2 e<sup>-</sup> + 2 H<sup>+</sup>" }
+                    { desc: "Step 1: 反応前の物質", html: "(COOH)<sub>2</sub>" },
+                    { desc: "Step 2: 二酸化炭素(2 CO₂)の生成", html: "(COOH)<sub>2</sub> &rarr; 2 CO<sub>2</sub>" },
+                    { desc: "Step 3: H⁺とe⁻の放出", html: "(COOH)<sub>2</sub> &rarr; 2 CO<sub>2</sub> + <span class='text-cyan-400 font-bold highlight-part'>2 H<sup>+</sup></span> + <span class='text-rose-400 font-bold highlight-part'>2 e<sup>-</sup></span>" },
+                    { desc: "Step 4: 完成式", html: "(COOH)<sub>2</sub> &rarr; 2 CO<sub>2</sub> + 2 H<sup>+</sup> + 2 e<sup>-</sup>" },
+                    { desc: "Step 5: 完成式", html: "(COOH)<sub>2</sub> &rarr; 2 CO<sub>2</sub> + 2 H<sup>+</sup> + 2 e<sup>-</sup>" }
                 ]
             },
             {
                 id: "red-6",
                 category: "red",
-                name: "過酸化水素 (還元剤として)",
-                condition: "KMnO₄等に対して",
-                hint: "O の酸化数: -1 → 0",
+                name: "ヨウ化カリウム",
+                condition: "ヨウ化物イオン 2I⁻",
+                hint: "I の酸化数: -1 → 0",
+                colorChange: {
+                    from: "無色 (I⁻水溶液)",
+                    to: "褐色 / 紫色 (I₂)",
+                    fromBg: "#94a3b8",
+                    toBg: "#78350f"
+                },
                 steps: [
-                    { desc: "Step 1: 反応前の物質", html: "H<sub>2</sub>O<sub>2</sub>" },
-                    { desc: "Step 2: 反応後の生成物", html: "H<sub>2</sub>O<sub>2</sub> &rarr; O<sub>2</sub>" },
-                    { desc: "Step 3: 電子(e⁻)の放出", html: "H<sub>2</sub>O<sub>2</sub> &rarr; O<sub>2</sub> + <span class='text-rose-400 font-bold highlight-part'>2 e<sup>-</sup></span>" },
-                    { desc: "Step 4: 水素イオン(H⁺)の放出", html: "H<sub>2</sub>O<sub>2</sub> &rarr; O<sub>2</sub> + 2 e<sup>-</sup> + <span class='text-cyan-400 font-bold highlight-part'>2 H<sup>+</sup></span>" },
-                    { desc: "Step 5: 半反応式の完成", html: "H<sub>2</sub>O<sub>2</sub> &rarr; O<sub>2</sub> + 2 e<sup>-</sup> + 2 H<sup>+</sup>" }
+                    { desc: "Step 1: 反応前の物質", html: "2 I<sup>-</sup>" },
+                    { desc: "Step 2: ヨウ素(I₂)の生成", html: "2 I<sup>-</sup> &rarr; I<sub>2</sub>" },
+                    { desc: "Step 3: 電子(e⁻)の放出", html: "2 I<sup>-</sup> &rarr; I<sub>2</sub> + <span class='text-rose-400 font-bold highlight-part'>2 e<sup>-</sup></span>" },
+                    { desc: "Step 4: 完成式", html: "2 I<sup>-</sup> &rarr; I<sub>2</sub> + 2 e<sup>-</sup>" },
+                    { desc: "Step 5: 完成式", html: "2 I<sup>-</sup> &rarr; I<sub>2</sub> + 2 e<sup>-</sup>" }
                 ]
             },
             {
                 id: "red-7",
                 category: "red",
-                name: "二酸化硫黄 (還元剤として)",
-                condition: "SO₂",
-                hint: "S の酸化数: +4 → +6",
+                name: "硫酸鉄(II)",
+                condition: "鉄(II)イオン Fe²⁺",
+                hint: "Fe の酸化数: +2 → +3",
+                colorChange: {
+                    from: "淡緑色 (Fe²⁺)",
+                    to: "黄褐色 (Fe³⁺)",
+                    fromBg: "#86efac",
+                    toBg: "#d97706"
+                },
                 steps: [
-                    { desc: "Step 1: 反応前の物質", html: "SO<sub>2</sub>" },
-                    { desc: "Step 2: 反応後の生成物", html: "SO<sub>2</sub> &rarr; SO<sub>4</sub><sup>2-</sup>" },
-                    { desc: "Step 3: 左辺にH₂Oを補填", html: "SO<sub>2</sub> + <span class='text-emerald-400 font-bold highlight-part'>2 H<sub>2</sub>O</span> &rarr; SO<sub>4</sub><sup>2-</sup>" },
-                    { desc: "Step 4: 右辺にe⁻とH⁺を展開", html: "SO<sub>2</sub> + 2 H<sub>2</sub>O &rarr; SO<sub>4</sub><sup>2-</sup> + <span class='text-rose-400 font-bold highlight-part'>2 e<sup>-</sup></span> + <span class='text-cyan-400 font-bold highlight-part'>4 H<sup>+</sup></span>" },
-                    { desc: "Step 5: 半反応式の完成", html: "SO<sub>2</sub> + 2 H<sub>2</sub>O &rarr; SO<sub>4</sub><sup>2-</sup> + 2 e<sup>-</sup> + 4 H<sup>+</sup>" }
+                    { desc: "Step 1: 反応前の物質", html: "Fe<sup>2+</sup>" },
+                    { desc: "Step 2: 鉄(III)イオン(Fe³⁺)の生成", html: "Fe<sup>2+</sup> &rarr; Fe<sup>3+</sup>" },
+                    { desc: "Step 3: 電子(e⁻)の放出", html: "Fe<sup>2+</sup> &rarr; Fe<sup>3+</sup> + <span class='text-rose-400 font-bold highlight-part'>e<sup>-</sup></span>" },
+                    { desc: "Step 4: 完成式", html: "Fe<sup>2+</sup> &rarr; Fe<sup>3+</sup> + e<sup>-</sup>" },
+                    { desc: "Step 5: 完成式", html: "Fe<sup>2+</sup> &rarr; Fe<sup>3+</sup> + e<sup>-</sup>" }
                 ]
             },
             {
                 id: "red-8",
                 category: "red",
-                name: "シュウ酸",
-                condition: "H₂C₂O₄",
-                hint: "C の酸化数: +3 → +4",
+                name: "塩化スズ(II)",
+                condition: "スズ(II)イオン Sn²⁺",
+                hint: "Sn の酸化数: +2 → +4",
+                colorChange: null,
                 steps: [
-                    { desc: "Step 1: 反応前の物質", html: "H<sub>2</sub>C<sub>2</sub>O<sub>4</sub>" },
-                    { desc: "Step 2: 反応後の生成物", html: "H<sub>2</sub>C<sub>2</sub>O<sub>4</sub> &rarr; 2 CO<sub>2</sub>" },
-                    { desc: "Step 3: 電子(e⁻)の放出", html: "H<sub>2</sub>C<sub>2</sub>O<sub>4</sub> &rarr; 2 CO<sub>2</sub> + <span class='text-rose-400 font-bold highlight-part'>2 e<sup>-</sup></span>" },
-                    { desc: "Step 4: 水素イオン(H⁺)の放出", html: "H<sub>2</sub>C<sub>2</sub>O<sub>4</sub> &rarr; 2 CO<sub>2</sub> + 2 e<sup>-</sup> + <span class='text-cyan-400 font-bold highlight-part'>2 H<sup>+</sup></span>" },
-                    { desc: "Step 5: 半反応式の完成", html: "H<sub>2</sub>C<sub>2</sub>O<sub>4</sub> &rarr; 2 CO<sub>2</sub> + 2 e<sup>-</sup> + 2 H<sup>+</sup>" }
+                    { desc: "Step 1: 反応前の物質", html: "Sn<sup>2+</sup>" },
+                    { desc: "Step 2: スズ(IV)イオン(Sn⁴⁺)の生成", html: "Sn<sup>2+</sup> &rarr; Sn<sup>4+</sup>" },
+                    { desc: "Step 3: 電子(e⁻)の放出", html: "Sn<sup>2+</sup> &rarr; Sn<sup>4+</sup> + <span class='text-rose-400 font-bold highlight-part'>2 e<sup>-</sup></span>" },
+                    { desc: "Step 4: 完成式", html: "Sn<sup>2+</sup> &rarr; Sn<sup>4+</sup> + 2 e<sup>-</sup>" },
+                    { desc: "Step 5: 完成式", html: "Sn<sup>2+</sup> &rarr; Sn<sup>4+</sup> + 2 e<sup>-</sup>" }
                 ]
             },
             {
                 id: "red-9",
                 category: "red",
-                name: "チオ硫酸ナトリウム",
-                condition: "S₂O₃²⁻",
-                hint: "S の酸化数: +2 → +2.5",
+                name: "過酸化水素",
+                condition: "還元剤として働く場合",
+                hint: "O の酸化数: -1 → 0",
+                colorChange: null,
                 steps: [
-                    { desc: "Step 1: 反応前の物質", html: "2 S<sub>2</sub>O<sub>3</sub><sup>2-</sup>" },
-                    { desc: "Step 2: 反応後の生成物", html: "2 S<sub>2</sub>O<sub>3</sub><sup>2-</sup> &rarr; S<sub>4</sub>O<sub>6</sub><sup>2-</sup>" },
-                    { desc: "Step 3: 電子(e⁻)の放出", html: "2 S<sub>2</sub>O<sub>3</sub><sup>2-</sup> &rarr; S<sub>4</sub>O<sub>6</sub><sup>2-</sup> + <span class='text-rose-400 font-bold highlight-part'>2 e<sup>-</sup></span>" },
-                    { desc: "Step 4: 電荷調整完了", html: "2 S<sub>2</sub>O<sub>3</sub><sup>2-</sup> &rarr; S<sub>4</sub>O<sub>6</sub><sup>2-</sup> + 2 e<sup>-</sup>" },
-                    { desc: "Step 5: 半反応式の完成", html: "2 S<sub>2</sub>O<sub>3</sub><sup>2-</sup> &rarr; S<sub>4</sub>O<sub>6</sub><sup>2-</sup> + 2 e<sup>-</sup>" }
+                    { desc: "Step 1: 反応前の物質", html: "H<sub>2</sub>O<sub>2</sub>" },
+                    { desc: "Step 2: 酸素(O₂)の生成", html: "H<sub>2</sub>O<sub>2</sub> &rarr; O<sub>2</sub>" },
+                    { desc: "Step 3: 電子(e⁻)の放出", html: "H<sub>2</sub>O<sub>2</sub> &rarr; O<sub>2</sub> + <span class='text-rose-400 font-bold highlight-part'>2 e<sup>-</sup></span>" },
+                    { desc: "Step 4: H⁺の放出でバランス調整", html: "H<sub>2</sub>O<sub>2</sub> &rarr; O<sub>2</sub> + <span class='text-cyan-400 font-bold highlight-part'>2 H<sup>+</sup></span> + 2 e<sup>-</sup>" },
+                    { desc: "Step 5: 完成式", html: "H<sub>2</sub>O<sub>2</sub> &rarr; O<sub>2</sub> + 2 H<sup>+</sup> + 2 e<sup>-</sup>" }
+                ]
+            },
+            {
+                id: "red-10",
+                category: "red",
+                name: "二酸化硫黄",
+                condition: "還元剤として働く場合",
+                hint: "S の酸化数: +4 → +6",
+                colorChange: null,
+                steps: [
+                    { desc: "Step 1: 反応前の物質", html: "SO<sub>2</sub>" },
+                    { desc: "Step 2: 硫酸イオン(SO₄²⁻)の生成", html: "SO<sub>2</sub> &rarr; SO<sub>4</sub><sup>2-</sup>" },
+                    { desc: "Step 3: H₂Oを加える", html: "SO<sub>2</sub> + <span class='text-emerald-400 font-bold highlight-part'>2 H<sub>2</sub>O</span> &rarr; SO<sub>4</sub><sup>2-</sup>" },
+                    { desc: "Step 4: H⁺とe⁻を放出する", html: "SO<sub>2</sub> + 2 H<sub>2</sub>O &rarr; SO<sub>4</sub><sup>2-</sup> + <span class='text-cyan-400 font-bold highlight-part'>4 H<sup>+</sup></span> + <span class='text-rose-400 font-bold highlight-part'>2 e<sup>-</sup></span>" },
+                    { desc: "Step 5: 完成式", html: "SO<sub>2</sub> + 2 H<sub>2</sub>O &rarr; SO<sub>4</sub><sup>2-</sup> + 4 H<sup>+</sup> + 2 e<sup>-</sup>" }
                 ]
             }
         ];
 
         // App State
-        let currentCategory = 'all'; // 'all', 'ox', 'red'
+        let currentCategory = 'all'; // 'all', 'ox', 'red', 'color'
         let isRandom = false;
         let activeList = [];
         let currentIndex = 0;
         let currentStep = 0;
         let isHintVisible = false;
 
-        // Touch Swipe Variables
+        // Touch Swipe Logic
         let touchStartX = 0;
         let touchStartY = 0;
 
-        // Initialize App
         window.onload = function() {
             filterData();
             renderList();
             updateCardDisplay();
 
-            // Setup Touch Gestures for Mobile Swipe
             const flashcardBox = document.getElementById('flashcard-box');
             
             flashcardBox.addEventListener('touchstart', function(e) {
@@ -549,7 +662,6 @@
                 handleSwipe(touchStartX, touchStartY, touchEndX, touchEndY);
             }, { passive: true });
 
-            // Keyboard navigation (Desktop test support)
             document.addEventListener('keydown', function(e) {
                 if (document.getElementById('view-flashcard').classList.contains('hidden')) return;
                 
@@ -570,19 +682,16 @@
             const diffX = endX - startX;
             const diffY = endY - startY;
 
-            // Only trigger if horizontal swipe is prominent (prevents conflict with vertical scrolling)
             if (Math.abs(diffX) > 40 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
                 if (diffX < 0) {
-                    // Swipe Left -> Next Card
                     nextCard();
                 } else {
-                    // Swipe Right -> Prev Card
                     prevCard();
                 }
             }
         }
 
-        // View Switcher (Flashcard vs List)
+        // View Switcher
         function switchView(view) {
             const fcView = document.getElementById('view-flashcard');
             const listView = document.getElementById('view-list');
@@ -602,19 +711,20 @@
             }
         }
 
-        // Category Filter Setup
+        // Category Filter
         function setCategory(cat) {
             currentCategory = cat;
             
-            ['all', 'ox', 'red'].forEach(c => {
+            ['all', 'ox', 'red', 'color'].forEach(c => {
                 const btn = document.getElementById(`btn-cat-${c}`);
                 if (c === cat) {
-                    btn.className = `px-2.5 py-1 rounded-md text-white font-bold transition ${
+                    btn.className = `px-2 py-1 rounded-md text-white font-bold transition ${
                         c === 'ox' ? 'bg-blue-600' : 
-                        c === 'red' ? 'bg-rose-600' : 'bg-slate-700'
+                        c === 'red' ? 'bg-rose-600' : 
+                        c === 'color' ? 'bg-amber-600' : 'bg-slate-700'
                     }`;
                 } else {
-                    btn.className = `px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 transition`;
+                    btn.className = `px-2 py-1 rounded-md text-slate-400 hover:text-slate-200 transition`;
                 }
             });
 
@@ -627,6 +737,8 @@
         function filterData() {
             if (currentCategory === 'all') {
                 activeList = [...REACTION_DATA];
+            } else if (currentCategory === 'color') {
+                activeList = REACTION_DATA.filter(item => item.colorChange !== null);
             } else {
                 activeList = REACTION_DATA.filter(item => item.category === currentCategory);
             }
@@ -646,7 +758,7 @@
                 btn.classList.add('bg-slate-700', 'text-cyan-400', 'border-cyan-500/50');
                 btn.classList.remove('bg-slate-800', 'text-slate-300');
                 icon.className = 'fa-solid fa-shuffle text-cyan-400';
-                label.textContent = 'ランダム';
+                label.textContent = 'シャッフル';
             } else {
                 btn.classList.remove('bg-slate-700', 'text-cyan-400', 'border-cyan-500/50');
                 btn.classList.add('bg-slate-800', 'text-slate-300');
@@ -667,7 +779,6 @@
             }
         }
 
-        // Toggle Hint Visibility
         function toggleHint() {
             isHintVisible = !isHintVisible;
             const hintBox = document.getElementById('hint-box');
@@ -694,7 +805,6 @@
         function updateCardDisplay() {
             if (activeList.length === 0) return;
 
-            // Reset hint display when switching card or step
             hideHint();
 
             const item = activeList[currentIndex];
@@ -704,20 +814,40 @@
             const typeBadge = document.getElementById('type-badge');
             const bgGlow = document.getElementById('bg-glow');
 
-            // Set Hint Text
-            document.getElementById('hint-text').textContent = item.hint || "酸化数の記載なし";
+            document.getElementById('hint-text').textContent = item.hint || "";
 
-            // Apply Theme Accent Colors
+            // Theme Accent Colors
             if (item.category === 'ox') {
                 cardBox.style.borderColor = '#1e40af';
-                typeBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-extrabold tracking-wide uppercase bg-blue-950 text-blue-300 border border-blue-800 flex items-center gap-1";
-                typeBadge.innerHTML = "<i class='fa-solid fa-bolt text-[10px] text-blue-400'></i> 酸化剤";
+                typeBadge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wide uppercase bg-blue-950 text-blue-300 border border-blue-800 flex items-center gap-1";
+                typeBadge.innerHTML = "<i class='fa-solid fa-bolt text-[9px] text-blue-400'></i> 酸化剤";
                 bgGlow.className = "absolute -right-10 -bottom-10 w-48 h-48 bg-blue-600/10 rounded-full blur-2xl pointer-events-none";
             } else {
                 cardBox.style.borderColor = '#9f1239';
-                typeBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-extrabold tracking-wide uppercase bg-rose-950 text-rose-300 border border-rose-800 flex items-center gap-1";
-                typeBadge.innerHTML = "<i class='fa-solid fa-fire text-[10px] text-rose-400'></i> 還元剤";
+                typeBadge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wide uppercase bg-rose-950 text-rose-300 border border-rose-800 flex items-center gap-1";
+                typeBadge.innerHTML = "<i class='fa-solid fa-fire text-[9px] text-rose-400'></i> 還元剤";
                 bgGlow.className = "absolute -right-10 -bottom-10 w-48 h-48 bg-rose-600/10 rounded-full blur-2xl pointer-events-none";
+            }
+
+            // Color Change Indicator Display
+            const colorContainer = document.getElementById('color-badge-container');
+            const colorChips = document.getElementById('color-chips');
+
+            if (item.colorChange) {
+                colorContainer.classList.remove('hidden');
+                colorChips.innerHTML = `
+                    <div class="flex items-center gap-1.5 bg-slate-900 border border-slate-700 px-2 py-0.5 rounded-md">
+                        <span class="w-2.5 h-2.5 rounded-full inline-block border border-slate-600 shadow-sm" style="background-color: ${item.colorChange.fromBg};"></span>
+                        <span class="text-slate-200 text-[11px]">${item.colorChange.from}</span>
+                    </div>
+                    <i class="fa-solid fa-right-long text-amber-400 text-xs"></i>
+                    <div class="flex items-center gap-1.5 bg-slate-900 border border-slate-700 px-2 py-0.5 rounded-md">
+                        <span class="w-2.5 h-2.5 rounded-full inline-block border border-slate-600 shadow-sm" style="background-color: ${item.colorChange.toBg};"></span>
+                        <span class="text-slate-200 text-[11px]">${item.colorChange.to}</span>
+                    </div>
+                `;
+            } else {
+                colorContainer.classList.add('hidden');
             }
 
             // Labels and Counters
@@ -728,10 +858,10 @@
             // Step Description
             document.getElementById('step-description').textContent = stepObj.desc;
 
-            // Format Equation (Horizontal natural reaction equation layout)
+            // Chemical Equation Layout
             const formulaDisplay = document.getElementById('formula-display');
             formulaDisplay.innerHTML = `
-                <div class="text-base sm:text-lg md:text-xl font-bold text-slate-100 tracking-wide break-words max-w-full leading-relaxed px-1">
+                <div class="text-base sm:text-lg font-bold text-slate-100 tracking-wide break-words max-w-full leading-relaxed px-1">
                     ${stepObj.html}
                 </div>
             `;
@@ -753,7 +883,7 @@
                 dotsContainer.appendChild(dot);
             }
 
-            // Button Label Update
+            // Button Label
             const nextBtnLabel = document.getElementById('btn-next-step-label');
             if (currentStep < totalSteps - 1) {
                 nextBtnLabel.textContent = "次ステップ";
@@ -762,7 +892,6 @@
             }
         }
 
-        // Card Tap Logic
         function handleCardClick(e) {
             nextStep();
         }
@@ -810,16 +939,32 @@
                     formattedStep = `${parts[0]} <span class="text-cyan-400 font-bold px-1">&rarr;</span> ${parts[1]}`;
                 }
 
+                let colorHtml = '';
+                if (item.colorChange) {
+                    colorHtml = `
+                        <div class="mt-1 flex items-center gap-1.5 text-[10px] text-amber-300 font-bold bg-amber-950/60 border border-amber-800/50 px-2 py-0.5 rounded-md w-fit">
+                            <i class="fa-solid fa-palette text-[9px]"></i>
+                            <span>${item.colorChange.from}</span>
+                            <i class="fa-solid fa-arrow-right text-[8px] text-amber-400"></i>
+                            <span>${item.colorChange.to}</span>
+                        </div>
+                    `;
+                }
+
                 const row = document.createElement('div');
-                row.className = "p-3 hover:bg-slate-800/50 transition flex flex-col space-y-1";
+                row.className = "p-2.5 hover:bg-slate-800/50 transition flex flex-col space-y-1";
                 row.innerHTML = `
                     <div class="flex justify-between items-center text-xs">
-                        <span class="font-extrabold text-slate-200">${item.name}</span>
-                        <span class="text-[10px] text-slate-400 font-mono bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">${item.condition}</span>
+                        <div class="flex items-center gap-1.5">
+                            <span class="font-black text-slate-100">${item.name}</span>
+                            <span class="text-[10px] text-slate-400 font-mono bg-slate-800 px-1.5 py-0.2 rounded border border-slate-700">${item.condition}</span>
+                        </div>
+                        <span class="text-[10px] font-mono text-cyan-400 font-bold">${item.hint}</span>
                     </div>
-                    <div class="formula-text text-xs sm:text-sm font-bold text-slate-100 overflow-x-auto no-scrollbar whitespace-nowrap pt-0.5">
+                    <div class="formula-text text-xs sm:text-sm font-bold text-slate-200 overflow-x-auto no-scrollbar whitespace-nowrap pt-0.5">
                         ${formattedStep}
                     </div>
+                    ${colorHtml}
                 `;
 
                 if (item.category === 'ox') {
