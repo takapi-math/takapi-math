@@ -45,17 +45,20 @@
         <!-- STEP 1: 結晶タイプ & 構造選択 (最上部) -->
         <div class="p-2 bg-slate-800/90 border-b border-slate-700/80 flex-shrink-0 z-20 space-y-1.5 shadow-md">
             <!-- カテゴリ選択 -->
-            <div class="grid grid-cols-2 gap-1.5">
-                <button id="btn-cat-metal" onclick="selectCategory('metal')" class="py-1.5 px-2 rounded-md text-xs font-bold transition-all bg-blue-600 text-white shadow-sm">
-                    金属結晶
+            <div class="grid grid-cols-3 gap-1">
+                <button id="btn-cat-metal" onclick="selectCategory('metal')" class="py-1.5 px-1 rounded-md text-[11px] font-bold transition-all bg-blue-600 text-white shadow-sm">
+                    金属
                 </button>
-                <button id="btn-cat-ionic" onclick="selectCategory('ionic')" class="py-1.5 px-2 rounded-md text-xs font-bold transition-all bg-slate-700 text-slate-300 hover:bg-slate-600">
-                    イオン結晶
+                <button id="btn-cat-ionic" onclick="selectCategory('ionic')" class="py-1.5 px-1 rounded-md text-[11px] font-bold transition-all bg-slate-700 text-slate-300 hover:bg-slate-600">
+                    イオン
+                </button>
+                <button id="btn-cat-covalent" onclick="selectCategory('covalent')" class="py-1.5 px-1 rounded-md text-[11px] font-bold transition-all bg-slate-700 text-slate-300 hover:bg-slate-600">
+                    共有結合
                 </button>
             </div>
             <!-- 構造選択ボタン群 (動的生成) -->
             <div id="structure-buttons" class="grid grid-cols-3 gap-1">
-                <!-- JSで3個のボタンを横並び生成 -->
+                <!-- JSでボタンを生成 -->
             </div>
         </div>
 
@@ -146,11 +149,12 @@
     <script>
         // --- Color Definitions ---
         const COLORS = {
-            metal: 0x38bdf8,   // Sky Blue
-            cation: 0xef4444,  // Red
-            anion: 0x3b82f6,   // Blue
-            unitCell: 0x94a3b8,// Slate light
-            bond: 0x64748b     // Slate dark
+            metal: 0x38bdf8,    // Sky Blue
+            cation: 0xef4444,   // Red
+            anion: 0x3b82f6,    // Blue
+            carbon: 0x38bdf8,   // Cyan/Blue for C (Diamond)
+            unitCell: 0x94a3b8, // Slate light
+            bond: 0x94a3b8      // Slate light bond line
         };
 
         // --- Crystal Structure Data Definitions ---
@@ -309,7 +313,7 @@
                     coordination: '4 : 4',
                     packingRatio: '約34%',
                     atomsInCell: 'Zn2+: 4個, S2-: 4個',
-                    examples: 'ZnS, ダイヤモンド構造',
+                    examples: 'ZnS, CuCl',
                     radiusScale: 0.28,
                     cationRatio: 0.55,
                     desc: 'S2-の面心立方内部の隙間にZn2+が入る構造。',
@@ -337,6 +341,46 @@
                             [0.25, 0.75, 0.75]
                         ];
                         tSites.forEach(pos => atoms.push({ pos, type: 'cation' }));
+                        return atoms;
+                    }
+                }
+            ],
+            covalent: [
+                {
+                    id: 'diamond',
+                    name: 'ダイヤモンド型',
+                    coordination: '4',
+                    packingRatio: '34%',
+                    atomsInCell: '8個',
+                    examples: 'C (ダイヤモンド), Si, Ge',
+                    radiusScale: 0.2165,
+                    desc: '炭素原子が正四面体方向に4個の強固な共有結合を形成。隙間の多い34%の充填率。',
+                    sliceInfos: {
+                        '100': '(100)面：FCC格子点と内部4原子の配列',
+                        '110': '(110)面：炭素原子の正四面体ネットワークを直視できる面',
+                        '111': '(111)面：炭素の層状6員環構造が見える断面'
+                    },
+                    getAtoms: () => {
+                        const atoms = [];
+                        // 8 vertices + 6 face centers (FCC lattice of C)
+                        for(let x of [0, 1]) for(let y of [0, 1]) for(let z of [0, 1]) {
+                            atoms.push({ pos: [x, y, z], type: 'carbon' });
+                        }
+                        atoms.push({ pos: [0.5, 0.5, 0], type: 'carbon' });
+                        atoms.push({ pos: [0.5, 0.5, 1], type: 'carbon' });
+                        atoms.push({ pos: [0.5, 0, 0.5], type: 'carbon' });
+                        atoms.push({ pos: [0.5, 1, 0.5], type: 'carbon' });
+                        atoms.push({ pos: [0, 0.5, 0.5], type: 'carbon' });
+                        atoms.push({ pos: [1, 0.5, 0.5], type: 'carbon' });
+
+                        // 4 interior tetrahedral sites (also C atoms)
+                        const internalSites = [
+                            [0.25, 0.25, 0.25],
+                            [0.75, 0.75, 0.25],
+                            [0.75, 0.25, 0.75],
+                            [0.25, 0.75, 0.75]
+                        ];
+                        internalSites.forEach(pos => atoms.push({ pos, type: 'carbon' }));
                         return atoms;
                     }
                 }
@@ -464,6 +508,8 @@
                                 radius *= ratio;
                             } else if (atom.type === 'anion') {
                                 color = COLORS.anion;
+                            } else if (atom.type === 'carbon') {
+                                color = COLORS.carbon;
                             }
 
                             const sphereGeo = new THREE.SphereGeometry(radius, 24, 24);
@@ -827,6 +873,7 @@
             if (currentStructure.id === 'bcc') maxDist = 0.88;
             if (currentStructure.id === 'cscl') maxDist = 0.88;
             if (currentStructure.id === 'zns') maxDist = 0.5;
+            if (currentStructure.id === 'diamond') maxDist = 0.44;
 
             for (let i = 0; i < allPos.length; i++) {
                 for (let j = i + 1; j < allPos.length; j++) {
@@ -858,13 +905,20 @@
 
             const btnMetal = document.getElementById('btn-cat-metal');
             const btnIonic = document.getElementById('btn-cat-ionic');
+            const btnCovalent = document.getElementById('btn-cat-covalent');
 
+            // Set inactive state to all
+            [btnMetal, btnIonic, btnCovalent].forEach(btn => {
+                if (btn) btn.className = "py-1.5 px-1 rounded-md text-[11px] font-bold transition-all bg-slate-700 text-slate-300 hover:bg-slate-600";
+            });
+
+            // Set active state to selected category
             if (category === 'metal') {
-                btnMetal.className = "py-1.5 px-2 rounded-md text-xs font-bold transition-all bg-blue-600 text-white shadow-sm";
-                btnIonic.className = "py-1.5 px-2 rounded-md text-xs font-bold transition-all bg-slate-700 text-slate-300 hover:bg-slate-600";
-            } else {
-                btnIonic.className = "py-1.5 px-2 rounded-md text-xs font-bold transition-all bg-blue-600 text-white shadow-sm";
-                btnMetal.className = "py-1.5 px-2 rounded-md text-xs font-bold transition-all bg-slate-700 text-slate-300 hover:bg-slate-600";
+                btnMetal.className = "py-1.5 px-1 rounded-md text-[11px] font-bold transition-all bg-blue-600 text-white shadow-sm";
+            } else if (category === 'ionic') {
+                btnIonic.className = "py-1.5 px-1 rounded-md text-[11px] font-bold transition-all bg-blue-600 text-white shadow-sm";
+            } else if (category === 'covalent') {
+                btnCovalent.className = "py-1.5 px-1 rounded-md text-[11px] font-bold transition-all bg-blue-600 text-white shadow-sm";
             }
 
             const btnContainer = document.getElementById('structure-buttons');

@@ -57,12 +57,12 @@
                         金属結晶
                     </button>
                     <button id="btn-cat-ionic" onclick="selectCategory('ionic')" class="py-2 px-3 rounded-lg text-sm font-medium transition-all bg-slate-700 text-slate-300 hover:bg-slate-600">
-                        イオン結晶
+                        イオン/共有結合結晶
                     </button>
                 </div>
             </div>
 
-            <!-- Structure Selector (Changed from Dropdown to Buttons) -->
+            <!-- Structure Selector (Buttons) -->
             <div>
                 <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">構造の選択</label>
                 <div id="structure-buttons" class="grid grid-cols-1 gap-1.5">
@@ -74,7 +74,7 @@
             <div class="space-y-2 pt-2 border-t border-slate-700/60">
                 <label class="block text-xs font-semibold text-cyan-400 uppercase tracking-wider">断面の表示（スライス）</label>
                 <div class="grid grid-cols-2 gap-1.5" id="slice-buttons">
-                    <button onclick="changeSlicePlane('none')" id="slice-btn-none" class="slice-btn text-xs py-1.5 px-2 rounded-lg font-medium transition-all bg-cyan-600 text-white shadow-md shadow-cyan-600/30">
+                    <button onclick="changeSlicePlane('none')" id="slice-btn-none" class="slice-btn text-xs py-1.5 px-2 rounded-lg font-medium transition-all bg-cyan-600 text-white shadow-md shadow-cyan-600/30 font-semibold">
                         全体表示
                     </button>
                     <button onclick="changeSlicePlane('100')" id="slice-btn-100" class="slice-btn text-xs py-1.5 px-2 rounded-lg font-medium transition-all bg-slate-700 text-slate-300 hover:bg-slate-600">
@@ -94,7 +94,7 @@
             <div class="space-y-4 pt-2 border-t border-slate-700/60">
                 <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">表示設定</h3>
 
-                <!-- Atom Size / Packing Rate Slider -->
+                <!-- Atom Size Slider -->
                 <div>
                     <div class="flex justify-between text-xs font-medium text-slate-300 mb-1">
                         <span>原子/イオンの大きさ (充填感)</span>
@@ -139,7 +139,7 @@
 
         </div>
 
-        <!-- Footer / Credits -->
+        <!-- Footer -->
         <div class="pt-4 border-t border-slate-700/60 text-center text-[10px] text-slate-500">
             Interactive 3D Crystal Lattice Visualizer
         </div>
@@ -151,6 +151,7 @@
             metal: 0x38bdf8,   // Sky Blue
             cation: 0xef4444,  // Red (e.g. Na+, Cs+, Zn2+)
             anion: 0x3b82f6,   // Blue (e.g. Cl-, S2-)
+            diamond: 0x38bdf8, // Sky Blue / Carbon
             unitCell: 0x94a3b8,// Slate light
             bond: 0x64748b     // Slate dark
         };
@@ -166,7 +167,6 @@
                     packingRatio: '74%',
                     atomsInCell: '4個 (8×1/8 + 6×1/2)',
                     examples: 'Cu, Al, Au, Ag, Ni, Pb',
-                    // Geometric contact radius: r = a * sqrt(2)/4 ≈ 0.35355
                     radiusScale: 0.35355, 
                     desc: '各頂点と8つの面の中心に原子が位置する構造です。最密充填構造（ABCABC...の積層）の一つで、充填率は最高レベルの74%です。',
                     sliceInfos: {
@@ -176,11 +176,9 @@
                     },
                     getAtoms: () => {
                         const atoms = [];
-                        // 8 Vertices
                         for(let x of [0, 1]) for(let y of [0, 1]) for(let z of [0, 1]) {
                             atoms.push({ pos: [x, y, z], type: 'metal' });
                         }
-                        // 6 Face centers
                         atoms.push({ pos: [0.5, 0.5, 0], type: 'metal' });
                         atoms.push({ pos: [0.5, 0.5, 1], type: 'metal' });
                         atoms.push({ pos: [0.5, 0, 0.5], type: 'metal' });
@@ -198,7 +196,6 @@
                     packingRatio: '68%',
                     atomsInCell: '2個 (8×1/8 + 1)',
                     examples: 'Fe, Na, K, Ba, W, Cr',
-                    // Geometric contact radius: r = a * sqrt(3)/4 ≈ 0.43301
                     radiusScale: 0.43301, 
                     desc: '立方体の8つの頂点と中心（体心）に1個の原子が存在します。面心立方格子よりも隙間が多く、充填率は68%です。',
                     sliceInfos: {
@@ -208,11 +205,9 @@
                     },
                     getAtoms: () => {
                         const atoms = [];
-                        // 8 Vertices
                         for(let x of [0, 1]) for(let y of [0, 1]) for(let z of [0, 1]) {
                             atoms.push({ pos: [x, y, z], type: 'metal' });
                         }
-                        // Center
                         atoms.push({ pos: [0.5, 0.5, 0.5], type: 'metal' });
                         return atoms;
                     }
@@ -226,7 +221,6 @@
                     atomsInCell: '2個（六角柱全体では6個）',
                     examples: 'Mg, Zn, Ti, Cd, Be',
                     isHexagonal: true,
-                    // Geometric contact radius: r = a / 2 = 0.5
                     radiusScale: 0.5, 
                     desc: '六角柱の底面・上面の中央と各頂点、および中央層に3個の原子が入る構造です（ABAB...の積層）。FCCと同じ最高密度の74%です。',
                     sliceInfos: {
@@ -236,19 +230,17 @@
                     },
                     getAtoms: () => {
                         const atoms = [];
-                        const h = 1.633; // c/a ratio
-                        // Top and Bottom Hexagons
+                        const h = 1.633;
                         [0, h].forEach(y => {
-                            atoms.push({ pos: [0, y, 0], type: 'metal' }); // center
+                            atoms.push({ pos: [0, y, 0], type: 'metal' });
                             for(let i = 0; i < 6; i++) {
                                 const angle = (i * 60) * Math.PI / 180;
                                 atoms.push({ pos: [Math.cos(angle), y, Math.sin(angle)], type: 'metal' });
                             }
                         });
-                        // Middle layer 3 atoms
                         for(let i = 0; i < 3; i++) {
                             const angle = (i * 120 + 30) * Math.PI / 180;
-                            const r = 0.577; // 1/sqrt(3)
+                            const r = 0.577;
                             atoms.push({ pos: [r * Math.cos(angle), h / 2, r * Math.sin(angle)], type: 'metal' });
                         }
                         return atoms;
@@ -264,10 +256,8 @@
                     packingRatio: '約66%',
                     atomsInCell: 'Na+: 4個, Cl-: 4個',
                     examples: 'NaCl, MgO, CaO, KCl, AgCl',
-                    // Contact geometry along cell edge: r(Na+) + r(Cl-) = a/2. 
-                    // Set anion base scale so anion-cation touch at 100%
                     radiusScale: 0.33,
-                    cationRatio: 0.515, // r(Na+)/r(Cl-) ≈ 0.102nm / 0.181nm ≈ 0.56
+                    cationRatio: 0.515,
                     desc: 'Cl- (陰イオン) が面心立方格子を組み、そのすき間（オクタヒドラル体心および各辺の中点）に Na+ (陽イオン) が収まった構造です。',
                     sliceInfos: {
                         '100': '(100)面：Na+ と Cl- が交互に並ぶ正方形格子面です。',
@@ -276,7 +266,6 @@
                     },
                     getAtoms: () => {
                         const atoms = [];
-                        // Cl- (Anions at FCC positions)
                         for(let x of [0, 1]) for(let y of [0, 1]) for(let z of [0, 1]) {
                             atoms.push({ pos: [x, y, z], type: 'anion' });
                         }
@@ -287,7 +276,6 @@
                         atoms.push({ pos: [0, 0.5, 0.5], type: 'anion' });
                         atoms.push({ pos: [1, 0.5, 0.5], type: 'anion' });
 
-                        // Na+ (Cations at Edges and Center)
                         atoms.push({ pos: [0.5, 0.5, 0.5], type: 'cation' });
                         const edges = [
                             [0.5, 0, 0], [0.5, 1, 0], [0.5, 0, 1], [0.5, 1, 1],
@@ -306,10 +294,9 @@
                     packingRatio: '約68%',
                     atomsInCell: 'Cs+: 1個, Cl-: 1個',
                     examples: 'CsCl, CsBr, CsI, NH4Cl',
-                    // Contact along body diagonal: r(Cs+) + r(Cl-) = sqrt(3)*a/2 ≈ 0.866*a
                     radiusScale: 0.45,
-                    cationRatio: 0.92, // r(Cs+)/r(Cl-) ≈ 0.167nm / 0.181nm ≈ 0.92
-                    desc: 'Cl- が立方体の頂点に位置し、中央の体に Cs+ が1個入る（またはその逆の）体心立方構造に類似した非常にシンプルな格子です。',
+                    cationRatio: 0.92,
+                    desc: 'Cl- が立方体の頂点に位置し、中央の体に Cs+ が1個入る体心立方構造に類似した非常にシンプルな格子です。',
                     sliceInfos: {
                         '100': '(100)面：頂点の Cl- イオンのみが見える面です。',
                         '110': '(110)面：中央の Cs+ と対角の Cl- が直接接する最密接触面です。',
@@ -317,11 +304,9 @@
                     },
                     getAtoms: () => {
                         const atoms = [];
-                        // Cl- at 8 vertices
                         for(let x of [0, 1]) for(let y of [0, 1]) for(let z of [0, 1]) {
                             atoms.push({ pos: [x, y, z], type: 'anion' });
                         }
-                        // Cs+ at Center
                         atoms.push({ pos: [0.5, 0.5, 0.5], type: 'cation' });
                         return atoms;
                     }
@@ -333,11 +318,10 @@
                     coordination: '4 : 4 (Zn2+:4, S2-:4)',
                     packingRatio: '約34%',
                     atomsInCell: 'Zn2+: 4個, S2-: 4個',
-                    examples: 'ZnS, GaAs, SiC, ダイヤモンド構造（単元素）',
-                    // Tetrahedral contact: r(Zn2+) + r(S2-) = sqrt(3)*a/4
+                    examples: 'ZnS, GaAs, SiC',
                     radiusScale: 0.28,
                     cationRatio: 0.55,
-                    desc: 'S2- が面心立方格子を構成し、内部の8個あるテトラヒドラル（四面体）隙間のうち交互に4箇所へ Zn2+ が入る共有結合性の強い構造です。',
+                    desc: 'S2- が面心立方格子を構成し、内部の8個あるテトラヒドラル隙間のうち交互に4箇所へ Zn2+ が入る共有結合性の強い構造です。',
                     sliceInfos: {
                         '100': '(100)面：S2- の正方形格子と内部の Zn2+ を一方向に投影した面です。',
                         '110': '(110)面：S2- と Zn2+ の四面体結合ネットワーク（正四面体配位）が確認できる面です。',
@@ -345,7 +329,6 @@
                     },
                     getAtoms: () => {
                         const atoms = [];
-                        // S2- (FCC)
                         for(let x of [0, 1]) for(let y of [0, 1]) for(let z of [0, 1]) {
                             atoms.push({ pos: [x, y, z], type: 'anion' });
                         }
@@ -356,7 +339,6 @@
                         atoms.push({ pos: [0, 0.5, 0.5], type: 'anion' });
                         atoms.push({ pos: [1, 0.5, 0.5], type: 'anion' });
 
-                        // Zn2+ (4 tetrahedral sites inside)
                         const tSites = [
                             [0.25, 0.25, 0.25],
                             [0.75, 0.75, 0.25],
@@ -364,6 +346,43 @@
                             [0.25, 0.75, 0.75]
                         ];
                         tSites.forEach(pos => atoms.push({ pos, type: 'cation' }));
+                        return atoms;
+                    }
+                },
+                {
+                    id: 'diamond',
+                    name: 'ダイヤモンド構造 (C)',
+                    sub: 'Diamond Cubic Structure',
+                    coordination: '4',
+                    packingRatio: '34%',
+                    atomsInCell: '8個 (FCC 4個 + 四面体隙間 4個)',
+                    examples: 'ダイヤモンド(C), 珪素(Si), ゲルマニウム(Ge), 灰錫(α-Sn)',
+                    radiusScale: 0.216,
+                    desc: '炭素原子が正四面体頂点方向の4つの原子と強固な共有結合を形成する構造です。面心立方格子(FCC)の配置に加え、内部の8つの四面体隙間のうち4箇所に同種の原子が入っています。',
+                    sliceInfos: {
+                        '100': '(100)面：正方形配列格子と内部原子の投影面です。',
+                        '110': '(110)面：正四面体結合（テトラヒドラル配位）がギザギザ状の鎖として直視できる断面です。',
+                        '111': '(111)面：最密面方向の層構造と四面体間隙層が交互に並ぶ断面です。'
+                    },
+                    getAtoms: () => {
+                        const atoms = [];
+                        for(let x of [0, 1]) for(let y of [0, 1]) for(let z of [0, 1]) {
+                            atoms.push({ pos: [x, y, z], type: 'diamond' });
+                        }
+                        atoms.push({ pos: [0.5, 0.5, 0], type: 'diamond' });
+                        atoms.push({ pos: [0.5, 0.5, 1], type: 'diamond' });
+                        atoms.push({ pos: [0.5, 0, 0.5], type: 'diamond' });
+                        atoms.push({ pos: [0.5, 1, 0.5], type: 'diamond' });
+                        atoms.push({ pos: [0, 0.5, 0.5], type: 'diamond' });
+                        atoms.push({ pos: [1, 0.5, 0.5], type: 'diamond' });
+
+                        const tSites = [
+                            [0.25, 0.25, 0.25],
+                            [0.75, 0.75, 0.25],
+                            [0.75, 0.25, 0.75],
+                            [0.25, 0.75, 0.75]
+                        ];
+                        tSites.forEach(pos => atoms.push({ pos, type: 'diamond' }));
                         return atoms;
                     }
                 }
@@ -389,15 +408,12 @@
         function init() {
             const container = document.getElementById('canvas-container');
 
-            // Scene
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0f172a); // Slate-900
+            scene.background = new THREE.Color(0x0f172a);
 
-            // Camera
             camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
             camera.position.set(2.5, 2.5, 4.5);
 
-            // Renderer with Local Clipping & Stencil Buffer enabled
             renderer = new THREE.WebGLRenderer({ antialias: true, stencil: true });
             renderer.setSize(container.clientWidth, container.clientHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -406,12 +422,10 @@
             renderer.localClippingEnabled = true;
             container.appendChild(renderer.domElement);
 
-            // Controls
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
 
-            // Lights
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
             scene.add(ambientLight);
 
@@ -420,11 +434,10 @@
             dirLight1.castShadow = true;
             scene.add(dirLight1);
 
-            const dirLight2 = new THREE.DirectionalLight(0x38bdf8, 0.3); // Soft blue rim
+            const dirLight2 = new THREE.DirectionalLight(0x38bdf8, 0.3);
             dirLight2.position.set(-5, -5, -5);
             scene.add(dirLight2);
 
-            // Groups
             crystalGroup = new THREE.Group();
             unitCellGroup = new THREE.Group();
             bondsGroup = new THREE.Group();
@@ -437,27 +450,20 @@
             scene.add(slicePlaneGroup);
             scene.add(stencilGroup);
 
-            // UI Init
             lucide.createIcons();
             selectCategory('metal');
 
-            // Event Listeners
             window.addEventListener('resize', onWindowResize);
-
-            // Start Loop
             animate();
         }
 
-        // --- Render Loop ---
         function animate() {
             requestAnimationFrame(animate);
             controls.update();
             renderer.render(scene, camera);
         }
 
-        // --- Building Crystal Geometry ---
         function buildCrystal() {
-            // Clear existing
             clearGroup(crystalGroup);
             clearGroup(unitCellGroup);
             clearGroup(bondsGroup);
@@ -465,48 +471,42 @@
             clearGroup(stencilGroup);
 
             const atomsData = currentStructure.getAtoms();
-            const baseRadius = currentStructure.radiusScale * currentRadiusScaleMultiplier();
+            const baseRadius = currentStructure.radiusScale;
 
-            // Determine cell boundaries & offset to center scene
             let centerOffset = new THREE.Vector3(-0.5, -0.5, -0.5);
             if (currentStructure.isHexagonal) {
                 centerOffset.set(0, -0.816, 0);
             }
 
-            // Setup Clipping Planes (Slice + Unit Cell Bounding Planes)
             setupClippingPlanes();
 
             const range = showSupercell ? [0, 1] : [0];
 
-            // Build Atoms & Network
             range.forEach(rx => {
                 range.forEach(ry => {
                     range.forEach(rz => {
                         const cellOffset = new THREE.Vector3(rx, ry, rz);
                         
-                        // Add Atoms
                         atomsData.forEach(atom => {
                             const pos = new THREE.Vector3(...atom.pos).add(cellOffset).add(centerOffset);
-                            
-                            // Geometry & Material
                             let radius = baseRadius * currentRadiusScale;
                             let color = COLORS.metal;
                             
                             if (atom.type === 'cation') {
                                 color = COLORS.cation;
                                 const ratio = currentStructure.cationRatio || 0.6;
-                                radius *= ratio; // Cation radius based on ionic radius ratio
+                                radius *= ratio;
                             } else if (atom.type === 'anion') {
                                 color = COLORS.anion;
+                            } else if (atom.type === 'diamond') {
+                                color = COLORS.diamond;
                             }
 
                             const sphereGeo = new THREE.SphereGeometry(radius, 32, 32);
 
                             if (localClippingPlanes.length > 0) {
-                                // Stencil technique for solid filled cut surface across all active clipping planes
                                 createSolidClippedMesh(sphereGeo, pos, color, localClippingPlanes);
                             } else {
-                                // Regular mesh
                                 const sphereMat = new THREE.MeshStandardMaterial({
                                     color: color,
                                     roughness: 0.2,
@@ -520,7 +520,6 @@
                             }
                         });
 
-                        // Add Unit Cell Box per cell
                         if (showUnitCell) {
                             if (currentStructure.isHexagonal) {
                                 buildHexagonalCellWireframe(cellOffset.clone().add(centerOffset));
@@ -532,18 +531,15 @@
                 });
             });
 
-            // Build Connective Bonds if Enabled
             if (showBonds) {
                 buildBonds(atomsData, range, centerOffset, baseRadius * currentRadiusScale, localClippingPlanes);
             }
         }
 
-        // --- Create Solid Filled Clipped Mesh using Stencil Technique ---
         function createSolidClippedMesh(geometry, position, color, planes) {
             const group = new THREE.Group();
             group.position.copy(position);
 
-            // Materials for Stencil Pass
             const matBack = new THREE.MeshBasicMaterial({
                 colorWrite: false,
                 depthWrite: false,
@@ -568,7 +564,6 @@
                 stencilZPass: THREE.DecrementWrapStencilOp
             });
 
-            // Surface Material
             const matSurface = new THREE.MeshStandardMaterial({
                 color: color,
                 roughness: 0.2,
@@ -589,7 +584,6 @@
 
             crystalGroup.add(group);
 
-            // Cap Material (Fills the hollow interior at plane cuts)
             const capMat = new THREE.MeshStandardMaterial({
                 color: color,
                 roughness: 0.3,
@@ -602,12 +596,10 @@
                 stencilZPass: THREE.ReplaceStencilOp
             });
 
-            // Cap Planes geometry aligned with active planes
             planes.forEach(plane => {
                 const capGeo = new THREE.PlaneGeometry(6, 6);
                 const capMesh = new THREE.Mesh(capGeo, capMat);
 
-                // Position and orient cap at plane boundary
                 const normal = plane.normal.clone();
                 const planePoint = normal.clone().multiplyScalar(-plane.constant);
                 capMesh.position.copy(planePoint);
@@ -617,11 +609,9 @@
             });
         }
 
-        // --- Slice & Bounding Plane Logic ---
         function setupClippingPlanes() {
             localClippingPlanes = [];
 
-            // 1. Slice Plane
             if (currentSlicePlane !== 'none') {
                 let normal = new THREE.Vector3(1, 0, 0);
                 let size = 1.8;
@@ -639,7 +629,6 @@
                 const slicePlane = new THREE.Plane(normal, 0);
                 localClippingPlanes.push(slicePlane);
 
-                // Visual guide plane
                 const planeGeo = new THREE.PlaneGeometry(size, size);
                 const planeMat = new THREE.MeshBasicMaterial({
                     color: 0x06b6d4,
@@ -656,19 +645,15 @@
                 const border = new THREE.LineSegments(edges, lineMat);
                 visualPlane.add(border);
 
-                // Add intersection polygon wireframe between slice plane and unit cell/hexagon
                 buildCutOutline(normal);
-
                 slicePlaneGroup.add(visualPlane);
             }
 
-            // 2. Crop to Unit Cell Box (6 planes for cubic box boundaries [-0.5, 0.5])
             if (cropToUnitCell) {
                 const maxCoord = showSupercell ? 1.5 : 0.5;
                 const minCoord = -0.5;
 
                 if (currentStructure.isHexagonal) {
-                    // For Hexagonal: crop bounded by height [-0.816, 0.816]
                     const hHalf = 1.633 / 2;
                     localClippingPlanes.push(
                         new THREE.Plane(new THREE.Vector3(0, -1, 0), hHalf),
@@ -687,7 +672,6 @@
             }
         }
 
-        // --- Build Cut Polygon Line on Lattice Boundaries ---
         function buildCutOutline(normal) {
             const lines = [];
 
@@ -697,7 +681,6 @@
                 const botY = -h / 2;
                 const hexEdges = [];
 
-                // Top & Bottom Hexagons
                 for (let i = 0; i < 6; i++) {
                     const a1 = (i * 60) * Math.PI / 180;
                     const a2 = ((i + 1) * 60) * Math.PI / 180;
@@ -712,7 +695,6 @@
 
                 findAndAddIntersections(hexEdges, normal, lines);
             } else {
-                // Cubic unit cell [-0.5, 0.5]^3
                 const cubicEdges = [
                     [new THREE.Vector3(-0.5,-0.5,-0.5), new THREE.Vector3(0.5,-0.5,-0.5)],
                     [new THREE.Vector3(0.5,-0.5,-0.5), new THREE.Vector3(0.5,0.5,-0.5)],
@@ -757,14 +739,11 @@
                 }
             });
 
-            // Connect intersection points in order around polygon
             if (intersections.length >= 3) {
-                // Calculate centroid
                 const centroid = new THREE.Vector3();
                 intersections.forEach(p => centroid.add(p));
                 centroid.divideScalar(intersections.length);
 
-                // Sort points by angle around centroid on the plane
                 const u = new THREE.Vector3();
                 if (Math.abs(normal.x) > 0.9) u.set(0, 1, 0);
                 else u.set(1, 0, 0);
@@ -789,7 +768,6 @@
         function changeSlicePlane(val) {
             currentSlicePlane = val;
 
-            // Update UI Button active states
             const buttons = ['none', '100', '110', '111'];
             buttons.forEach(b => {
                 const btn = document.getElementById(`slice-btn-${b}`);
@@ -815,10 +793,6 @@
             buildCrystal();
         }
 
-        function currentRadiusScaleMultiplier() {
-            return 1.0;
-        }
-
         function clearGroup(group) {
             while(group.children.length > 0){
                 const obj = group.children[0];
@@ -831,7 +805,6 @@
             }
         }
 
-        // --- Wireframes & Lines ---
         function buildCubicCellWireframe(offset) {
             const boxGeo = new THREE.BoxGeometry(1, 1, 1);
             const edges = new THREE.EdgesGeometry(boxGeo);
@@ -845,7 +818,6 @@
             const h = 1.633;
             const points = [];
             
-            // Hexagon Top and Bottom
             for(let layer of [0, h]) {
                 for(let i=0; i<6; i++) {
                     const a1 = (i * 60) * Math.PI / 180;
@@ -856,7 +828,6 @@
                     );
                 }
             }
-            // Vertical pillars
             for(let i=0; i<6; i++) {
                 const a = (i * 60) * Math.PI / 180;
                 points.push(
@@ -872,7 +843,6 @@
         }
 
         function buildBonds(atomsData, range, centerOffset, radius, clippingPlanes) {
-            // Bond drawing logic based on distance thresholds
             const allPos = [];
             range.forEach(rx => {
                 range.forEach(ry => {
@@ -893,14 +863,13 @@
             if (currentStructure.id === 'bcc') maxDist = 0.88;
             if (currentStructure.id === 'cscl') maxDist = 0.88;
             if (currentStructure.id === 'zns') maxDist = 0.5;
+            if (currentStructure.id === 'diamond') maxDist = 0.44;
 
             for (let i = 0; i < allPos.length; i++) {
                 for (let j = i + 1; j < allPos.length; j++) {
                     const d = allPos[i].pos.distanceTo(allPos[j].pos);
-                    // Draw bond if atoms are closest neighbors
                     if (d > 0.1 && d <= maxDist) {
-                        // Ionic: only draw between anion and cation for clarity
-                        if (currentCategory === 'ionic' && allPos[i].type === allPos[j].type) continue;
+                        if (currentCategory === 'ionic' && currentStructure.id !== 'diamond' && allPos[i].type === allPos[j].type) continue;
                         
                         bondPoints.push(allPos[i].pos);
                         bondPoints.push(allPos[j].pos);
@@ -921,11 +890,9 @@
             }
         }
 
-        // --- Category & Selection Controls ---
         function selectCategory(category) {
             currentCategory = category;
 
-            // UI Button Toggles
             const btnMetal = document.getElementById('btn-cat-metal');
             const btnIonic = document.getElementById('btn-cat-ionic');
 
@@ -937,7 +904,6 @@
                 btnMetal.className = "py-2 px-3 rounded-lg text-sm font-medium transition-all bg-slate-700 text-slate-300 hover:bg-slate-600";
             }
 
-            // Populate Structure Selection Buttons
             const btnContainer = document.getElementById('structure-buttons');
             btnContainer.innerHTML = '';
             DATA[category].forEach(item => {
@@ -954,7 +920,6 @@
         function changeStructure(id) {
             currentStructure = DATA[currentCategory].find(s => s.id === id);
 
-            // Update Structure Buttons UI
             DATA[currentCategory].forEach(item => {
                 const btn = document.getElementById(`btn-struct-${item.id}`);
                 if (btn) {
@@ -966,7 +931,6 @@
                 }
             });
 
-            // Reset slice select to none on structure change
             changeSlicePlane('none');
 
             const infoContent = document.getElementById('info-content');
@@ -983,7 +947,6 @@
             buildCrystal();
         }
 
-        // --- Interaction Event Handlers ---
         function updateAtomRadius(val) {
             currentRadiusScale = parseFloat(val);
             document.getElementById('radius-val').innerText = `${Math.round(val * 100)}%`;
@@ -1017,7 +980,6 @@
             renderer.setSize(container.clientWidth, container.clientHeight);
         }
 
-        // Run On Load
         window.onload = init;
     </script>
 </body>
