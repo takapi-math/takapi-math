@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3D 結晶構造ビジュアライザー (スマホ版)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js & OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            touch-action: manipulation;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            overflow-x: hidden;
+            background-color: #0f172a;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 flex flex-col h-screen w-screen overflow-hidden">
+
+    <!-- Scroll Container for Mobile -->
+    <div class="flex-1 flex flex-col h-full overflow-y-auto custom-scrollbar">
+
+        <!-- STEP 1: 結晶タイプ & 構造選択 (最上部) -->
+        <div class="p-2 bg-slate-800/90 border-b border-slate-700/80 flex-shrink-0 z-20 space-y-1.5 shadow-md">
+            <!-- カテゴリ選択 -->
+            <div class="grid grid-cols-2 gap-1.5">
+                <button id="btn-cat-metal" onclick="selectCategory('metal')" class="py-1.5 px-2 rounded-md text-xs font-bold transition-all bg-blue-600 text-white shadow-sm">
+                    金属結晶
+                </button>
+                <button id="btn-cat-ionic" onclick="selectCategory('ionic')" class="py-1.5 px-2 rounded-md text-xs font-bold transition-all bg-slate-700 text-slate-300 hover:bg-slate-600">
+                    イオン結晶
+                </button>
+            </div>
+            <!-- 構造選択ボタン群 (動的生成) -->
+            <div id="structure-buttons" class="grid grid-cols-3 gap-1">
+                <!-- JSで3個のボタンを横並び生成 -->
+            </div>
+        </div>
+
+        <!-- STEP 2: 3Dキャンバス表示領域 (画面の中央部・正方形に近いコンパクトサイズ) -->
+        <div class="relative w-full h-[38vh] min-h-[220px] max-h-[360px] bg-slate-950 flex-shrink-0 border-b border-slate-800">
+            <div id="canvas-container" class="w-full h-full"></div>
+            <!-- 3D表示内の簡易操作ヒント -->
+            <div class="absolute bottom-1.5 right-2 text-[10px] text-slate-400 bg-slate-900/80 px-2 py-0.5 rounded border border-slate-800 pointer-events-none">
+                ドラッグ: 回転 | ピンチ: 拡大
+            </div>
+        </div>
+
+        <!-- STEP 3: 断面表示（スライス）選択ボタン -->
+        <div class="p-2 bg-slate-800/90 border-b border-slate-700/80 flex-shrink-0 z-20 space-y-1 shadow-sm">
+            <div class="flex justify-between items-center px-0.5">
+                <span class="text-[11px] font-bold text-cyan-400 tracking-wider">断面（スライス）</span>
+                <span id="slice-desc" class="text-[10px] text-slate-400 truncate max-w-[200px]">全体表示中</span>
+            </div>
+            <div class="grid grid-cols-4 gap-1" id="slice-buttons">
+                <button onclick="changeSlicePlane('none')" id="slice-btn-none" class="slice-btn text-[11px] py-1 px-1 rounded font-semibold bg-cyan-600 text-white transition-all text-center">
+                    全体
+                </button>
+                <button onclick="changeSlicePlane('100')" id="slice-btn-100" class="slice-btn text-[11px] py-1 px-1 rounded font-medium bg-slate-700 text-slate-300 transition-all text-center">
+                    (100)
+                </button>
+                <button onclick="changeSlicePlane('110')" id="slice-btn-110" class="slice-btn text-[11px] py-1 px-1 rounded font-medium bg-slate-700 text-slate-300 transition-all text-center">
+                    (110)
+                </button>
+                <button onclick="changeSlicePlane('111')" id="slice-btn-111" class="slice-btn text-[11px] py-1 px-1 rounded font-medium bg-slate-700 text-slate-300 transition-all text-center">
+                    (111)
+                </button>
+            </div>
+        </div>
+
+        <!-- STEP 4: 充填感・その他の詳細設定（スクロールで閲覧可能） -->
+        <div class="p-3 bg-slate-900 space-y-4 flex-1">
+            
+            <!-- 原子サイズ / 充填感 スライダー -->
+            <div class="bg-slate-800/60 p-2.5 rounded-lg border border-slate-700/50">
+                <div class="flex justify-between text-xs font-medium text-slate-300 mb-1.5">
+                    <span>充填感 (原子の大きさ)</span>
+                    <span id="radius-val" class="text-cyan-400 font-bold">100%</span>
+                </div>
+                <input type="range" id="radius-slider" min="0.2" max="1.0" step="0.02" value="1.0" oninput="updateAtomRadius(this.value)" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-400">
+            </div>
+
+            <!-- 表示トグルスイッチ群 -->
+            <div class="grid grid-cols-2 gap-2 text-xs">
+                <label class="flex items-center justify-between p-2 rounded-lg bg-slate-800/50 border border-slate-700/50 cursor-pointer">
+                    <span class="text-slate-200 text-[11px]">格子内のみ切り出し</span>
+                    <input type="checkbox" id="toggle-crop" onchange="toggleCropCell(this.checked)" class="w-4 h-4 rounded text-blue-600 bg-slate-800 border-slate-600">
+                </label>
+
+                <label class="flex items-center justify-between p-2 rounded-lg bg-slate-800/50 border border-slate-700/50 cursor-pointer">
+                    <span class="text-slate-200 text-[11px]">単位格子枠線</span>
+                    <input type="checkbox" id="toggle-unitcell" checked onchange="toggleUnitCell(this.checked)" class="w-4 h-4 rounded text-blue-600 bg-slate-800 border-slate-600">
+                </label>
+
+                <label class="flex items-center justify-between p-2 rounded-lg bg-slate-800/50 border border-slate-700/50 cursor-pointer">
+                    <span class="text-slate-200 text-[11px]">結合線</span>
+                    <input type="checkbox" id="toggle-bonds" checked onchange="toggleBonds(this.checked)" class="w-4 h-4 rounded text-blue-600 bg-slate-800 border-slate-600">
+                </label>
+
+                <label class="flex items-center justify-between p-2 rounded-lg bg-slate-800/50 border border-slate-700/50 cursor-pointer">
+                    <span class="text-slate-200 text-[11px]">複数格子 (2x2x2)</span>
+                    <input type="checkbox" id="toggle-supercell" onchange="toggleSupercell(this.checked)" class="w-4 h-4 rounded text-blue-600 bg-slate-800 border-slate-600">
+                </label>
+            </div>
+
+            <!-- 構造情報パネル -->
+            <div class="bg-slate-800/40 rounded-lg p-2.5 border border-slate-700/60 space-y-2">
+                <div class="flex items-center gap-1.5 text-xs font-bold text-cyan-400 border-b border-slate-700/60 pb-1">
+                    <i data-lucide="info" class="w-3.5 h-3.5"></i> 構造データ
+                </div>
+                <div id="info-content" class="text-xs text-slate-300 space-y-1.5 leading-snug">
+                    <!-- Dynamic Info -->
+                </div>
+            </div>
+
+            <!-- フッター -->
+            <div class="text-center text-[10px] text-slate-500 pt-2 pb-4">
+                3D Crystal Lattice Visualizer (Mobile)
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- Color Definitions ---
+        const COLORS = {
+            metal: 0x38bdf8,   // Sky Blue
+            cation: 0xef4444,  // Red
+            anion: 0x3b82f6,   // Blue
+            unitCell: 0x94a3b8,// Slate light
+            bond: 0x64748b     // Slate dark
+        };
+
+        // --- Crystal Structure Data Definitions ---
+        const DATA = {
+            metal: [
+                {
+                    id: 'fcc',
+                    name: '面心立方 (FCC)',
+                    coordination: '12',
+                    packingRatio: '74%',
+                    atomsInCell: '4個',
+                    examples: 'Cu, Al, Au, Ag',
+                    radiusScale: 0.35355, 
+                    desc: '各頂点と面の中心に原子が位置。充填率74%。',
+                    sliceInfos: {
+                        '100': '(100)面：各辺と中央の面心原子を通る正方形',
+                        '110': '(110)面：面心と頂点原子を結ぶ長方形断面',
+                        '111': '(111)面：最も密度が高い最密面（正三角形）'
+                    },
+                    getAtoms: () => {
+                        const atoms = [];
+                        for(let x of [0, 1]) for(let y of [0, 1]) for(let z of [0, 1]) {
+                            atoms.push({ pos: [x, y, z], type: 'metal' });
+                        }
+                        atoms.push({ pos: [0.5, 0.5, 0], type: 'metal' });
+                        atoms.push({ pos: [0.5, 0.5, 1], type: 'metal' });
+                        atoms.push({ pos: [0.5, 0, 0.5], type: 'metal' });
+                        atoms.push({ pos: [0.5, 1, 0.5], type: 'metal' });
+                        atoms.push({ pos: [0, 0.5, 0.5], type: 'metal' });
+                        atoms.push({ pos: [1, 0.5, 0.5], type: 'metal' });
+                        return atoms;
+                    }
+                },
+                {
+                    id: 'bcc',
+                    name: '体心立方 (BCC)',
+                    coordination: '8',
+                    packingRatio: '68%',
+                    atomsInCell: '2個',
+                    examples: 'Fe, Na, K, W',
+                    radiusScale: 0.43301, 
+                    desc: '8つの頂点と中心（体心）に1個存在。充填率68%。',
+                    sliceInfos: {
+                        '100': '(100)面：頂点の原子のみが現れる配列',
+                        '110': '(110)面：中心と頂点原子を貫く最密面',
+                        '111': '(111)面：体対角線に直交する断面'
+                    },
+                    getAtoms: () => {
+                        const atoms = [];
+                        for(let x of [0, 1]) for(let y of [0, 1]) for(let z of [0, 1]) {
+                            atoms.push({ pos: [x, y, z], type: 'metal' });
+                        }
+                        atoms.push({ pos: [0.5, 0.5, 0.5], type: 'metal' });
+                        return atoms;
+                    }
+                },
+                {
+                    id: 'hcp',
+                    name: '六方最密 (HCP)',
+                    coordination: '12',
+                    packingRatio: '74%',
+                    atomsInCell: '2個 (単位格子)',
+                    examples: 'Mg, Zn, Ti',
+                    isHexagonal: true,
+                    radiusScale: 0.5, 
+                    desc: '六角柱構造。充填率はFCCと同じ最高の74%。',
+                    sliceInfos: {
+                        '100': '柱面での切断面',
+                        '110': '対角方向での切断面',
+                        '111': '底面に平行な最密層（六角配列）'
+                    },
+                    getAtoms: () => {
+                        const atoms = [];
+                        const h = 1.633;
+                        [0, h].forEach(y => {
+                            atoms.push({ pos: [0, y, 0], type: 'metal' });
+                            for(let i = 0; i < 6; i++) {
+                                const angle = (i * 60) * Math.PI / 180;
+                                atoms.push({ pos: [Math.cos(angle), y, Math.sin(angle)], type: 'metal' });
+                            }
+                        });
+                        for(let i = 0; i < 3; i++) {
+                            const angle = (i * 120 + 30) * Math.PI / 180;
+                            const r = 0.577;
+                            atoms.push({ pos: [r * Math.cos(angle), h / 2, r * Math.sin(angle)], type: 'metal' });
+                        }
+                        return atoms;
+                    }
+                }
+            ],
+            ionic: [
+                {
+                    id: 'nacl',
+                    name: 'NaCl 型',
+                    coordination: '6 : 6',
+                    packingRatio: '約66%',
+                    atomsInCell: 'Na+: 4個, Cl-: 4個',
+                    examples: 'NaCl, MgO, KCl',
+                    radiusScale: 0.33,
+                    cationRatio: 0.515,
+                    desc: 'Cl-が面心立方を組み、すき間にNa+が入る構造。',
+                    sliceInfos: {
+                        '100': '(100)面：Na+とCl-が交互に並ぶ格子面',
+                        '110': '(110)面：同種・異種イオンが並ぶ断面',
+                        '111': '(111)面：同種イオンごとに層をなす面'
+                    },
+                    getAtoms: () => {
+                        const atoms = [];
+                        for(let x of [0, 1]) for(let y of [0, 1]) for(let z of [0, 1]) {
+                            atoms.push({ pos: [x, y, z], type: 'anion' });
+                        }
+                        atoms.push({ pos: [0.5, 0.5, 0], type: 'anion' });
+                        atoms.push({ pos: [0.5, 0.5, 1], type: 'anion' });
+                        atoms.push({ pos: [0.5, 0, 0.5], type: 'anion' });
+                        atoms.push({ pos: [0.5, 1, 0.5], type: 'anion' });
+                        atoms.push({ pos: [0, 0.5, 0.5], type: 'anion' });
+                        atoms.push({ pos: [1, 0.5, 0.5], type: 'anion' });
+
+                        atoms.push({ pos: [0.5, 0.5, 0.5], type: 'cation' });
+                        const edges = [
+                            [0.5, 0, 0], [0.5, 1, 0], [0.5, 0, 1], [0.5, 1, 1],
+                            [0, 0.5, 0], [1, 0.5, 0], [0, 0.5, 1], [1, 0.5, 1],
+                            [0, 0, 0.5], [1, 0, 0.5], [0, 1, 0.5], [1, 1, 0.5]
+                        ];
+                        edges.forEach(pos => atoms.push({ pos, type: 'cation' }));
+                        return atoms;
+                    }
+                },
+                {
+                    id: 'cscl',
+                    name: 'CsCl 型',
+                    coordination: '8 : 8',
+                    packingRatio: '約68%',
+                    atomsInCell: 'Cs+: 1個, Cl-: 1個',
+                    examples: 'CsCl, CsBr',
+                    radiusScale: 0.45,
+                    cationRatio: 0.92,
+                    desc: 'Cl-が頂点、中央にCs+が入る体心立方類似構造。',
+                    sliceInfos: {
+                        '100': '(100)面：頂点のCl-のみが見える面',
+                        '110': '(110)面：Cs+とCl-が直接接する最密面',
+                        '111': '(111)面：Cl-面の層を切り取る断面'
+                    },
+                    getAtoms: () => {
+                        const atoms = [];
+                        for(let x of [0, 1]) for(let y of [0, 1]) for(let z of [0, 1]) {
+                            atoms.push({ pos: [x, y, z], type: 'anion' });
+                        }
+                        atoms.push({ pos: [0.5, 0.5, 0.5], type: 'cation' });
+                        return atoms;
+                    }
+                },
+                {
+                    id: 'zns',
+                    name: 'ZnS 型',
+                    coordination: '4 : 4',
+                    packingRatio: '約34%',
+                    atomsInCell: 'Zn2+: 4個, S2-: 4個',
+                    examples: 'ZnS, ダイヤモンド構造',
+                    radiusScale: 0.28,
+                    cationRatio: 0.55,
+                    desc: 'S2-の面心立方内部の隙間にZn2+が入る構造。',
+                    sliceInfos: {
+                        '100': '(100)面：S2-格子と内部Zn2+の投影',
+                        '110': '(110)面：正四面体配位が確認できる面',
+                        '111': '(111)面：最密層と隙間位置の層構造'
+                    },
+                    getAtoms: () => {
+                        const atoms = [];
+                        for(let x of [0, 1]) for(let y of [0, 1]) for(let z of [0, 1]) {
+                            atoms.push({ pos: [x, y, z], type: 'anion' });
+                        }
+                        atoms.push({ pos: [0.5, 0.5, 0], type: 'anion' });
+                        atoms.push({ pos: [0.5, 0.5, 1], type: 'anion' });
+                        atoms.push({ pos: [0.5, 0, 0.5], type: 'anion' });
+                        atoms.push({ pos: [0.5, 1, 0.5], type: 'anion' });
+                        atoms.push({ pos: [0, 0.5, 0.5], type: 'anion' });
+                        atoms.push({ pos: [1, 0.5, 0.5], type: 'anion' });
+
+                        const tSites = [
+                            [0.25, 0.25, 0.25],
+                            [0.75, 0.75, 0.25],
+                            [0.75, 0.25, 0.75],
+                            [0.25, 0.75, 0.75]
+                        ];
+                        tSites.forEach(pos => atoms.push({ pos, type: 'cation' }));
+                        return atoms;
+                    }
+                }
+            ]
+        };
+
+        // --- Application State ---
+        let currentCategory = 'metal';
+        let currentStructure = DATA.metal[0];
+        let currentRadiusScale = 1.0;
+        let showUnitCell = true;
+        let showBonds = true;
+        let showSupercell = false;
+        let cropToUnitCell = false;
+        let currentSlicePlane = 'none';
+
+        // --- Three.js Globals ---
+        let scene, camera, renderer, controls;
+        let crystalGroup, unitCellGroup, bondsGroup, slicePlaneGroup, stencilGroup;
+        let localClippingPlanes = [];
+
+        // --- Initialize ---
+        function init() {
+            const container = document.getElementById('canvas-container');
+
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x020617); // Slate-950
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+            camera.position.set(2.5, 2.5, 4.5);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, stencil: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.localClippingEnabled = true;
+            container.appendChild(renderer.domElement);
+
+            // Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.08;
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+            scene.add(ambientLight);
+
+            const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.85);
+            dirLight1.position.set(5, 10, 7);
+            dirLight1.castShadow = true;
+            scene.add(dirLight1);
+
+            const dirLight2 = new THREE.DirectionalLight(0x38bdf8, 0.4);
+            dirLight2.position.set(-5, -5, -5);
+            scene.add(dirLight2);
+
+            // Groups
+            crystalGroup = new THREE.Group();
+            unitCellGroup = new THREE.Group();
+            bondsGroup = new THREE.Group();
+            slicePlaneGroup = new THREE.Group();
+            stencilGroup = new THREE.Group();
+
+            scene.add(crystalGroup);
+            scene.add(unitCellGroup);
+            scene.add(bondsGroup);
+            scene.add(slicePlaneGroup);
+            scene.add(stencilGroup);
+
+            // UI Init
+            lucide.createIcons();
+            selectCategory('metal');
+
+            // Resize listener
+            window.addEventListener('resize', onWindowResize);
+
+            // Loop
+            animate();
+        }
+
+        // --- Render Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // --- Building Crystal Geometry ---
+        function buildCrystal() {
+            clearGroup(crystalGroup);
+            clearGroup(unitCellGroup);
+            clearGroup(bondsGroup);
+            clearGroup(slicePlaneGroup);
+            clearGroup(stencilGroup);
+
+            const atomsData = currentStructure.getAtoms();
+            const baseRadius = currentStructure.radiusScale;
+
+            let centerOffset = new THREE.Vector3(-0.5, -0.5, -0.5);
+            if (currentStructure.isHexagonal) {
+                centerOffset.set(0, -0.816, 0);
+            }
+
+            setupClippingPlanes();
+
+            const range = showSupercell ? [0, 1] : [0];
+
+            range.forEach(rx => {
+                range.forEach(ry => {
+                    range.forEach(rz => {
+                        const cellOffset = new THREE.Vector3(rx, ry, rz);
+                        
+                        atomsData.forEach(atom => {
+                            const pos = new THREE.Vector3(...atom.pos).add(cellOffset).add(centerOffset);
+                            
+                            let radius = baseRadius * currentRadiusScale;
+                            let color = COLORS.metal;
+                            
+                            if (atom.type === 'cation') {
+                                color = COLORS.cation;
+                                const ratio = currentStructure.cationRatio || 0.6;
+                                radius *= ratio;
+                            } else if (atom.type === 'anion') {
+                                color = COLORS.anion;
+                            }
+
+                            const sphereGeo = new THREE.SphereGeometry(radius, 24, 24);
+
+                            if (localClippingPlanes.length > 0) {
+                                createSolidClippedMesh(sphereGeo, pos, color, localClippingPlanes);
+                            } else {
+                                const sphereMat = new THREE.MeshStandardMaterial({
+                                    color: color,
+                                    roughness: 0.25,
+                                    metalness: currentCategory === 'metal' ? 0.5 : 0.1
+                                });
+                                const mesh = new THREE.Mesh(sphereGeo, sphereMat);
+                                mesh.position.copy(pos);
+                                mesh.castShadow = true;
+                                mesh.receiveShadow = true;
+                                crystalGroup.add(mesh);
+                            }
+                        });
+
+                        if (showUnitCell) {
+                            if (currentStructure.isHexagonal) {
+                                buildHexagonalCellWireframe(cellOffset.clone().add(centerOffset));
+                            } else {
+                                buildCubicCellWireframe(cellOffset.clone().add(centerOffset));
+                            }
+                        }
+                    });
+                });
+            });
+
+            if (showBonds) {
+                buildBonds(atomsData, range, centerOffset, baseRadius * currentRadiusScale, localClippingPlanes);
+            }
+        }
+
+        // --- Stencil Solid Cut Mesh ---
+        function createSolidClippedMesh(geometry, position, color, planes) {
+            const group = new THREE.Group();
+            group.position.copy(position);
+
+            const matBack = new THREE.MeshBasicMaterial({
+                colorWrite: false,
+                depthWrite: false,
+                clippingPlanes: planes,
+                side: THREE.BackSide,
+                stencilWrite: true,
+                stencilFunc: THREE.AlwaysStencilFunc,
+                stencilFail: THREE.KeepStencilOp,
+                stencilZFail: THREE.KeepStencilOp,
+                stencilZPass: THREE.IncrementWrapStencilOp
+            });
+
+            const matFront = new THREE.MeshBasicMaterial({
+                colorWrite: false,
+                depthWrite: false,
+                clippingPlanes: planes,
+                side: THREE.FrontSide,
+                stencilWrite: true,
+                stencilFunc: THREE.AlwaysStencilFunc,
+                stencilFail: THREE.KeepStencilOp,
+                stencilZFail: THREE.KeepStencilOp,
+                stencilZPass: THREE.DecrementWrapStencilOp
+            });
+
+            const matSurface = new THREE.MeshStandardMaterial({
+                color: color,
+                roughness: 0.25,
+                metalness: currentCategory === 'metal' ? 0.5 : 0.1,
+                clippingPlanes: planes,
+                side: THREE.FrontSide
+            });
+
+            const meshBack = new THREE.Mesh(geometry, matBack);
+            const meshFront = new THREE.Mesh(geometry, matFront);
+            const meshSurface = new THREE.Mesh(geometry, matSurface);
+            meshSurface.castShadow = true;
+            meshSurface.receiveShadow = true;
+
+            group.add(meshBack);
+            group.add(meshFront);
+            group.add(meshSurface);
+
+            crystalGroup.add(group);
+
+            const capMat = new THREE.MeshStandardMaterial({
+                color: color,
+                roughness: 0.3,
+                metalness: currentCategory === 'metal' ? 0.3 : 0.1,
+                stencilWrite: true,
+                stencilFunc: THREE.NotEqualStencilFunc,
+                stencilRef: 0,
+                stencilFail: THREE.ReplaceStencilOp,
+                stencilZFail: THREE.ReplaceStencilOp,
+                stencilZPass: THREE.ReplaceStencilOp
+            });
+
+            planes.forEach(plane => {
+                const capGeo = new THREE.PlaneGeometry(6, 6);
+                const capMesh = new THREE.Mesh(capGeo, capMat);
+
+                const normal = plane.normal.clone();
+                const planePoint = normal.clone().multiplyScalar(-plane.constant);
+                capMesh.position.copy(planePoint);
+                capMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal.negate());
+
+                stencilGroup.add(capMesh);
+            });
+        }
+
+        // --- Clipping Planes Setup ---
+        function setupClippingPlanes() {
+            localClippingPlanes = [];
+
+            if (currentSlicePlane !== 'none') {
+                let normal = new THREE.Vector3(1, 0, 0);
+                let size = 1.8;
+
+                if (currentSlicePlane === '100') {
+                    normal.set(1, 0, 0);
+                } else if (currentSlicePlane === '110') {
+                    normal.set(1, 1, 0).normalize();
+                    size = 2.2;
+                } else if (currentSlicePlane === '111') {
+                    normal.set(1, 1, 1).normalize();
+                    size = 2.4;
+                }
+
+                const slicePlane = new THREE.Plane(normal, 0);
+                localClippingPlanes.push(slicePlane);
+
+                const planeGeo = new THREE.PlaneGeometry(size, size);
+                const planeMat = new THREE.MeshBasicMaterial({
+                    color: 0x06b6d4,
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.15,
+                    depthWrite: false
+                });
+                const visualPlane = new THREE.Mesh(planeGeo, planeMat);
+                visualPlane.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
+                
+                const edges = new THREE.EdgesGeometry(planeGeo);
+                const lineMat = new THREE.LineBasicMaterial({ color: 0x22d3ee, linewidth: 2 });
+                const border = new THREE.LineSegments(edges, lineMat);
+                visualPlane.add(border);
+
+                buildCutOutline(normal);
+                slicePlaneGroup.add(visualPlane);
+            }
+
+            if (cropToUnitCell) {
+                const maxCoord = showSupercell ? 1.5 : 0.5;
+                const minCoord = -0.5;
+
+                if (currentStructure.isHexagonal) {
+                    const hHalf = 1.633 / 2;
+                    localClippingPlanes.push(
+                        new THREE.Plane(new THREE.Vector3(0, -1, 0), hHalf),
+                        new THREE.Plane(new THREE.Vector3(0, 1, 0), hHalf)
+                    );
+                } else {
+                    localClippingPlanes.push(
+                        new THREE.Plane(new THREE.Vector3(-1, 0, 0), maxCoord),
+                        new THREE.Plane(new THREE.Vector3(1, 0, 0), -minCoord),
+                        new THREE.Plane(new THREE.Vector3(0, -1, 0), maxCoord),
+                        new THREE.Plane(new THREE.Vector3(0, 1, 0), -minCoord),
+                        new THREE.Plane(new THREE.Vector3(0, 0, -1), maxCoord),
+                        new THREE.Plane(new THREE.Vector3(0, 0, 1), -minCoord)
+                    );
+                }
+            }
+        }
+
+        function buildCutOutline(normal) {
+            const lines = [];
+
+            if (currentStructure.isHexagonal) {
+                const h = 1.633;
+                const topY = h / 2;
+                const botY = -h / 2;
+                const hexEdges = [];
+
+                for (let i = 0; i < 6; i++) {
+                    const a1 = (i * 60) * Math.PI / 180;
+                    const a2 = ((i + 1) * 60) * Math.PI / 180;
+                    const v1_bot = new THREE.Vector3(Math.cos(a1), botY, Math.sin(a1));
+                    const v2_bot = new THREE.Vector3(Math.cos(a2), botY, Math.sin(a2));
+                    const v1_top = new THREE.Vector3(Math.cos(a1), topY, Math.sin(a1));
+                    const v2_top = new THREE.Vector3(Math.cos(a2), topY, Math.sin(a2));
+
+                    hexEdges.push([v1_bot, v2_bot], [v1_top, v2_top]);
+                    hexEdges.push([v1_bot, v1_top]);
+                }
+
+                findAndAddIntersections(hexEdges, normal, lines);
+            } else {
+                const cubicEdges = [
+                    [new THREE.Vector3(-0.5,-0.5,-0.5), new THREE.Vector3(0.5,-0.5,-0.5)],
+                    [new THREE.Vector3(0.5,-0.5,-0.5), new THREE.Vector3(0.5,0.5,-0.5)],
+                    [new THREE.Vector3(0.5,0.5,-0.5), new THREE.Vector3(-0.5,0.5,-0.5)],
+                    [new THREE.Vector3(-0.5,0.5,-0.5), new THREE.Vector3(-0.5,-0.5,-0.5)],
+
+                    [new THREE.Vector3(-0.5,-0.5,0.5), new THREE.Vector3(0.5,-0.5,0.5)],
+                    [new THREE.Vector3(0.5,-0.5,0.5), new THREE.Vector3(0.5,0.5,0.5)],
+                    [new THREE.Vector3(0.5,0.5,0.5), new THREE.Vector3(-0.5,0.5,0.5)],
+                    [new THREE.Vector3(-0.5,0.5,0.5), new THREE.Vector3(-0.5,-0.5,0.5)],
+
+                    [new THREE.Vector3(-0.5,-0.5,-0.5), new THREE.Vector3(-0.5,-0.5,0.5)],
+                    [new THREE.Vector3(0.5,-0.5,-0.5), new THREE.Vector3(0.5,-0.5,0.5)],
+                    [new THREE.Vector3(0.5,0.5,-0.5), new THREE.Vector3(0.5,0.5,0.5)],
+                    [new THREE.Vector3(-0.5,0.5,-0.5), new THREE.Vector3(-0.5,0.5,0.5)]
+                ];
+
+                findAndAddIntersections(cubicEdges, normal, lines);
+            }
+
+            if (lines.length > 0) {
+                const geo = new THREE.BufferGeometry().setFromPoints(lines);
+                const mat = new THREE.LineBasicMaterial({
+                    color: 0x38bdf8,
+                    linewidth: 2
+                });
+                const cutOutline = new THREE.LineSegments(geo, mat);
+                slicePlaneGroup.add(cutOutline);
+            }
+        }
+
+        function findAndAddIntersections(edges, normal, outPoints) {
+            const plane = new THREE.Plane(normal, 0);
+            const intersections = [];
+
+            edges.forEach(([p1, p2]) => {
+                const line = new THREE.Line3(p1, p2);
+                const target = new THREE.Vector3();
+                if (plane.intersectLine(line, target)) {
+                    intersections.push(target.clone());
+                }
+            });
+
+            if (intersections.length >= 3) {
+                const centroid = new THREE.Vector3();
+                intersections.forEach(p => centroid.add(p));
+                centroid.divideScalar(intersections.length);
+
+                const u = new THREE.Vector3();
+                if (Math.abs(normal.x) > 0.9) u.set(0, 1, 0);
+                else u.set(1, 0, 0);
+                const v = new THREE.Vector3().crossVectors(normal, u).normalize();
+                u.crossVectors(v, normal).normalize();
+
+                intersections.sort((a, b) => {
+                    const da = a.clone().sub(centroid);
+                    const db = b.clone().sub(centroid);
+                    const angleA = Math.atan2(da.dot(v), da.dot(u));
+                    const angleB = Math.atan2(db.dot(v), db.dot(u));
+                    return angleA - angleB;
+                });
+
+                for (let i = 0; i < intersections.length; i++) {
+                    outPoints.push(intersections[i]);
+                    outPoints.push(intersections[(i + 1) % intersections.length]);
+                }
+            }
+        }
+
+        function changeSlicePlane(val) {
+            currentSlicePlane = val;
+
+            const buttons = ['none', '100', '110', '111'];
+            buttons.forEach(b => {
+                const btn = document.getElementById(`slice-btn-${b}`);
+                if (btn) {
+                    if (b === val) {
+                        btn.className = "slice-btn text-[11px] py-1 px-1 rounded font-semibold bg-cyan-600 text-white transition-all text-center";
+                    } else {
+                        btn.className = "slice-btn text-[11px] py-1 px-1 rounded font-medium bg-slate-700 text-slate-300 transition-all text-center";
+                    }
+                }
+            });
+
+            const descEl = document.getElementById('slice-desc');
+            if (val === 'none') {
+                descEl.innerText = '全体表示中';
+            } else if (currentStructure.sliceInfos && currentStructure.sliceInfos[val]) {
+                descEl.innerText = currentStructure.sliceInfos[val];
+            } else {
+                descEl.innerText = `${val}面で切断`;
+            }
+
+            buildCrystal();
+        }
+
+        function clearGroup(group) {
+            while(group.children.length > 0){
+                const obj = group.children[0];
+                if(obj.geometry) obj.geometry.dispose();
+                if(obj.material) {
+                    if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+                    else obj.material.dispose();
+                }
+                group.remove(obj);
+            }
+        }
+
+        function buildCubicCellWireframe(offset) {
+            const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+            const edges = new THREE.EdgesGeometry(boxGeo);
+            const lineMat = new THREE.LineBasicMaterial({ color: COLORS.unitCell, linewidth: 1.5 });
+            const wireframe = new THREE.LineSegments(edges, lineMat);
+            wireframe.position.set(0.5, 0.5, 0.5).add(offset);
+            unitCellGroup.add(wireframe);
+        }
+
+        function buildHexagonalCellWireframe(offset) {
+            const h = 1.633;
+            const points = [];
+            
+            for(let layer of [0, h]) {
+                for(let i=0; i<6; i++) {
+                    const a1 = (i * 60) * Math.PI / 180;
+                    const a2 = ((i+1) * 60) * Math.PI / 180;
+                    points.push(
+                        new THREE.Vector3(Math.cos(a1), layer, Math.sin(a1)).add(offset),
+                        new THREE.Vector3(Math.cos(a2), layer, Math.sin(a2)).add(offset)
+                    );
+                }
+            }
+            for(let i=0; i<6; i++) {
+                const a = (i * 60) * Math.PI / 180;
+                points.push(
+                    new THREE.Vector3(Math.cos(a), 0, Math.sin(a)).add(offset),
+                    new THREE.Vector3(Math.cos(a), h, Math.sin(a)).add(offset)
+                );
+            }
+
+            const geo = new THREE.BufferGeometry().setFromPoints(points);
+            const lineMat = new THREE.LineBasicMaterial({ color: COLORS.unitCell, linewidth: 1.5 });
+            const lines = new THREE.LineSegments(geo, lineMat);
+            unitCellGroup.add(lines);
+        }
+
+        function buildBonds(atomsData, range, centerOffset, radius, clippingPlanes) {
+            const allPos = [];
+            range.forEach(rx => {
+                range.forEach(ry => {
+                    range.forEach(rz => {
+                        const cellOffset = new THREE.Vector3(rx, ry, rz);
+                        atomsData.forEach(a => {
+                            allPos.push({
+                                pos: new THREE.Vector3(...a.pos).add(cellOffset).add(centerOffset),
+                                type: a.type
+                            });
+                        });
+                    });
+                });
+            });
+
+            const bondPoints = [];
+            let maxDist = 0.6;
+            if (currentStructure.id === 'bcc') maxDist = 0.88;
+            if (currentStructure.id === 'cscl') maxDist = 0.88;
+            if (currentStructure.id === 'zns') maxDist = 0.5;
+
+            for (let i = 0; i < allPos.length; i++) {
+                for (let j = i + 1; j < allPos.length; j++) {
+                    const d = allPos[i].pos.distanceTo(allPos[j].pos);
+                    if (d > 0.1 && d <= maxDist) {
+                        if (currentCategory === 'ionic' && allPos[i].type === allPos[j].type) continue;
+                        bondPoints.push(allPos[i].pos);
+                        bondPoints.push(allPos[j].pos);
+                    }
+                }
+            }
+
+            if (bondPoints.length > 0) {
+                const geo = new THREE.BufferGeometry().setFromPoints(bondPoints);
+                const mat = new THREE.LineBasicMaterial({
+                    color: COLORS.bond,
+                    opacity: 0.35,
+                    transparent: true,
+                    clippingPlanes: clippingPlanes
+                });
+                const bonds = new THREE.LineSegments(geo, mat);
+                bondsGroup.add(bonds);
+            }
+        }
+
+        // --- Category & Selection Controls ---
+        function selectCategory(category) {
+            currentCategory = category;
+
+            const btnMetal = document.getElementById('btn-cat-metal');
+            const btnIonic = document.getElementById('btn-cat-ionic');
+
+            if (category === 'metal') {
+                btnMetal.className = "py-1.5 px-2 rounded-md text-xs font-bold transition-all bg-blue-600 text-white shadow-sm";
+                btnIonic.className = "py-1.5 px-2 rounded-md text-xs font-bold transition-all bg-slate-700 text-slate-300 hover:bg-slate-600";
+            } else {
+                btnIonic.className = "py-1.5 px-2 rounded-md text-xs font-bold transition-all bg-blue-600 text-white shadow-sm";
+                btnMetal.className = "py-1.5 px-2 rounded-md text-xs font-bold transition-all bg-slate-700 text-slate-300 hover:bg-slate-600";
+            }
+
+            const btnContainer = document.getElementById('structure-buttons');
+            btnContainer.innerHTML = '';
+            DATA[category].forEach(item => {
+                const btn = document.createElement('button');
+                btn.id = `btn-struct-${item.id}`;
+                btn.onclick = () => changeStructure(item.id);
+                btn.innerText = item.name;
+                btnContainer.appendChild(btn);
+            });
+
+            changeStructure(DATA[category][0].id);
+        }
+
+        function changeStructure(id) {
+            currentStructure = DATA[currentCategory].find(s => s.id === id);
+
+            DATA[currentCategory].forEach(item => {
+                const btn = document.getElementById(`btn-struct-${item.id}`);
+                if (btn) {
+                    if (item.id === id) {
+                        btn.className = "text-center text-[11px] py-1.5 px-1 rounded-md font-semibold transition-all bg-cyan-600 text-white border border-cyan-400/40 shadow-sm truncate";
+                    } else {
+                        btn.className = "text-center text-[11px] py-1.5 px-1 rounded-md font-medium transition-all bg-slate-900/80 text-slate-300 border border-slate-700/60 hover:bg-slate-700 truncate";
+                    }
+                }
+            });
+
+            changeSlicePlane('none');
+
+            const infoContent = document.getElementById('info-content');
+            infoContent.innerHTML = `
+                <p class="text-slate-300 text-[11px]">${currentStructure.desc}</p>
+                <div class="grid grid-cols-2 gap-1.5 pt-1.5 text-[11px] border-t border-slate-700/60">
+                    <div><span class="text-slate-400">配位数:</span> <span class="font-bold text-slate-200">${currentStructure.coordination}</span></div>
+                    <div><span class="text-slate-400">充填率:</span> <span class="font-bold text-slate-200">${currentStructure.packingRatio}</span></div>
+                    <div class="col-span-2"><span class="text-slate-400">格子内原子数:</span> <span class="font-bold text-slate-200">${currentStructure.atomsInCell}</span></div>
+                    <div class="col-span-2"><span class="text-slate-400">代表例:</span> <span class="font-bold text-slate-200">${currentStructure.examples}</span></div>
+                </div>
+            `;
+
+            buildCrystal();
+        }
+
+        // --- Event Handlers ---
+        function updateAtomRadius(val) {
+            currentRadiusScale = parseFloat(val);
+            document.getElementById('radius-val').innerText = `${Math.round(val * 100)}%`;
+            buildCrystal();
+        }
+
+        function toggleCropCell(checked) {
+            cropToUnitCell = checked;
+            buildCrystal();
+        }
+
+        function toggleUnitCell(checked) {
+            showUnitCell = checked;
+            unitCellGroup.visible = checked;
+        }
+
+        function toggleBonds(checked) {
+            showBonds = checked;
+            bondsGroup.visible = checked;
+        }
+
+        function toggleSupercell(checked) {
+            showSupercell = checked;
+            buildCrystal();
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
