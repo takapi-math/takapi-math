@@ -3,758 +3,907 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>イオン半径比と結晶構造シミュレーター</title>
-    <!-- Tailwind CSS -->
+    <title>イオン結晶の限界半径比 (Radius Ratio) 計算・断面視覚化ツール</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Three.js (3D描画用) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- OrbitControls -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- MathJax for Math formatting -->
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body {
-            font-family: 'Inter', 'Meiryo', sans-serif;
+            font-family: 'Inter', sans-serif;
             background-color: #0f172a;
             color: #f8fafc;
         }
-        /* スライダーカスタムスタイル */
-        input[type=range] {
-            accent-color: #38bdf8;
+        .code-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        canvas {
+            touch-action: none;
+        }
+        @keyframes pulse-border {
+            0%, 100% { border-color: rgba(250, 204, 21, 0.8); box-shadow: 0 0 12px rgba(250, 204, 21, 0.3); }
+            50% { border-color: rgba(250, 204, 21, 0.3); box-shadow: 0 0 4px rgba(250, 204, 21, 0.1); }
+        }
+        .limit-highlight {
+            animation: pulse-border 2s infinite;
         }
     </style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden select-none">
+<body class="h-screen max-h-screen flex flex-col overflow-hidden bg-slate-950 text-slate-100">
 
-    <!-- ヘッダー -->
-    <header class="bg-slate-900 border-b border-slate-800 px-6 py-3 flex items-center justify-between shrink-0">
-        <div class="flex items-center gap-3">
-            <div class="p-2 bg-indigo-600/30 text-indigo-400 rounded-lg">
-                <i data-lucide="box" class="w-6 h-6"></i>
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-slate-900/90 px-4 py-2 flex-shrink-0">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-2.5">
+                <div class="p-1 bg-indigo-600/20 text-indigo-400 rounded border border-indigo-500/30">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="9" stroke-width="2"/>
+                        <circle cx="12" cy="12" r="3" fill="currentColor"/>
+                    </svg>
+                </div>
+                <h1 class="text-sm font-bold text-slate-100">イオン結晶 限界半径比シミュレーター</h1>
             </div>
-            <div>
-                <h1 class="text-lg font-bold text-white leading-tight">イオン半径比と限界半径比シミュレーター</h1>
-                <p class="text-xs text-slate-400">陰イオン・陽イオンの半径比 (\(r^+ / r^-\)) と配位数・結晶構造の変化</p>
+            <div class="text-[11px] text-slate-400 hidden sm:block">
+                ※スライダーで自由にイオンの大きさを変えて、接触・重なり・不安定化の条件を観察できます
             </div>
-        </div>
-        
-        <!-- 表示モード切替（3D / 2D） -->
-        <div class="flex bg-slate-800 p-1 rounded-xl border border-slate-700">
-            <button id="view3dBtn" onclick="switchView('3D')" class="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors bg-indigo-600 text-white">
-                <i data-lucide="box" class="w-4 h-4"></i> 3D 立体表示
-            </button>
-            <button id="view2dBtn" onclick="switchView('2D')" class="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors text-slate-400 hover:text-white">
-                <i data-lucide="square" class="w-4 h-4"></i> 2D 断面表示
-            </button>
         </div>
     </header>
 
-    <!-- メインコンテンツ領域 -->
-    <div class="flex-1 flex overflow-hidden">
-        
-        <!-- 描画エリア（左〜中央） -->
-        <main class="flex-1 relative bg-slate-950 flex items-center justify-center overflow-hidden">
+    <!-- Main Content -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-3 grid grid-cols-1 lg:grid-cols-12 gap-3 overflow-hidden min-h-0">
+
+        <!-- Top Controls Panel -->
+        <div class="lg:col-span-12 flex flex-col md:flex-row gap-3 items-center justify-between bg-slate-900 border border-slate-800 rounded-xl p-2.5 shadow-md flex-shrink-0">
             
-            <!-- 3D Canvas Container -->
-            <div id="canvas3d-container" class="w-full h-full absolute inset-0"></div>
-
-            <!-- 2D Canvas Container -->
-            <div id="canvas2d-container" class="w-full h-full absolute inset-0 hidden flex items-center justify-center p-6">
-                <canvas id="canvas2d" class="max-w-full max-h-full bg-slate-900/50 rounded-2xl border border-slate-800 shadow-2xl"></canvas>
-            </div>
-
-            <!-- インフォメーションオーバーレイ (左上) -->
-            <div class="absolute top-4 left-4 bg-slate-900/80 backdrop-blur border border-slate-800 p-4 rounded-xl max-w-xs shadow-lg space-y-2 pointer-events-none">
-                <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-                    <span class="text-xs text-slate-400 uppercase tracking-wider font-semibold">現在の構造</span>
-                    <span id="coordBadge" class="px-2 py-0.5 text-xs rounded-full font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                        配位数: 8
-                    </span>
-                </div>
-                <h2 id="structureTitle" class="text-xl font-bold text-white">CsCl 型（体心立方格子状）</h2>
-                <div class="text-xs space-y-1 text-slate-300">
-                    <p class="flex justify-between"><span>陽イオン半径 (\(r^+\)):</span> <span id="rPlusVal" class="font-mono text-cyan-400">0.732</span></p>
-                    <p class="flex justify-between"><span>陰イオン半径 (\(r^-\)):</span> <span id="rMinusVal" class="font-mono text-pink-400">1.000</span></p>
-                    <p class="flex justify-between text-sm font-semibold pt-1 border-t border-slate-800">
-                        <span>半径比 (\(r^+/r^-\)):</span>
-                        <span id="ratioVal" class="font-mono text-yellow-400">0.732</span>
-                    </p>
-                </div>
-                <div id="stabilityWarning" class="text-xs p-2 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 flex items-center gap-1.5 mt-2">
-                    <i data-lucide="alert-triangle" class="w-4 h-4 shrink-0"></i>
-                    <span id="warningText">限界半径比: 安定して存在する限界です</span>
+            <!-- Model Selection -->
+            <div class="flex items-center gap-2 w-full md:w-auto">
+                <span class="text-[11px] font-semibold text-slate-400 whitespace-nowrap">格子選択:</span>
+                <div class="flex gap-1.5 w-full md:w-auto" id="modelSelectGroup">
+                    <!-- Dynamic Compact Buttons -->
                 </div>
             </div>
 
-            <!-- 視点・操作のヒント (左下) -->
-            <div class="absolute bottom-4 left-4 text-xs text-slate-500 bg-slate-900/60 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-800/80 pointer-events-none">
-                <p id="viewHint">ドラッグ: 回転 | ホイール: 拡大縮小 | 右ドラッグ: 平行移動</p>
-            </div>
-        </main>
+            <!-- Side-by-side Sliders (Overlap allowed!) -->
+            <div class="flex flex-wrap sm:flex-nowrap items-center gap-3 w-full md:w-auto flex-1 max-w-3xl bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800/80">
+                <!-- Anion Slider -->
+                <div class="flex-1 min-w-[120px]">
+                    <div class="flex justify-between text-[11px] mb-0.5">
+                        <span class="text-slate-300 font-medium">陰イオン (r-)</span>
+                        <span class="text-[10px] text-emerald-400">小 ◀ ▶ 大</span>
+                    </div>
+                    <input type="range" id="rMinusSlider" min="25" max="120" value="80" step="0.5" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+                </div>
 
-        <!-- コントロールパネル（右側） -->
-        <aside class="w-96 bg-slate-900 border-l border-slate-800 flex flex-col h-full shrink-0 shadow-2xl z-10">
-            
-            <!-- コントロールヘッダー -->
-            <div class="p-4 border-b border-slate-800">
-                <h3 class="font-bold text-slate-200 flex items-center gap-2">
-                    <i data-lucide="sliders" class="w-4 h-4 text-indigo-400"></i> パラメータ調整
-                </h3>
+                <div class="h-6 w-px bg-slate-800 hidden sm:block"></div>
+
+                <!-- Cation Slider -->
+                <div class="flex-1 min-w-[120px]">
+                    <div class="flex justify-between text-[11px] mb-0.5">
+                        <span class="text-slate-300 font-medium">陽イオン (r+)</span>
+                        <span class="text-[10px] text-indigo-400">小 ◀ ▶ 大</span>
+                    </div>
+                    <input type="range" id="rPlusSlider" min="5" max="120" value="33.1" step="0.1" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                </div>
+
+                <div class="h-6 w-px bg-slate-800 hidden sm:block"></div>
+
+                <!-- Snap to Limit Button -->
+                <button id="snapToLimitBtn" class="w-full sm:w-auto text-[11px] bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1.5 rounded-md transition shadow whitespace-nowrap flex-shrink-0">
+                    限界値に合わせる
+                </button>
             </div>
 
-            <div class="p-6 space-y-6 flex-1 overflow-y-auto">
+        </div>
+
+        <!-- Canvas & Visualization Area -->
+        <div class="lg:col-span-12 flex flex-col gap-3 min-h-0 flex-1">
+            <div id="canvasCard" class="bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-lg flex-1 flex flex-col min-h-0 relative transition-all duration-300">
                 
-                <!-- 格子サイズ切替ボタン -->
-                <div class="space-y-2">
-                    <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">格子の表示サイズ</label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button id="grid1Btn" onclick="setGridSize(1)" class="px-3 py-2 text-xs font-bold rounded-lg border transition-all bg-indigo-600 border-indigo-500 text-white">
-                            1 × 1 × 1
-                        </button>
-                        <button id="grid2Btn" onclick="setGridSize(2)" class="px-3 py-2 text-xs font-bold rounded-lg border transition-all bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700">
-                            2 × 2 × 2
-                        </button>
+                <div class="flex items-center justify-between mb-1.5 flex-shrink-0">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-semibold text-slate-300" id="planeLabel">切断面: (100) 面</span>
+                        <span id="limitBadge" class="hidden px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400 text-amber-300 text-[10px] font-bold animate-pulse">
+                            ★ 限界半径比に一致！
+                        </span>
                     </div>
-                </div>
-
-                <!-- スライダー: 半径比 -->
-                <div class="space-y-3 border-t border-slate-800 pt-4">
-                    <div class="flex justify-between items-center">
-                        <label class="text-sm font-semibold text-slate-300">イオン半径比 (\(r^+ / r^-\))</label>
-                        <span id="sliderValueText" class="text-lg font-mono font-bold text-yellow-400">0.732</span>
-                    </div>
-                    <input type="range" id="ratioSlider" min="0.15" max="1.0" step="0.005" value="0.732"
-                        class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer">
-                    
-                    <!-- クイックジャンプボタン -->
-                    <div class="grid grid-cols-3 gap-1.5 pt-2">
-                        <button onclick="setRatio(0.225)" class="px-2 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 rounded border border-slate-700 text-slate-300 transition-colors">
-                            限界 0.225 (ZnS)
-                        </button>
-                        <button onclick="setRatio(0.414)" class="px-2 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 rounded border border-slate-700 text-slate-300 transition-colors">
-                            限界 0.414 (NaCl)
-                        </button>
-                        <button onclick="setRatio(0.732)" class="px-2 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 rounded border border-slate-700 text-slate-300 transition-colors">
-                            限界 0.732 (CsCl)
-                        </button>
-                    </div>
-                </div>
-
-                <!-- 透過度・表示設定 -->
-                <div class="space-y-3 pt-4 border-t border-slate-800">
-                    <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">表示オプション</h4>
-                    
-                    <div class="flex items-center justify-between">
-                        <div class="flex flex-col">
-                            <span class="text-xs text-slate-300 font-semibold">イオン小表示（位置確認）</span>
-                            <span class="text-[10px] text-slate-400">構造の配置関係が見やすくなります</span>
+                    <div class="flex items-center gap-3 text-[11px]">
+                        <div class="flex items-center gap-1">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500/80 border border-emerald-400 inline-block"></span>
+                            <span class="text-slate-400">陰イオン (r-)</span>
                         </div>
-                        <input type="checkbox" id="smallSpheresCheck" class="w-4 h-4 rounded accent-indigo-500 cursor-pointer">
-                    </div>
-
-                    <div class="space-y-2 pt-1">
-                        <div class="flex justify-between text-xs text-slate-300">
-                            <span>陰イオン透過度</span>
-                            <span id="opacityVal" class="font-mono">0.65</span>
+                        <div class="flex items-center gap-1">
+                            <span class="w-2.5 h-2.5 rounded-full bg-indigo-500/80 border border-indigo-400 inline-block"></span>
+                            <span class="text-slate-400">陽イオン (r+)</span>
                         </div>
-                        <input type="range" id="opacitySlider" min="0.1" max="1.0" step="0.05" value="0.65"
-                            class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
-                    </div>
-
-                    <div class="flex items-center justify-between pt-1">
-                        <span class="text-xs text-slate-300">単位格子枠線の表示</span>
-                        <input type="checkbox" id="showBoxCheck" checked class="w-4 h-4 rounded accent-indigo-500 cursor-pointer">
+                        <div class="flex items-center gap-1">
+                            <span class="w-2.5 h-0.5 bg-amber-400 inline-block"></span>
+                            <span class="text-slate-400">格子定数 (a)</span>
+                        </div>
                     </div>
                 </div>
 
-                <!-- 解説セクション -->
-                <div class="space-y-3 pt-4 border-t border-slate-800">
-                    <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">構造と理論の解説</h4>
+                <!-- Interactive Canvas Container -->
+                <div class="flex-1 relative rounded-lg bg-slate-950 border border-slate-800/80 overflow-hidden min-h-0">
+                    <canvas id="viewCanvas" class="w-full h-full block"></canvas>
                     
-                    <div id="explanationBox" class="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-2 leading-relaxed">
-                        <!-- 動的に挿入 -->
+                    <!-- Top-Left Radius Ratio & Stability Status Overlay -->
+                    <div class="absolute top-2.5 left-2.5 bg-slate-900/95 backdrop-blur border border-slate-700/80 px-3 py-2 rounded-lg shadow-xl flex flex-col gap-1.5 max-w-[270px]">
+                        <div>
+                            <div class="text-[9px] text-slate-400 uppercase tracking-wider">現在の半径比 (r+ / r-)</div>
+                            <div class="flex items-baseline gap-1.5">
+                                <span class="text-lg font-bold code-font text-white leading-none" id="currentRatio">0.414</span>
+                                <span class="text-[10px] code-font text-slate-400" id="targetRatioHint">/ 限界 0.414</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Stability Status Display -->
+                        <div id="statusBanner" class="px-2.5 py-1 rounded border text-[11px] font-bold text-center transition-all">
+                            <!-- Dynamic status badge -->
+                        </div>
+
+                        <!-- Detailed Physical Condition Note -->
+                        <div id="conditionDetail" class="text-[10px] text-slate-300 leading-tight bg-slate-950/80 p-1.5 rounded border border-slate-800">
+                            <!-- Dynamic explanation -->
+                        </div>
                     </div>
                 </div>
-
-                <!-- 限界半径比テーブル -->
-                <div class="pt-2">
-                    <table class="w-full text-xs text-left text-slate-400 border-collapse">
-                        <thead class="text-slate-300 bg-slate-800/60">
-                            <tr>
-                                <th class="p-2 rounded-l">配位数</th>
-                                <th class="p-2">限界半径比</th>
-                                <th class="p-2 rounded-r">結晶構造</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-800">
-                            <tr id="row8" class="transition-colors">
-                                <td class="p-2 font-bold text-slate-200">8</td>
-                                <td class="p-2 font-mono">r⁺/r⁻ ≧ 0.732</td>
-                                <td class="p-2">CsCl型</td>
-                            </tr>
-                            <tr id="row6" class="transition-colors">
-                                <td class="p-2 font-bold text-slate-200">6</td>
-                                <td class="p-2 font-mono">0.732 > r⁺/r⁻ ≧ 0.414</td>
-                                <td class="p-2">NaCl型</td>
-                            </tr>
-                            <tr id="row4" class="transition-colors">
-                                <td class="p-2 font-bold text-slate-200">4</td>
-                                <td class="p-2 font-mono">0.414 > r⁺/r⁻ ≧ 0.225</td>
-                                <td class="p-2">ZnS型</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
             </div>
-        </aside>
-    </div>
 
-    <!-- JavaScript ロジック -->
+            <!-- Bottom Panel: Geometric Derivation & Reference Table -->
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-3 flex-shrink-0">
+                <!-- Formula & Explanation -->
+                <div class="md:col-span-7 bg-slate-900 border border-slate-800 rounded-xl p-2.5 shadow-md flex flex-col justify-center">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-[11px] font-semibold text-slate-300">幾何学的導出式 &amp; 切断面解説</span>
+                        <span class="text-[11px] text-indigo-400 code-font font-bold" id="formulaName">NaCl型</span>
+                    </div>
+                    <div class="text-[11px] text-slate-300 leading-relaxed bg-slate-950 p-2 rounded border border-slate-800/80 code-font whitespace-pre-line" id="formulaDetail">
+                        <!-- Updated via JS -->
+                    </div>
+                </div>
+
+                <!-- Reference Table -->
+                <div class="md:col-span-5 bg-slate-900 border border-slate-800 rounded-xl p-2.5 shadow-md flex flex-col justify-center">
+                    <div class="text-[11px] font-semibold text-slate-300 mb-1">限界半径比一覧</div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-[11px] text-slate-400">
+                            <thead class="bg-slate-950 text-slate-300 font-medium border-b border-slate-800">
+                                <tr>
+                                    <th class="py-1 px-1.5">型</th>
+                                    <th class="py-1 px-1.5">配位</th>
+                                    <th class="py-1 px-1.5">計算式</th>
+                                    <th class="py-1 px-1.5">限界値</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-800/60 code-font text-[10px]">
+                                <tr id="row-zns" class="cursor-pointer transition" onclick="selectModel('zns')">
+                                    <td class="py-1 px-1.5 text-indigo-300 font-bold">ZnS</td>
+                                    <td class="py-1 px-1.5">4</td>
+                                    <td class="py-1 px-1.5">√(3/2)-1</td>
+                                    <td class="py-1 px-1.5 text-indigo-400 font-bold">0.225</td>
+                                </tr>
+                                <tr id="row-nacl" class="cursor-pointer transition" onclick="selectModel('nacl')">
+                                    <td class="py-1 px-1.5 text-emerald-300 font-bold">NaCl</td>
+                                    <td class="py-1 px-1.5">6</td>
+                                    <td class="py-1 px-1.5">√2-1</td>
+                                    <td class="py-1 px-1.5 text-emerald-400 font-bold">0.414</td>
+                                </tr>
+                                <tr id="row-cscl" class="cursor-pointer transition" onclick="selectModel('cscl')">
+                                    <td class="py-1 px-1.5 text-amber-300 font-bold">CsCl</td>
+                                    <td class="py-1 px-1.5">8</td>
+                                    <td class="py-1 px-1.5">√3-1</td>
+                                    <td class="py-1 px-1.5 text-amber-400 font-bold">0.732</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Logic & Canvas Script -->
     <script>
-        // --- アイコン初期化 ---
-        lucide.createIcons();
-
-        // --- アプリケーション状態 ---
-        const state = {
-            viewMode: '3D',
-            gridSize: 1, // 格子の繰り返し数 (1x1x1, 2x2x2)
-            ratio: 0.732,
-            rMinus: 1.0, // 固定基準値
-            rPlus: 0.732,
-            opacity: 0.65,
-            showBox: true,
-            smallSpheres: false
+        // Crystal Models Preset Definitions
+        const MODELS = {
+            zns: {
+                id: 'zns',
+                name: 'ZnS 型',
+                coord: 4,
+                limitRatio: Math.sqrt(1.5) - 1, // ~0.2247
+                planeName: '(110) 対角断面（単位格子の1/4領域に相当）',
+                detail: "【ZnS型: 4配位 / (110) 断面】\n・面心立方格子の陰イオン同士が接するとき: r- = (√2/4)a\n・陽イオンと陰イオンの距離: r+ + r- = (√3/4)a\n⇒ 限界半径比 r+ / r- = √(3/2) - 1 ≈ 0.225",
+                tableRowId: 'row-zns'
+            },
+            nacl: {
+                id: 'nacl',
+                name: 'NaCl 型',
+                coord: 6,
+                limitRatio: Math.SQRT2 - 1, // ~0.4142
+                planeName: '(100) 面断面（1辺 = a）',
+                detail: "【NaCl型: 6配位 / (100) 断面】\n・正方形の1辺の長さ: a = 2r-\n・対角線の長さ: √2 a = 2(r+ + r-)\n⇒ 限界半径比 r+ / r- = √2 - 1 ≈ 0.414",
+                tableRowId: 'row-nacl'
+            },
+            cscl: {
+                id: 'cscl',
+                name: 'CsCl 型',
+                coord: 8,
+                limitRatio: Math.sqrt(3) - 1, // ~0.7321
+                planeName: '(110) 対角断面（縦 a × 横 √2a）',
+                detail: "【CsCl型: 8配位 / (110) 断面】\n・立方体の1辺の長さ: a = 2r-\n・体対角線の長さ: √3 a = 2(r+ + r-)\n⇒ 限界半径比 r+ / r- = √3 - 1 ≈ 0.732",
+                tableRowId: 'row-cscl'
+            }
         };
 
-        // --- Three.js 関連変数 ---
-        let scene, camera, renderer, controls;
-        let anionMeshes = [];
-        let cationMeshes = [];
-        let boxHelpers = [];
+        let currentModelKey = 'nacl';
+        
+        // Canvas Setup
+        const canvas = document.getElementById('viewCanvas');
+        const ctx = canvas.getContext('2d');
 
-        // --- DOM 要素の参照 ---
-        const ratioSlider = document.getElementById('ratioSlider');
-        const opacitySlider = document.getElementById('opacitySlider');
-        const showBoxCheck = document.getElementById('showBoxCheck');
-        const smallSpheresCheck = document.getElementById('smallSpheresCheck');
+        // Fixed Visual Reference Grid Size (represents lattice constant 'a')
+        const LATTICE_A_PX = 180;
 
-        // --- 初期化 ---
-        window.addEventListener('DOMContentLoaded', () => {
-            init3D();
-            setupEvents();
-            updateAll();
-        });
+        // UI Elements
+        const rMinusSlider = document.getElementById('rMinusSlider');
+        const rPlusSlider = document.getElementById('rPlusSlider');
+        const currentRatioEl = document.getElementById('currentRatio');
+        const targetRatioHint = document.getElementById('targetRatioHint');
+        const statusBanner = document.getElementById('statusBanner');
+        const conditionDetail = document.getElementById('conditionDetail');
+        const snapBtn = document.getElementById('snapToLimitBtn');
+        const formulaName = document.getElementById('formulaName');
+        const formulaDetail = document.getElementById('formulaDetail');
+        const planeLabel = document.getElementById('planeLabel');
+        const modelSelectGroup = document.getElementById('modelSelectGroup');
+        const canvasCard = document.getElementById('canvasCard');
+        const limitBadge = document.getElementById('limitBadge');
+        
+        // ZnS型は見やすさのために単位領域を2倍に拡大して描画する
+        const ZNS_VISUAL_SCALE = 2.0;
 
-        // --- 格子サイズ設定 ---
-        function setGridSize(size) {
-            state.gridSize = size;
-            [1, 2].forEach(n => {
-                const btn = document.getElementById(`grid${n}Btn`);
-                if (n === size) {
-                    btn.className = "px-3 py-2 text-xs font-bold rounded-lg border transition-all bg-indigo-600 border-indigo-500 text-white shadow-lg";
-                } else {
-                    btn.className = "px-3 py-2 text-xs font-bold rounded-lg border transition-all bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700";
-                }
-            });
-
-            // カメラの視点調整 (サイズ拡大に合わせて引く)
-            if (controls) {
-                const dist = size === 1 ? 7 : 13;
-                camera.position.set(dist * 0.7, dist * 0.5, dist);
-                controls.update();
-            }
-
-            updateAll();
-        }
-
-        // --- Three.js のセットアップ ---
-        function init3D() {
-            const container = document.getElementById('canvas3d-container');
-            
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0f172a);
-
-            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
-            camera.position.set(5, 4, 7);
-
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(container.clientWidth, container.clientHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            renderer.shadowMap.enabled = true;
-            container.appendChild(renderer.domElement);
-
-            controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
-
-            // ライト設定
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-            scene.add(ambientLight);
-
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            dirLight.position.set(10, 15, 10);
-            dirLight.castShadow = true;
-            scene.add(dirLight);
-
-            const dirLight2 = new THREE.DirectionalLight(0x38bdf8, 0.3);
-            dirLight2.position.set(-10, -10, -10);
-            scene.add(dirLight2);
-
-            // ウィンドウサイズ変更対応
-            window.addEventListener('resize', onWindowResize);
-
-            // アニメーションループ
-            function animate() {
-                requestAnimationFrame(animate);
-                controls.update();
-                renderer.render(scene, camera);
-            }
-            animate();
-        }
-
-        function onWindowResize() {
-            const container = document.getElementById('canvas3d-container');
-            if (!container) return;
-            camera.aspect = container.clientWidth / container.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(container.clientWidth, container.clientHeight);
-            
-            // 2D キャンバスのサイズ更新
-            render2D();
-        }
-
-        // --- イベントリスナー ---
-        function setupEvents() {
-            ratioSlider.addEventListener('input', (e) => {
-                state.ratio = parseFloat(e.target.value);
-                state.rPlus = state.ratio * state.rMinus;
-                updateAll();
-            });
-
-            opacitySlider.addEventListener('input', (e) => {
-                state.opacity = parseFloat(e.target.value);
-                document.getElementById('opacityVal').innerText = state.opacity.toFixed(2);
-                update3DMaterials();
-            });
-
-            showBoxCheck.addEventListener('change', (e) => {
-                state.showBox = e.target.checked;
-                boxHelpers.forEach(box => {
-                    box.visible = state.showBox;
-                });
-            });
-
-            smallSpheresCheck.addEventListener('change', (e) => {
-                state.smallSpheres = e.target.checked;
-                updateAll();
-            });
-        }
-
-        function setRatio(val) {
-            state.ratio = val;
-            ratioSlider.value = val;
-            state.rPlus = state.ratio * state.rMinus;
-            updateAll();
-        }
-
-        function switchView(mode) {
-            state.viewMode = mode;
-            const btn3d = document.getElementById('view3dBtn');
-            const btn2d = document.getElementById('view2dBtn');
-            const c3d = document.getElementById('canvas3d-container');
-            const c2d = document.getElementById('canvas2d-container');
-
-            if (mode === '3D') {
-                btn3d.className = "flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors bg-indigo-600 text-white";
-                btn2d.className = "flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors text-slate-400 hover:text-white";
-                c3d.classList.remove('hidden');
-                c2d.classList.add('hidden');
-                document.getElementById('viewHint').innerText = "ドラッグ: 回転 | ホイール: 拡大縮小 | 右ドラッグ: 平行移動";
-            } else {
-                btn2d.className = "flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors bg-indigo-600 text-white";
-                btn3d.className = "flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors text-slate-400 hover:text-white";
-                c2d.classList.remove('hidden');
-                c3d.classList.add('hidden');
-                document.getElementById('viewHint').innerText = "2D 断面表示: 陰イオンと陽イオンが接触する主要な平面を切断して観察しています";
-                render2D();
-            }
-        }
-
-        // --- 全体更新関数 ---
-        function updateAll() {
-            // テキスト更新
-            document.getElementById('sliderValueText').innerText = state.ratio.toFixed(3);
-            document.getElementById('ratioVal').innerText = state.ratio.toFixed(3);
-            document.getElementById('rPlusVal').innerText = state.rPlus.toFixed(3);
-            document.getElementById('rMinusVal').innerText = state.rMinus.toFixed(3);
-
-            // 現在の構造判定
-            let coord, typeName, warningMsg, expHtml;
-            const r = state.ratio;
-
-            // テーブル強調のリセット
-            document.getElementById('row8').className = "transition-colors";
-            document.getElementById('row6').className = "transition-colors";
-            document.getElementById('row4').className = "transition-colors";
-
-            if (r >= 0.732) {
-                coord = 8;
-                typeName = "CsCl 型（塩化セシウム型）";
-                document.getElementById('row8').className = "bg-indigo-950/80 font-bold border-l-4 border-indigo-500 text-indigo-300";
-                
-                if (Math.abs(r - 0.732) < 0.01) {
-                    warningMsg = "限界半径比 (0.732): 8個の陰イオンと中央の陽イオンが同時に接しています。";
-                } else {
-                    warningMsg = "安定な結晶構造: 陽イオンが十分に大きく、陰イオン同士が押し合いません。";
-                }
-
-                expHtml = `
-                    <p><strong class="text-indigo-400">配位数 8 (CsCl型)</strong></p>
-                    <p>立方体の8つの頂点に陰イオン、中心に陽イオンが位置します。</p>
-                    <p>半径比が <strong>0.732</strong> 未満になると、中心の陽イオンが小さくなりすぎて周囲の陰イオン同士が激しく反発するため、配位数 6 (NaCl型) へと転移します。</p>
+        // Selector Setup
+        function initModelSelector() {
+            modelSelectGroup.innerHTML = '';
+            Object.keys(MODELS).forEach(key => {
+                const m = MODELS[key];
+                const isSelected = key === currentModelKey;
+                const btn = document.createElement('button');
+                btn.className = `px-3 py-1 rounded-lg border text-center transition-all flex items-center gap-1.5 ${
+                    isSelected 
+                    ? 'bg-indigo-600 border-indigo-500 text-white font-semibold shadow' 
+                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800'
+                }`;
+                btn.onclick = () => selectModel(key);
+                btn.innerHTML = `
+                    <span class="text-xs">${m.name}</span>
+                    <span class="text-[10px] code-font ${isSelected ? 'text-indigo-200' : 'text-slate-500'}">(${m.limitRatio.toFixed(3)})</span>
                 `;
-            } else if (r >= 0.414) {
-                coord = 6;
-                typeName = "NaCl 型（塩化ナトリウム型）";
-                document.getElementById('row6').className = "bg-indigo-950/80 font-bold border-l-4 border-indigo-500 text-indigo-300";
-
-                if (Math.abs(r - 0.414) < 0.01) {
-                    warningMsg = "限界半径比 (0.414): 6個の陰イオンと中央の陽イオンが同時に接しています。";
-                } else if (r > 0.70) {
-                    warningMsg = "不安定化: 0.732以上になると CsCl 型 (配位数8) の方がエネルギー的に安定します。";
-                } else {
-                    warningMsg = "安定な結晶構造: 6個の陰イオンが配位する八面体構造です。";
-                }
-
-                expHtml = `
-                    <p><strong class="text-indigo-400">配位数 6 (NaCl型)</strong></p>
-                    <p>正八面体の頂点（前後左右上下）に6個の陰イオンが配位します。</p>
-                    <p>半径比が <strong>0.414</strong> 未満になると陰イオン同士が接触して反発するため、配位数 4 (ZnS型) へと転移します。</p>
-                `;
-            } else {
-                coord = 4;
-                typeName = "ZnS 型（閃亜鉛鉱型）";
-                document.getElementById('row4').className = "bg-indigo-950/80 font-bold border-l-4 border-indigo-500 text-indigo-300";
-
-                if (Math.abs(r - 0.225) < 0.01) {
-                    warningMsg = "限界半径比 (0.225): 4個の陰イオンと中央の陽イオンが同時に接しています。";
-                } else {
-                    warningMsg = "配位数 4: 陽イオンが非常に小さいため、4個の陰イオンしか隙間に入りません。";
-                }
-
-                expHtml = `
-                    <p><strong class="text-indigo-400">配位数 4 (ZnS型)</strong></p>
-                    <p>正四面体の頂点に4個の陰イオンが配位します。</p>
-                    <p>半径比が <strong>0.225</strong> 未満になると、配位数4の構造すら維持できなくなります。</p>
-                `;
-            }
-
-            document.getElementById('coordBadge').innerText = `配位数: ${coord}`;
-            document.getElementById('structureTitle').innerText = typeName;
-            document.getElementById('warningText').innerText = warningMsg;
-            document.getElementById('explanationBox').innerHTML = expHtml;
-
-            // 3Dモデル & 2D描画の更新
-            build3DScene(coord);
-            if (state.viewMode === '2D') {
-                render2D();
-            }
-        }
-
-        // --- 3D シーン構築 ---
-        function build3DScene(coord) {
-            // 既存のメッシュを消去
-            anionMeshes.forEach(m => scene.remove(m));
-            cationMeshes.forEach(m => scene.remove(m));
-            boxHelpers.forEach(b => scene.remove(b));
-            anionMeshes = [];
-            cationMeshes = [];
-            boxHelpers = [];
-
-            // 小表示モードの場合、球の半径をスケーリング (35%サイズに縮小)
-            const scaleFactor = state.smallSpheres ? 0.35 : 1.0;
-            const effectiveRMinus = state.rMinus * scaleFactor;
-            const effectiveRPlus = state.rPlus * scaleFactor;
-
-            const anionGeo = new THREE.SphereGeometry(effectiveRMinus, 24, 24);
-            const cationGeo = new THREE.SphereGeometry(effectiveRPlus, 24, 24);
-
-            const anionMat = new THREE.MeshStandardMaterial({
-                color: 0xec4899,
-                transparent: true,
-                opacity: state.smallSpheres ? 0.95 : state.opacity,
-                roughness: 0.3,
-                metalness: 0.1
+                modelSelectGroup.appendChild(btn);
             });
 
-            const cationMat = new THREE.MeshStandardMaterial({
-                color: 0x06b6d4,
-                roughness: 0.2,
-                metalness: 0.2
-            });
-
-            const lineMat = new THREE.LineBasicMaterial({ color: 0x64748b, linewidth: 1 });
-
-            // 重複描画を防ぐための位置マップ用
-            const anionPositionsSet = new Set();
-            const cationPositionsSet = new Set();
-
-            function addAnion(x, y, z) {
-                const key = `${x.toFixed(3)},${y.toFixed(3)},${z.toFixed(3)}`;
-                if (!anionPositionsSet.has(key)) {
-                    anionPositionsSet.add(key);
-                    const mesh = new THREE.Mesh(anionGeo, anionMat);
-                    mesh.position.set(x, y, z);
-                    scene.add(mesh);
-                    anionMeshes.push(mesh);
-                }
-            }
-
-            function addCation(x, y, z) {
-                const key = `${x.toFixed(3)},${y.toFixed(3)},${z.toFixed(3)}`;
-                if (!cationPositionsSet.has(key)) {
-                    cationPositionsSet.add(key);
-                    const mesh = new THREE.Mesh(cationGeo, cationMat);
-                    mesh.position.set(x, y, z);
-                    scene.add(mesh);
-                    cationMeshes.push(mesh);
-                }
-            }
-
-            const N = state.gridSize;
-
-            if (coord === 8) {
-                // CsCl型 (体心立方状)
-                const d = (state.rMinus + state.rPlus) / Math.sqrt(3);
-                const L = d * 2; // 単位格子の辺長
-                const offset = (N * L) / 2;
-
-                const baseAnions = [
-                    [-d, -d, -d], [d, -d, -d], [-d, d, -d], [d, d, -d],
-                    [-d, -d,  d], [d, -d,  d], [-d, d,  d], [d, d,  d]
-                ];
-
-                for (let ix = 0; ix < N; ix++) {
-                    for (let iy = 0; iy < N; iy++) {
-                        for (let iz = 0; iz < N; iz++) {
-                            const cx = (ix + 0.5) * L - offset;
-                            const cy = (iy + 0.5) * L - offset;
-                            const cz = (iz + 0.5) * L - offset;
-
-                            // 陰イオン (頂点)
-                            baseAnions.forEach(pos => {
-                                addAnion(cx + pos[0], cy + pos[1], cz + pos[2]);
-                            });
-
-                            // 陽イオン (中心)
-                            addCation(cx, cy, cz);
-
-                            // 単位格子枠線
-                            const boxGeo = new THREE.BoxGeometry(L, L, L);
-                            const wireGeo = new THREE.WireframeGeometry(boxGeo);
-                            const box = new THREE.LineSegments(wireGeo, lineMat);
-                            box.position.set(cx, cy, cz);
-                            box.visible = state.showBox;
-                            scene.add(box);
-                            boxHelpers.push(box);
-                        }
+            ['row-nacl', 'row-zns', 'row-cscl'].forEach(id => {
+                const row = document.getElementById(id);
+                if (row) {
+                    if (MODELS[currentModelKey].tableRowId === id) {
+                        row.className = 'bg-indigo-950/80 text-indigo-200 font-semibold cursor-pointer';
+                    } else {
+                        row.className = 'hover:bg-slate-800/40 cursor-pointer';
                     }
                 }
-
-            } else if (coord === 6) {
-                // NaCl型 (面心立方構造ベース)
-                const a = (state.rMinus + state.rPlus) * 2; // 格子定数
-                const offset = (N * a) / 2;
-
-                for (let ix = 0; ix < N; ix++) {
-                    for (let iy = 0; iy < N; iy++) {
-                        for (let iz = 0; iz < N; iz++) {
-                            const x0 = ix * a - offset;
-                            const y0 = iy * a - offset;
-                            const z0 = iz * a - offset;
-
-                            // 各単位格子内の相対座標
-                            // 陰イオン (面心立方格子: 8頂点 + 6面心)
-                            const anionRels = [
-                                [0,0,0], [a,0,0], [0,a,0], [a,a,0], [0,0,a], [a,0,a], [0,a,a], [a,a,a],
-                                [a/2, a/2, 0], [a/2, a/2, a], [a/2, 0, a/2], [a/2, a, a/2], [0, a/2, a/2], [a, a/2, a/2]
-                            ];
-                            anionRels.forEach(p => addAnion(x0 + p[0], y0 + p[1], z0 + p[2]));
-
-                            // 陽イオン (エッジ中央 + 体心)
-                            const cationRels = [
-                                [a/2, 0, 0], [0, a/2, 0], [0, 0, a/2],
-                                [a/2, a, 0], [a, a/2, 0], [a/2, 0, a], [0, a/2, a], [a/2, a, a], [a, a/2, a],
-                                [0, a, a/2], [a, 0, a/2], [a, a, a/2],
-                                [a/2, a/2, a/2]
-                            ];
-                            cationRels.forEach(p => addCation(x0 + p[0], y0 + p[1], z0 + p[2]));
-
-                            // 枠線
-                            const boxGeo = new THREE.BoxGeometry(a, a, a);
-                            const wireGeo = new THREE.WireframeGeometry(boxGeo);
-                            const box = new THREE.LineSegments(wireGeo, lineMat);
-                            box.position.set(x0 + a/2, y0 + a/2, z0 + a/2);
-                            box.visible = state.showBox;
-                            scene.add(box);
-                            boxHelpers.push(box);
-                        }
-                    }
-                }
-
-            } else if (coord === 4) {
-                // ZnS型 (閃亜鉛鉱型: S2-が面心立方、Zn2+が1/4四面体隙間)
-                const a = ((state.rMinus + state.rPlus) * 4) / Math.sqrt(3); // 格子定数
-                const offset = (N * a) / 2;
-
-                for (let ix = 0; ix < N; ix++) {
-                    for (let iy = 0; iy < N; iy++) {
-                        for (let iz = 0; iz < N; iz++) {
-                            const x0 = ix * a - offset;
-                            const y0 = iy * a - offset;
-                            const z0 = iz * a - offset;
-
-                            // 陰イオン (面心立方)
-                            const anionRels = [
-                                [0,0,0], [a,0,0], [0,a,0], [a,a,0], [0,0,a], [a,0,a], [0,a,a], [a,a,a],
-                                [a/2, a/2, 0], [a/2, a/2, a], [a/2, 0, a/2], [a/2, a, a/2], [0, a/2, a/2], [a, a/2, a/2]
-                            ];
-                            anionRels.forEach(p => addAnion(x0 + p[0], y0 + p[1], z0 + p[2]));
-
-                            // 陽イオン (4つの四面体穴)
-                            const cationRels = [
-                                [a/4, a/4, a/4],
-                                [3*a/4, 3*a/4, a/4],
-                                [3*a/4, a/4, 3*a/4],
-                                [a/4, 3*a/4, 3*a/4]
-                            ];
-                            cationRels.forEach(p => addCation(x0 + p[0], y0 + p[1], z0 + p[2]));
-
-                            // 枠線
-                            const boxGeo = new THREE.BoxGeometry(a, a, a);
-                            const wireGeo = new THREE.WireframeGeometry(boxGeo);
-                            const box = new THREE.LineSegments(wireGeo, lineMat);
-                            box.position.set(x0 + a/2, y0 + a/2, z0 + a/2);
-                            box.visible = state.showBox;
-                            scene.add(box);
-                            boxHelpers.push(box);
-                        }
-                    }
-                }
-            }
-        }
-
-        function update3DMaterials() {
-            anionMeshes.forEach(mesh => {
-                mesh.material.opacity = state.opacity;
             });
         }
 
-        // --- 2D 断面の描画 ---
-        function render2D() {
-            const canvas = document.getElementById('canvas2d');
-            const ctx = canvas.getContext('2d');
-            
-            const size = Math.min(canvas.parentElement.clientWidth - 40, canvas.parentElement.clientHeight - 40, 500);
-            canvas.width = size;
-            canvas.height = size;
-
-            ctx.clearRect(0, 0, size, size);
-
-            const centerX = size / 2;
-            const centerY = size / 2;
-            const scale = size / 4.5; // スケール調整
-
-            const scaleFactor = state.smallSpheres ? 0.35 : 1.0;
-            const rPlus = state.rPlus * scale * scaleFactor;
-            const rMinus = state.rMinus * scale * scaleFactor;
-
-            const r = state.ratio;
-
-            if (r >= 0.732) {
-                // CsCl 対角断面 ( (110) 平面 )
-                // 対角線上で陰イオン4つと中央陽イオン
-                const distCorner = (state.rMinus + state.rPlus) * scale;
-
-                // 中央陽イオン
-                drawCircle(ctx, centerX, centerY, rPlus, '#06b6d4', '陽イオン (r+)');
-
-                // 4つの陰イオン (対角線上)
-                const angles = [Math.PI/4, 3*Math.PI/4, 5*Math.PI/4, 7*Math.PI/4];
-                angles.forEach(ang => {
-                    const x = centerX + Math.cos(ang) * distCorner;
-                    const y = centerY + Math.sin(ang) * distCorner;
-                    drawCircle(ctx, x, y, rMinus, state.smallSpheres ? 'rgba(236, 72, 153, 0.9)' : 'rgba(236, 72, 153, 0.5)', '陰イオン', '#ec4899');
-                });
-
-                // 接触判定ビジュアル線
-                drawContactLines(ctx, centerX, centerY, distCorner, angles, rPlus, rMinus);
-
-            } else if (r >= 0.414) {
-                // NaCl 赤道断面 ( (100) 平面 )
-                const distAxis = (state.rMinus + state.rPlus) * scale;
-
-                // 中央陽イオン
-                drawCircle(ctx, centerX, centerY, rPlus, '#06b6d4', '陽イオン (r+)');
-
-                // 周囲4個の陰イオン
-                const angles = [0, Math.PI/2, Math.PI, 3*Math.PI/2];
-                angles.forEach(ang => {
-                    const x = centerX + Math.cos(ang) * distAxis;
-                    const y = centerY + Math.sin(ang) * distAxis;
-                    drawCircle(ctx, x, y, rMinus, state.smallSpheres ? 'rgba(236, 72, 153, 0.9)' : 'rgba(236, 72, 153, 0.5)', '陰イオン', '#ec4899');
-                });
-
-                drawContactLines(ctx, centerX, centerY, distAxis, angles, rPlus, rMinus);
-
-            } else {
-                // ZnS 投影断面
-                const dist = (state.rMinus + state.rPlus) * scale * 0.8;
-
-                drawCircle(ctx, centerX, centerY, rPlus, '#06b6d4', '陽イオン (r+)');
-
-                const angles = [Math.PI/6, 5*Math.PI/6, 3*Math.PI/2];
-                angles.forEach(ang => {
-                    const x = centerX + Math.cos(ang) * dist;
-                    const y = centerY + Math.sin(ang) * dist;
-                    drawCircle(ctx, x, y, rMinus, state.smallSpheres ? 'rgba(236, 72, 153, 0.9)' : 'rgba(236, 72, 153, 0.5)', '陰イオン', '#ec4899');
-                });
-
-                drawContactLines(ctx, centerX, centerY, dist, angles, rPlus, rMinus);
+        function setExactLimitForCurrentModel() {
+            const m = MODELS[currentModelKey];
+            // 限界状態では陰イオン同士も接し、かつ陽イオンもすべての陰イオンに接する
+            let exactRMinus = LATTICE_A_PX / 2; // 90px (NaCl, CsCl)
+            if (m.id === 'zns') {
+                // ZnS型は2倍スケールで描画するため、限界時の陰イオン半径も他のモデルと同等の大きさに合わせる
+                exactRMinus = ((LATTICE_A_PX * Math.SQRT2) / 4) * ZNS_VISUAL_SCALE; // ~127.3px -> 見やすいサイズに調整
+                exactRMinus = (LATTICE_A_PX / 2); // 90px に統一して他と同じサイズ感にする
             }
+            const exactRPlus = exactRMinus * m.limitRatio;
+
+            rMinusSlider.value = exactRMinus.toFixed(1);
+            rPlusSlider.value = exactRPlus.toFixed(1);
         }
 
-        function drawCircle(ctx, x, y, r, fillColor, label, strokeColor = '#06b6d4') {
-            ctx.beginPath();
-            ctx.arc(x, y, Math.max(r, 2), 0, Math.PI * 2);
-            ctx.fillStyle = fillColor;
-            ctx.fill();
-            ctx.strokeStyle = strokeColor;
-            ctx.lineWidth = 2;
-            ctx.stroke();
+        function selectModel(key) {
+            currentModelKey = key;
+            setExactLimitForCurrentModel();
+            initModelSelector();
+            updateValues();
         }
 
-        function drawContactLines(ctx, cx, cy, dist, angles, rPlus, rMinus) {
-            ctx.strokeStyle = '#e2e8f0';
-            ctx.lineWidth = 1;
-            ctx.setLineDash([4, 4]);
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width * (window.devicePixelRatio || 1);
+            canvas.height = rect.height * (window.devicePixelRatio || 1);
+            ctx.resetTransform();
+            ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+            draw();
+        }
 
-            angles.forEach(ang => {
-                const ex = cx + Math.cos(ang) * dist;
-                const ey = cy + Math.sin(ang) * dist;
+        // 幾何学的な距離と重なり・接触状態を判定する関数
+        function evaluateGeometry(rMinus, rPlus, modelId) {
+            let anionDist = 0;       // 隣接する陰イオン中心間の距離
+            let cationAnionDist = 0; // 陽イオン中心と陰イオン中心間の距離
 
+            if (modelId === 'nacl') {
+                // 1辺 a の正方形の四隅に陰イオン、中心に陽イオン
+                anionDist = LATTICE_A_PX;
+                cationAnionDist = (LATTICE_A_PX * Math.SQRT2) / 2;
+            } else if (modelId === 'cscl') {
+                // (110)断面: 縦 a, 横 √2 a の長方形の四隅に陰イオン、中心に陽イオン
+                anionDist = LATTICE_A_PX; // 縦辺が a
+                cationAnionDist = (LATTICE_A_PX * Math.sqrt(3)) / 2;
+            } else if (modelId === 'zns') {
+                // ZnS型は他と同じ大きさで見やすくするため、陰イオン間距離を LATTICE_A_PX (180px) に統一し、
+                // 陽イオンとの距離を幾何学比率 (√(3/2) / 2) で算出する
+                anionDist = LATTICE_A_PX;
+                cationAnionDist = LATTICE_A_PX * (Math.sqrt(1.5) / 2);
+            }
+
+            const anionOverlap = (2 * rMinus) - anionDist;             // > 0 なら陰イオン同士が重なる
+            const cationAnionOverlap = (rPlus + rMinus) - cationAnionDist; // > 0 なら陽イオンと陰イオンが重なる, < 0 なら隙間がある
+
+            return {
+                anionDist,
+                cationAnionDist,
+                anionOverlap,
+                cationAnionOverlap
+            };
+        }
+
+        function updateValues() {
+            const rMinus = parseFloat(rMinusSlider.value);
+            const rPlus = parseFloat(rPlusSlider.value);
+            const m = MODELS[currentModelKey];
+            const ratio = rPlus / rMinus;
+
+            currentRatioEl.innerText = ratio.toFixed(3);
+            targetRatioHint.innerText = `/ 限界 ${m.limitRatio.toFixed(3)}`;
+
+            const geom = evaluateGeometry(rMinus, rPlus, m.id);
+            const ratioDiff = ratio - m.limitRatio;
+
+            // 限界状態の判定（半径比が限界値に近く、かつイオン同士が実際に接触している場合のみ）
+            const isAtLimitRatio = Math.abs(ratioDiff) <= 0.008;
+            const isExactTouch = Math.abs(geom.anionOverlap) <= 4.0 && Math.abs(geom.cationAnionOverlap) <= 4.0;
+            const isLimitHighlighted = isAtLimitRatio && isExactTouch;
+
+            // 限界値強調UIの切り替え
+            if (isLimitHighlighted) {
+                canvasCard.classList.add('limit-highlight');
+                limitBadge.classList.remove('hidden');
+            } else {
+                canvasCard.classList.remove('limit-highlight');
+                limitBadge.classList.add('hidden');
+            }
+
+            // 安定・不安定の判定ロジック（重ね合わせ自由にした上での物理的評価）
+            if (geom.anionOverlap > 3.0 && geom.cationAnionOverlap > 3.0) {
+                // 両方重なりすぎ
+                statusBanner.className = 'px-2.5 py-1 rounded border text-[11px] font-bold text-center bg-red-950/90 border-red-500 text-red-300';
+                statusBanner.innerText = '⚠️ 不安定（イオン同士が過度に重なり反発）';
+                conditionDetail.innerText = '固定された格子サイズ a に対してイオンが大きすぎるため、電子雲同士が重なり強い反発力が生じます（実際は格子定数 a が押し広げられます）。';
+            } else if (geom.anionOverlap > 3.0) {
+                // 陰イオン同士が重なる
+                statusBanner.className = 'px-2.5 py-1 rounded border text-[11px] font-bold text-center bg-red-950/90 border-red-500 text-red-300';
+                statusBanner.innerText = '⚠️ 不安定（陰イオン同士が重なり反発）';
+                conditionDetail.innerText = '陰イオン同士がめり込んでいます。同符号のイオン同士の静電反発により、この格子間隔 a では維持できません。';
+            } else if (geom.cationAnionOverlap > 3.0) {
+                // 陽イオンと陰イオンが重なる
+                statusBanner.className = 'px-2.5 py-1 rounded border text-[11px] font-bold text-center bg-amber-950/90 border-amber-500 text-amber-300';
+                statusBanner.innerText = '⚠️ 格子膨張 / 重なり発生（r+ + r- が過大）';
+                conditionDetail.innerText = '陽イオンが陰イオンを押しのけています。実際の結晶では陰イオン同士が離れ、格子定数 a が大きくなることで安定します。';
+            } else if (geom.cationAnionOverlap < -3.0) {
+                // 陽イオンと陰イオンの間に隙間がある（実際の結晶では存在しない仮想状態）
+                statusBanner.className = 'px-2.5 py-1 rounded border text-[11px] font-bold text-center bg-slate-800/90 border-slate-500 text-slate-300';
+                statusBanner.innerText = '実際の結晶としては存在しない';
+                conditionDetail.innerText = '陽イオンと陰イオンが離れており隙間が生じています。実際の結晶では異符号のイオン同士は静電引力で引き合い、必ず接触した状態で存在します。';
+            } else if (isLimitHighlighted) {
+                // 限界半径比の強調（実際に接触している場合のみ）
+                statusBanner.className = 'px-2.5 py-1 rounded border text-[11px] font-bold text-center bg-amber-500/20 border-amber-400 text-amber-300';
+                statusBanner.innerText = '★ 限界状態（すべてのイオンが理想的に接触）';
+                conditionDetail.innerText = '陰イオン同士が接し、かつ中心の陽イオンも周囲の陰イオンにぴったり接する「幾何学的な限界状態」です。';
+            } else if (ratio < m.limitRatio) {
+                // 陽イオンが小さすぎて隙間ができる（ガタガタになる）
+                let altStruct = '';
+                if (m.id === 'cscl' && ratio >= MODELS.nacl.limitRatio) {
+                    altStruct = '（より配位数の少ない NaCl型[6配位] が安定）';
+                } else if ((m.id === 'cscl' || m.id === 'nacl') && ratio >= MODELS.zns.limitRatio) {
+                    altStruct = '（より配位数の少ない ZnS型[4配位] が安定）';
+                }
+                statusBanner.className = 'px-2.5 py-1 rounded border text-[11px] font-bold text-center bg-red-950/90 border-red-500 text-red-300';
+                statusBanner.innerText = `⚠️ 不安定（陽イオンが小さく隙間が発生）`;
+                conditionDetail.innerText = `陽イオンと陰イオンの間に隙間ができ、静電引力による結合が保てず構造が崩壊します${altStruct}。`;
+            } else {
+                // 陽イオンが十分に大きく、陰イオン同士は離れて安定
+                statusBanner.className = 'px-2.5 py-1 rounded border text-[11px] font-bold text-center bg-emerald-950/90 border-emerald-500/70 text-emerald-300';
+                statusBanner.innerText = `✅ 安定（${m.name}の${m.coord}配位構造を維持）`;
+                conditionDetail.innerText = '陽イオンが周囲の陰イオンと接しつつ、陰イオン同士の間には適度な隙間（反発回避）があるため結晶構造は安定です。';
+            }
+
+            formulaName.innerText = m.name;
+            formulaDetail.innerText = m.detail;
+            planeLabel.innerText = `切断面: ${m.planeName}`;
+
+            draw(geom, isLimitHighlighted);
+        }
+
+        // 寸法線（矢印付きラインとラベル）を描画するヘルパー関数
+        function drawDimensionLine(ctx, x1, y1, x2, y2, label, color, offset = 0, isDashed = false) {
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const len = Math.hypot(dx, dy);
+            if (len < 1) return;
+
+            const ux = dx / len;
+            const uy = dy / len;
+            // 法線ベクトル（オフセット方向）
+            const nx = -uy;
+            const ny = ux;
+
+            const sx1 = x1 + nx * offset;
+            const sy1 = y1 + ny * offset;
+            const sx2 = x2 + nx * offset;
+            const sy2 = y2 + ny * offset;
+
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 1.5;
+
+            // 補助線（オフセットがある場合）
+            if (Math.abs(offset) > 2) {
+                ctx.save();
+                ctx.setLineDash([2, 2]);
+                ctx.globalAlpha = 0.5;
                 ctx.beginPath();
-                ctx.moveTo(cx, cy);
-                ctx.lineTo(ex, ey);
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(sx1, sy1);
+                ctx.moveTo(x2, y2);
+                ctx.lineTo(sx2, sy2);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // メインの寸法線
+            if (isDashed) ctx.setLineDash([4, 3]);
+            ctx.beginPath();
+            ctx.moveTo(sx1, sy1);
+            ctx.lineTo(sx2, sy2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 両端の矢印（長さが十分ある場合）
+            const arrowSize = Math.min(6, len * 0.25);
+            if (len > 10) {
+                // 始点側矢印
+                ctx.beginPath();
+                ctx.moveTo(sx1, sy1);
+                ctx.lineTo(sx1 + ux * arrowSize + nx * (arrowSize * 0.5), sy1 + uy * arrowSize + ny * (arrowSize * 0.5));
+                ctx.lineTo(sx1 + ux * arrowSize - nx * (arrowSize * 0.5), sy1 + uy * arrowSize - ny * (arrowSize * 0.5));
+                ctx.closePath();
+                ctx.fill();
+
+                // 終点側矢印
+                ctx.beginPath();
+                ctx.moveTo(sx2, sy2);
+                ctx.lineTo(sx2 - ux * arrowSize + nx * (arrowSize * 0.5), sy2 - uy * arrowSize + ny * (arrowSize * 0.5));
+                ctx.lineTo(sx2 - ux * arrowSize - nx * (arrowSize * 0.5), sy2 - uy * arrowSize - ny * (arrowSize * 0.5));
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            // ラベル背景とテキスト
+            const midX = (sx1 + sx2) / 2;
+            const midY = (sy1 + sy2) / 2;
+            ctx.font = 'bold 11px "JetBrains Mono", sans-serif';
+            const textMetrics = ctx.measureText(label);
+            const padX = 4;
+            const padY = 2;
+            const boxW = textMetrics.width + padX * 2;
+            const boxH = 15;
+
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+            ctx.beginPath();
+            ctx.roundRect(midX - boxW / 2, midY - boxH / 2, boxW, boxH, 4);
+            ctx.fill();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 0.8;
+            ctx.stroke();
+
+            ctx.fillStyle = color;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(label, midX, midY + 0.5);
+
+            ctx.restore();
+        }
+
+        // 重なり領域を赤くハイライトするヘルパー関数
+        function drawOverlapHighlight(ctx, x1, y1, r1, x2, y2, r2) {
+            const d = Math.hypot(x2 - x1, y2 - y1);
+            if (d >= r1 + r2 - 2 || d <= Math.abs(r1 - r2)) return;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(x1, y1, r1, 0, Math.PI * 2);
+            ctx.clip();
+
+            ctx.beginPath();
+            ctx.arc(x2, y2, r2, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.45)'; // 赤色の重なり警告
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#ef4444';
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // Draw Function
+        function draw(geom, isLimitHighlighted) {
+            const w = canvas.width / (window.devicePixelRatio || 1);
+            const h = canvas.height / (window.devicePixelRatio || 1);
+
+            ctx.clearRect(0, 0, w, h);
+
+            const rMinus = parseFloat(rMinusSlider.value);
+            const rPlus = parseFloat(rPlusSlider.value);
+            const m = MODELS[currentModelKey];
+            if (!geom) geom = evaluateGeometry(rMinus, rPlus, m.id);
+
+            // 2D平面図の中心座標（左側のUIカードと被らないよう少し右寄り・中央に配置）
+            const centerX = Math.max(w * 0.54, 330);
+            const centerY = h * 0.52;
+
+            ctx.save();
+            ctx.translate(centerX, centerY);
+
+            // 限界状態時の背景グロー効果
+            if (isLimitHighlighted) {
+                const grad = ctx.createRadialGradient(0, 0, 10, 0, 0, LATTICE_A_PX * 1.1);
+                grad.addColorStop(0, 'rgba(250, 204, 21, 0.14)');
+                grad.addColorStop(1, 'rgba(250, 204, 21, 0)');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(0, 0, LATTICE_A_PX * 1.1, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            let anionPositions = [];
+            let rectW = LATTICE_A_PX;
+            let rectH = LATTICE_A_PX;
+
+            if (m.id === 'nacl') {
+                rectW = LATTICE_A_PX;
+                rectH = LATTICE_A_PX;
+                const hw = rectW / 2;
+                const hh = rectH / 2;
+                anionPositions = [[-hw, -hh], [hw, -hh], [-hw, hh], [hw, hh]];
+            } else if (m.id === 'cscl') {
+                // (110)断面: 縦 a, 横 √2 a
+                rectW = LATTICE_A_PX * Math.SQRT2;
+                rectH = LATTICE_A_PX;
+                const hw = rectW / 2;
+                const hh = rectH / 2;
+                anionPositions = [[-hw, -hh], [hw, -hh], [-hw, hh], [hw, hh]];
+            } else if (m.id === 'zns') {
+                // (110)断面: 他の結晶型と同じサイズ感で見やすくするため横幅を LATTICE_A_PX に拡大表示
+                // 比率は 縦 (a/2) : 横 ((√2/2)a) = 1 : √2 なので、縦幅は LATTICE_A_PX / √2
+                rectW = LATTICE_A_PX;
+                rectH = LATTICE_A_PX / Math.SQRT2;
+                const hw = rectW / 2;
+                const hh = rectH / 2;
+                // 上辺2つの陰イオンと中心の陽イオン
+                anionPositions = [[-hw, -hh], [hw, -hh]];
+            }
+
+            const hw = rectW / 2;
+            const hh = rectH / 2;
+
+            // 1. 単位格子の断面枠線
+            ctx.strokeStyle = isLimitHighlighted ? '#facc15' : '#64748b';
+            ctx.lineWidth = isLimitHighlighted ? 2 : 1.5;
+            ctx.setLineDash([5, 4]);
+            ctx.strokeRect(-hw, -hh, rectW, rectH);
+            ctx.setLineDash([]);
+
+            // 対角線（幾何学導出の補助線）
+            ctx.save();
+            ctx.strokeStyle = isLimitHighlighted ? 'rgba(250, 204, 21, 0.45)' : 'rgba(148, 163, 184, 0.25)';
+            ctx.lineWidth = 1.2;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            if (m.id === 'zns') {
+                ctx.moveTo(-hw, -hh);
+                ctx.lineTo(0, 0);
+                ctx.moveTo(hw, -hh);
+                ctx.lineTo(0, 0);
+            } else {
+                ctx.moveTo(-hw, -hh);
+                ctx.lineTo(hw, hh);
+                ctx.moveTo(hw, -hh);
+                ctx.lineTo(-hw, hh);
+            }
+            ctx.stroke();
+            ctx.restore();
+
+            // 2. 陰イオンの描画 (Emerald)
+            anionPositions.forEach(([cx, cy]) => {
+                ctx.beginPath();
+                ctx.arc(cx, cy, rMinus, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(16, 185, 129, 0.32)';
+                ctx.fill();
+                ctx.strokeStyle = isLimitHighlighted ? '#34d399' : '#10b981';
+                ctx.lineWidth = isLimitHighlighted ? 2.5 : 2;
+                ctx.stroke();
+
+                // 中心点ドット
+                ctx.beginPath();
+                ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
+                ctx.fillStyle = '#34d399';
+                ctx.fill();
+            });
+
+            // 陰イオン同士の重なりハイライト
+            for (let i = 0; i < anionPositions.length; i++) {
+                for (let j = i + 1; j < anionPositions.length; j++) {
+                    drawOverlapHighlight(
+                        ctx,
+                        anionPositions[i][0], anionPositions[i][1], rMinus,
+                        anionPositions[j][0], anionPositions[j][1], rMinus
+                    );
+                }
+            }
+
+            // 3. 陽イオンの描画 (Indigo / Gold glow at limit)
+            ctx.beginPath();
+            ctx.arc(0, 0, rPlus, 0, Math.PI * 2);
+            ctx.fillStyle = isLimitHighlighted
+                ? 'rgba(250, 204, 21, 0.35)'
+                : 'rgba(99, 102, 241, 0.45)';
+            ctx.fill();
+            ctx.strokeStyle = isLimitHighlighted ? '#facc15' : '#818cf8';
+            ctx.lineWidth = isLimitHighlighted ? 3 : 2;
+            ctx.stroke();
+
+            // 陽イオン中心点ドット
+            ctx.beginPath();
+            ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
+            ctx.fillStyle = isLimitHighlighted ? '#facc15' : '#a5b4fc';
+            ctx.fill();
+
+            // 陽イオンと陰イオンの重なりハイライト
+            anionPositions.forEach(([cx, cy]) => {
+                drawOverlapHighlight(ctx, 0, 0, rPlus, cx, cy, rMinus);
+            });
+
+            // 限界状態時の接点リング強調
+            if (isLimitHighlighted) {
+                anionPositions.forEach(([cx, cy]) => {
+                    const dist = Math.hypot(cx, cy);
+                    if (dist > 0) {
+                        const tx = (cx / dist) * rPlus;
+                        const ty = (cy / dist) * rPlus;
+                        ctx.beginPath();
+                        ctx.arc(tx, ty, 4, 0, Math.PI * 2);
+                        ctx.fillStyle = '#facc15';
+                        ctx.fill();
+                    }
+                });
+            }
+
+            // 4. 平面図上への寸法・ラベル描画（r-, r+, 格子定数 a）
+            // (A) 格子定数 a の表示
+            if (m.id === 'nacl') {
+                // 下辺に「a」を表示
+                drawDimensionLine(ctx, -hw, hh, hw, hh, 'a (格子1辺)', '#fbbf24', 24);
+            } else if (m.id === 'cscl') {
+                // 左辺に「a」、下辺に「√2 a」を表示
+                drawDimensionLine(ctx, -hw, -hh, -hw, hh, 'a', '#fbbf24', -24);
+                drawDimensionLine(ctx, -hw, hh, hw, hh, '√2 a', '#94a3b8', 24);
+            } else if (m.id === 'zns') {
+                // 左辺に「a/2」、上辺に「(√2/2)a」を表示
+                drawDimensionLine(ctx, -hw, -hh, -hw, hh, 'a/2', '#fbbf24', -24);
+                drawDimensionLine(ctx, -hw, -hh, hw, -hh, '(√2/2)a', '#94a3b8', -24);
+            }
+
+            // (B) 陽イオン半径 r+ と 陰イオン半径 r- を一直線上（接点方向）に描画
+            const targetAnion = anionPositions.find(([x, y]) => x > 0 && y < 0) || anionPositions[0];
+            if (targetAnion) {
+                const [ax, ay] = targetAnion;
+                const dist = Math.hypot(ax, ay);
+                if (dist > 0) {
+                    // 陽イオン中心(0,0) -> 陰イオン中心(ax, ay) への単位ベクトル
+                    const ux = ax / dist;
+                    const uy = ay / dist;
+
+                    // 陽イオン半径 r+（中心から接点方向へ）
+                    const px = ux * rPlus;
+                    const py = uy * rPlus;
+                    drawDimensionLine(ctx, 0, 0, px, py, 'r+', '#a5b4fc', 0);
+
+                    // 陰イオン半径 r-（陰イオン中心から陽イオンとの接点方向へ一直線に）
+                    const rx = ax - ux * rMinus;
+                    const ry = ay - uy * rMinus;
+                    drawDimensionLine(ctx, ax, ay, rx, ry, 'r-', '#34d399', 0);
+                }
+            }
+
+            ctx.restore();
+
+            // --- Draw Top-Right 3D Mini-Map ---
+            draw3DMiniMap(w - 75, 75, m.id);
+        }
+
+        // Isometric 3D Projection Helper
+        function project3D(x, y, z) {
+            const angleX = Math.PI / 4.2;
+            const angleY = Math.PI / 3.6;
+            
+            const cosY = Math.cos(angleY), sinY = Math.sin(angleY);
+            const x1 = x * cosY - z * sinY;
+            const z1 = x * sinY + z * cosY;
+
+            const cosX = Math.cos(angleX), sinX = Math.sin(angleX);
+            const y2 = y * cosX - z1 * sinX;
+
+            return { x: x1, y: y2 };
+        }
+
+        function draw3DMiniMap(cx, cy, modelId) {
+            const size = 32;
+            const hSize = size;
+
+            const rawVertices = [
+                [-1, -1, -1], [ 1, -1, -1], [ 1,  1, -1], [-1,  1, -1],
+                [-1, -1,  1], [ 1, -1,  1], [ 1,  1,  1], [-1,  1,  1]
+            ];
+
+            const pts = rawVertices.map(([vx, vy, vz]) => {
+                const p = project3D(vx * hSize, vy * hSize, vz * hSize);
+                return { x: cx + p.x, y: cy + p.y };
+            });
+
+            ctx.save();
+
+            // 1. Draw 3D Yellow Cutting Plane Highlighting
+            ctx.fillStyle = 'rgba(234, 179, 8, 0.45)';
+            ctx.strokeStyle = '#facc15';
+            ctx.lineWidth = 2;
+
+            if (modelId === 'nacl') {
+                ctx.beginPath();
+                ctx.moveTo(pts[4].x, pts[4].y);
+                ctx.lineTo(pts[5].x, pts[5].y);
+                ctx.lineTo(pts[6].x, pts[6].y);
+                ctx.lineTo(pts[7].x, pts[7].y);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            } else {
+                // (110) Diagonal plane through opposite edges
+                ctx.beginPath();
+                ctx.moveTo(pts[4].x, pts[4].y);
+                ctx.lineTo(pts[1].x, pts[1].y);
+                ctx.lineTo(pts[2].x, pts[2].y);
+                ctx.lineTo(pts[7].x, pts[7].y);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+
+            // 2. Cube Frame Edges
+            const edges = [
+                [0,1], [1,2], [2,3], [3,0],
+                [4,5], [5,6], [6,7], [7,4],
+                [0,4], [1,5], [2,6], [3,7]
+            ];
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.5)';
+            ctx.lineWidth = 1.2;
+            edges.forEach(([i, j]) => {
+                ctx.beginPath();
+                ctx.moveTo(pts[i].x, pts[i].y);
+                ctx.lineTo(pts[j].x, pts[j].y);
                 ctx.stroke();
             });
 
-            ctx.setLineDash([]);
+            // 3. Draw 3D Spheres (Green Anions & Blue Cations)
+            pts.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+                ctx.fillStyle = '#10b981';
+                ctx.fill();
+            });
+
+            const centerP = project3D(0, 0, 0);
+            ctx.beginPath();
+            ctx.arc(cx + centerP.x, cy + centerP.y, 5, 0, Math.PI * 2);
+            ctx.fillStyle = '#6366f1';
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // Label
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '9px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('3D格子 & 切断面', cx, cy + size + 16);
+
+            ctx.restore();
         }
+
+        // Event Listeners with Magnetic Snap at Contact Points
+        function handleRMinusInput() {
+            let val = parseFloat(rMinusSlider.value);
+            const rPlus = parseFloat(rPlusSlider.value);
+            const m = MODELS[currentModelKey];
+            const geom = evaluateGeometry(val, rPlus, m.id);
+            const snapThreshold = 3.5; // スナップする幅（px）
+
+            // 1. 陰イオン同士がぴったり接する半径 (2 * r- = anionDist)
+            const targetAnionTouch = geom.anionDist / 2;
+            // 2. 陽イオンと陰イオンがぴったり接する半径 (r+ + r- = cationAnionDist)
+            const targetCationTouch = geom.cationAnionDist - rPlus;
+            // 3. 現在のr+に対して限界半径比に一致する半径 (r- = r+ / limitRatio)
+            const targetLimitRatio = rPlus / m.limitRatio;
+
+            const targets = [targetAnionTouch, targetCationTouch, targetLimitRatio];
+            for (const t of targets) {
+                if (t >= parseFloat(rMinusSlider.min) && t <= parseFloat(rMinusSlider.max)) {
+                    if (Math.abs(val - t) < snapThreshold) {
+                        val = t;
+                        rMinusSlider.value = val.toFixed(1);
+                        break;
+                    }
+                }
+            }
+            updateValues();
+        }
+
+        function handleRPlusInput() {
+            let val = parseFloat(rPlusSlider.value);
+            const rMinus = parseFloat(rMinusSlider.value);
+            const m = MODELS[currentModelKey];
+            const geom = evaluateGeometry(rMinus, val, m.id);
+            const snapThreshold = 3.5; // スナップする幅（px）
+
+            // 1. 陽イオンと陰イオンがぴったり接する半径 (r+ + r- = cationAnionDist)
+            const targetCationTouch = geom.cationAnionDist - rMinus;
+            // 2. 現在のr-に対して限界半径比に一致する半径 (r+ = r- * limitRatio)
+            const targetLimitRatio = rMinus * m.limitRatio;
+
+            const targets = [targetCationTouch, targetLimitRatio];
+            for (const t of targets) {
+                if (t >= parseFloat(rPlusSlider.min) && t <= parseFloat(rPlusSlider.max)) {
+                    if (Math.abs(val - t) < snapThreshold) {
+                        val = t;
+                        rPlusSlider.value = val.toFixed(1);
+                        break;
+                    }
+                }
+            }
+            updateValues();
+        }
+
+        rMinusSlider.addEventListener('input', handleRMinusInput);
+        rPlusSlider.addEventListener('input', handleRPlusInput);
+        snapBtn.addEventListener('click', () => {
+            setExactLimitForCurrentModel();
+            updateValues();
+        });
+
+        window.addEventListener('resize', resizeCanvas);
+
+        // Init
+        initModelSelector();
+        setExactLimitForCurrentModel();
+        resizeCanvas();
+        updateValues();
     </script>
 </body>
 </html>

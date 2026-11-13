@@ -3,682 +3,668 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>イオン半径比シミュレーター (スマホ版)</title>
-    <!-- Tailwind CSS -->
+    <title>限界半径比シミュレーター</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Three.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- OrbitControls -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <style>
-        * {
-            box-sizing: border-box;
-            touch-action: manipulation;
-        }
         body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            user-select: none;
-            -webkit-user-select: none;
-            overflow-x: hidden;
-            background-color: #0f172a;
+            font-family: 'Inter', sans-serif;
+            background-color: #020617;
+            color: #f8fafc;
+            overscroll-behavior: none;
         }
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 4px;
+        .code-font {
+            font-family: 'JetBrains Mono', monospace;
         }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.1);
+        canvas {
+            touch-action: none;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 2px;
+        /* カスタムスライダー（指で操作しやすいサイズ） */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            border-radius: 999px;
+            background: #1e293b;
         }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        #rMinusSlider::-webkit-slider-thumb { background: #10b981; border: 2px solid #ecfdf5; }
+        #rPlusSlider::-webkit-slider-thumb { background: #6366f1; border: 2px solid #eef2ff; }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 flex flex-col h-screen w-screen overflow-hidden">
+<body class="h-[100dvh] max-h-[100dvh] flex flex-col overflow-hidden p-2 gap-1.5 select-none">
 
-    <!-- Scroll Container for Mobile -->
-    <div class="flex-1 flex flex-col h-full overflow-y-auto custom-scrollbar">
-
-        <!-- STEP 1: イオン半径比コントロール (3D図の上に配置・最上部) -->
-        <div class="p-2.5 bg-slate-800/95 border-b border-slate-700/80 flex-shrink-0 z-20 space-y-1.5 shadow-md">
-            <div class="flex justify-between items-center px-1">
-                <span class="text-xs font-bold text-slate-200">イオン半径比 (<span class="italic text-yellow-400">r⁺/r⁻</span>)</span>
-                <div class="flex items-center gap-2">
-                    <span id="ratioVal" class="text-sm font-mono font-bold text-yellow-400">0.732</span>
-                    <span id="coordBadge" class="px-2 py-0.5 text-[10px] rounded-full font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                        配位数: 8
-                    </span>
-                </div>
-            </div>
-            <!-- 半径比スライダー -->
-            <input type="range" id="ratioSlider" min="0.15" max="1.0" step="0.005" value="0.732"
-                class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-400">
+    <!-- 1. 格子選択バー -->
+    <header class="flex items-center justify-between gap-1.5 flex-shrink-0">
+        <div class="grid grid-cols-3 gap-1 flex-1" id="modelSelectGroup">
+            <!-- JSで動的生成 -->
         </div>
+        <button id="snapToLimitBtn" class="bg-amber-500 active:bg-amber-400 text-slate-950 font-bold text-[11px] px-2.5 py-2 rounded-lg shadow whitespace-nowrap">
+            限界値
+        </button>
+    </header>
 
-        <!-- STEP 2: 3D / 2D Canvas 表示領域 (画面中央部) -->
-        <div class="relative w-full h-[36vh] min-h-[220px] max-h-[340px] bg-slate-950 flex-shrink-0 border-b border-slate-800">
-            <!-- 3D Canvas -->
-            <div id="canvas3d-container" class="w-full h-full absolute inset-0"></div>
-
-            <!-- 2D Canvas -->
-            <div id="canvas2d-container" class="w-full h-full absolute inset-0 hidden flex items-center justify-center p-2">
-                <canvas id="canvas2d" class="max-w-full max-h-full bg-slate-900/50 rounded-xl border border-slate-800"></canvas>
+    <!-- 2. スライダー操作エリア -->
+    <section class="bg-slate-900/90 border border-slate-800 rounded-xl px-3 py-2 flex-shrink-0 grid grid-cols-2 gap-3">
+        <!-- 陰イオン -->
+        <div class="flex flex-col gap-1">
+            <div class="flex justify-between items-center text-[11px]">
+                <span class="text-emerald-400 font-bold">陰イオン r-</span>
+                <span class="code-font text-slate-300 text-[10px]" id="rMinusVal">90</span>
             </div>
-
-            <!-- 構造名オーバーレイ (左上) -->
-            <div class="absolute top-2 left-2 bg-slate-900/85 backdrop-blur border border-slate-800 px-2.5 py-1 rounded-lg pointer-events-none">
-                <h2 id="structureTitle" class="text-xs font-bold text-cyan-300">CsCl 型</h2>
-            </div>
-
-            <!-- 3D操作ヒント (右下) -->
-            <div class="absolute bottom-2 right-2 text-[10px] text-slate-400 bg-slate-900/80 px-2 py-0.5 rounded border border-slate-800 pointer-events-none">
-                回転: ドラッグ | 拡大: ピンチ
-            </div>
+            <input type="range" id="rMinusSlider" min="25" max="115" value="90" step="0.5" class="w-full">
         </div>
-
-        <!-- STEP 3: 主要パラメータ & モード切替（3D図のすぐ下に配置・1画面内） -->
-        <div class="p-2.5 bg-slate-800/95 border-b border-slate-700/80 flex-shrink-0 z-20 space-y-2 shadow-sm">
-            
-            <!-- 表示モード切替 (3D / 2D) & 限界ジャンプボタン -->
-            <div class="flex gap-1.5 items-center justify-between">
-                <!-- 3D / 2D 切り替え -->
-                <div class="flex bg-slate-900 p-0.5 rounded-lg border border-slate-700/80 shrink-0">
-                    <button id="view3dBtn" onclick="switchView('3D')" class="px-2.5 py-1 rounded text-[11px] font-bold bg-indigo-600 text-white transition-colors">
-                        3D
-                    </button>
-                    <button id="view2dBtn" onclick="switchView('2D')" class="px-2.5 py-1 rounded text-[11px] font-bold text-slate-400 hover:text-white transition-colors">
-                        2D 断面
-                    </button>
-                </div>
-
-                <!-- 限界半径比 クイック選択 -->
-                <div class="grid grid-cols-3 gap-1 flex-1 pl-1">
-                    <button onclick="setRatio(0.225)" class="py-1 text-[10px] font-semibold bg-slate-700 hover:bg-slate-600 rounded text-slate-200 border border-slate-600 transition-colors text-center">
-                        0.225 (ZnS)
-                    </button>
-                    <button onclick="setRatio(0.414)" class="py-1 text-[10px] font-semibold bg-slate-700 hover:bg-slate-600 rounded text-slate-200 border border-slate-600 transition-colors text-center">
-                        0.414 (NaCl)
-                    </button>
-                    <button onclick="setRatio(0.732)" class="py-1 text-[10px] font-semibold bg-slate-700 hover:bg-slate-600 rounded text-slate-200 border border-slate-600 transition-colors text-center">
-                        0.732 (CsCl)
-                    </button>
-                </div>
+        <!-- 陽イオン -->
+        <div class="flex flex-col gap-1">
+            <div class="flex justify-between items-center text-[11px]">
+                <span class="text-indigo-400 font-bold">陽イオン r+</span>
+                <span class="code-font text-slate-300 text-[10px]" id="rPlusVal">37.3</span>
             </div>
+            <input type="range" id="rPlusSlider" min="5" max="115" value="37.3" step="0.1" class="w-full">
+        </div>
+    </section>
 
-            <!-- 状態メッセージ -->
-            <div id="stabilityWarning" class="text-[11px] p-1.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 flex items-center gap-1.5 leading-tight">
-                <i data-lucide="alert-triangle" class="w-3.5 h-3.5 shrink-0"></i>
-                <span id="warningText" class="truncate">限界半径比 (0.732): 接触限界</span>
+    <!-- 3. ステータス & 半径比バー -->
+    <section class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 flex items-center justify-between gap-2 flex-shrink-0">
+        <div class="flex items-baseline gap-1.5 whitespace-nowrap">
+            <span class="text-[10px] text-slate-400">r+/r-</span>
+            <span class="text-base font-bold code-font text-white" id="currentRatio">0.414</span>
+            <span class="text-[10px] code-font text-slate-400" id="targetRatioHint">/ 0.414</span>
+        </div>
+        <div id="statusBadge" class="px-2 py-0.5 rounded text-[11px] font-bold truncate">
+            <!-- JSで動的更新 -->
+        </div>
+    </section>
+
+    <!-- 4. 2D断面図 + 3D格子図 メインキャンバス -->
+    <main class="flex-1 relative bg-slate-900 border border-slate-800 rounded-xl overflow-hidden min-h-0" id="canvasCard">
+        <!-- 切断面ラベル & 凡例 -->
+        <div class="absolute top-2 left-2.5 flex flex-col items-start gap-1 pointer-events-none z-10">
+            <span class="text-[11px] font-semibold text-slate-300 bg-slate-950/75 px-2 py-0.5 rounded border border-slate-800" id="planeLabel">
+                (100)面
+            </span>
+            <div class="flex items-center gap-2 text-[10px] bg-slate-950/75 px-2 py-0.5 rounded border border-slate-800">
+                <span class="flex items-center gap-1 text-emerald-400"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>r-</span>
+                <span class="flex items-center gap-1 text-indigo-400"><span class="w-2 h-2 rounded-full bg-indigo-500"></span>r+</span>
+                <span class="flex items-center gap-1 text-amber-400"><span class="w-2 h-0.5 bg-amber-400"></span>a</span>
             </div>
         </div>
 
-        <!-- STEP 4: 残りの詳細パラメータ & 情報（スクロールで閲覧可能） -->
-        <div class="p-3 bg-slate-900 space-y-3.5 flex-1">
-            
-            <!-- 格子サイズ & 表示オプション -->
-            <div class="bg-slate-800/50 p-2.5 rounded-lg border border-slate-700/60 space-y-2.5">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-semibold text-slate-300">格子サイズ</span>
-                    <div class="flex gap-1">
-                        <button id="grid1Btn" onclick="setGridSize(1)" class="px-2.5 py-1 text-[11px] font-bold rounded bg-indigo-600 text-white border border-indigo-500">
-                            1×1×1
-                        </button>
-                        <button id="grid2Btn" onclick="setGridSize(2)" class="px-2.5 py-1 text-[11px] font-bold rounded bg-slate-700 text-slate-300 border border-slate-600">
-                            2×2×2
-                        </button>
-                    </div>
-                </div>
+        <canvas id="viewCanvas" class="w-full h-full block"></canvas>
 
-                <!-- 陰イオン透過度 -->
-                <div class="space-y-1">
-                    <div class="flex justify-between text-xs text-slate-300">
-                        <span>陰イオン透過度</span>
-                        <span id="opacityVal" class="font-mono text-cyan-400">0.65</span>
-                    </div>
-                    <input type="range" id="opacitySlider" min="0.1" max="1.0" step="0.05" value="0.65"
-                        class="w-full h-1.5 bg-slate-700 rounded appearance-none cursor-pointer accent-cyan-400">
-                </div>
-
-                <!-- チェックボックス類 -->
-                <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-700/60 text-xs">
-                    <label class="flex items-center justify-between p-1.5 rounded bg-slate-900/60 border border-slate-700/50 cursor-pointer">
-                        <span class="text-[11px] text-slate-300">イオン小表示</span>
-                        <input type="checkbox" id="smallSpheresCheck" class="w-3.5 h-3.5 rounded accent-indigo-500">
-                    </label>
-                    <label class="flex items-center justify-between p-1.5 rounded bg-slate-900/60 border border-slate-700/50 cursor-pointer">
-                        <span class="text-[11px] text-slate-300">単位格子枠線</span>
-                        <input type="checkbox" id="showBoxCheck" checked class="w-3.5 h-3.5 rounded accent-indigo-500">
-                    </label>
-                </div>
-            </div>
-
-            <!-- 限界半径比一覧テーブル -->
-            <div class="bg-slate-800/40 rounded-lg p-2 border border-slate-700/60">
-                <table class="w-full text-[11px] text-left text-slate-300 border-collapse">
-                    <thead class="text-slate-400 border-b border-slate-700">
-                        <tr>
-                            <th class="py-1 px-1.5">配位数</th>
-                            <th class="py-1 px-1.5">限界半径比 (<span class="italic">r⁺/r⁻</span>)</th>
-                            <th class="py-1 px-1.5">構造</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-800">
-                        <tr id="row8" class="transition-colors">
-                            <td class="py-1 px-1.5 font-bold">8</td>
-                            <td class="py-1 px-1.5 font-mono">≧ 0.732</td>
-                            <td class="py-1 px-1.5">CsCl型</td>
-                        </tr>
-                        <tr id="row6" class="transition-colors">
-                            <td class="py-1 px-1.5 font-bold">6</td>
-                            <td class="py-1 px-1.5 font-mono">0.414 〜 0.732</td>
-                            <td class="py-1 px-1.5">NaCl型</td>
-                        </tr>
-                        <tr id="row4" class="transition-colors">
-                            <td class="py-1 px-1.5 font-bold">4</td>
-                            <td class="py-1 px-1.5 font-mono">0.225 〜 0.414</td>
-                            <td class="py-1 px-1.5">ZnS型</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- 解説カード -->
-            <div id="explanationBox" class="bg-slate-950/80 p-2.5 rounded-lg border border-slate-800 text-[11px] text-slate-300 space-y-1 leading-snug">
-                <!-- 動的挿入 -->
-            </div>
-
-            <!-- フッター -->
-            <div class="text-center text-[10px] text-slate-500 pt-1 pb-4">
-                Ion Radius Ratio Simulator (Mobile)
+        <!-- 下部 幾何学的導出式（1行コンパクト表示） -->
+        <div class="absolute bottom-2 left-2.5 right-2.5 pointer-events-none flex justify-center">
+            <div class="bg-slate-950/85 border border-slate-800/90 px-2.5 py-1 rounded-lg text-[10px] code-font text-slate-300 text-center" id="formulaCompact">
+                <!-- JSで動的更新 -->
             </div>
         </div>
+    </main>
 
-    </div>
-
-    <!-- JavaScript ロジック -->
     <script>
-        lucide.createIcons();
-
-        // アプリケーション状態
-        const state = {
-            viewMode: '3D',
-            gridSize: 1,
-            ratio: 0.732,
-            rMinus: 1.0,
-            rPlus: 0.732,
-            opacity: 0.65,
-            showBox: true,
-            smallSpheres: false
+        const MODELS = {
+            zns: {
+                id: 'zns',
+                name: 'ZnS型',
+                coord: 4,
+                limitRatio: Math.sqrt(1.5) - 1, // 0.2247
+                planeName: '(110)断面 / 4配位',
+                formula: 'r+/r- = √(3/2) - 1 ≈ 0.225'
+            },
+            nacl: {
+                id: 'nacl',
+                name: 'NaCl型',
+                coord: 6,
+                limitRatio: Math.SQRT2 - 1, // 0.4142
+                planeName: '(100)断面 / 6配位',
+                formula: 'r+/r- = √2 - 1 ≈ 0.414'
+            },
+            cscl: {
+                id: 'cscl',
+                name: 'CsCl型',
+                coord: 8,
+                limitRatio: Math.sqrt(3) - 1, // 0.7321
+                planeName: '(110)断面 / 8配位',
+                formula: 'r+/r- = √3 - 1 ≈ 0.732'
+            }
         };
 
-        let scene, camera, renderer, controls;
-        let anionMeshes = [];
-        let cationMeshes = [];
-        let boxHelpers = [];
+        let currentModelKey = 'nacl';
+        const canvas = document.getElementById('viewCanvas');
+        const ctx = canvas.getContext('2d');
 
-        const ratioSlider = document.getElementById('ratioSlider');
-        const opacitySlider = document.getElementById('opacitySlider');
-        const showBoxCheck = document.getElementById('showBoxCheck');
-        const smallSpheresCheck = document.getElementById('smallSpheresCheck');
+        // 基準格子サイズ（画面サイズに応じて動的にスケーリング）
+        let LATTICE_A_PX = 150;
 
-        window.addEventListener('DOMContentLoaded', () => {
-            init3D();
-            setupEvents();
-            updateAll();
-        });
+        // UI要素
+        const rMinusSlider = document.getElementById('rMinusSlider');
+        const rPlusSlider = document.getElementById('rPlusSlider');
+        const rMinusVal = document.getElementById('rMinusVal');
+        const rPlusVal = document.getElementById('rPlusVal');
+        const currentRatioEl = document.getElementById('currentRatio');
+        const targetRatioHint = document.getElementById('targetRatioHint');
+        const statusBadge = document.getElementById('statusBadge');
+        const snapBtn = document.getElementById('snapToLimitBtn');
+        const planeLabel = document.getElementById('planeLabel');
+        const formulaCompact = document.getElementById('formulaCompact');
+        const modelSelectGroup = document.getElementById('modelSelectGroup');
+        const canvasCard = document.getElementById('canvasCard');
 
-        function setGridSize(size) {
-            state.gridSize = size;
-            [1, 2].forEach(n => {
-                const btn = document.getElementById(`grid${n}Btn`);
-                if (n === size) {
-                    btn.className = "px-2.5 py-1 text-[11px] font-bold rounded bg-indigo-600 text-white border border-indigo-500";
-                } else {
-                    btn.className = "px-2.5 py-1 text-[11px] font-bold rounded bg-slate-700 text-slate-300 border border-slate-600";
-                }
+        function initModelSelector() {
+            modelSelectGroup.innerHTML = '';
+            Object.keys(MODELS).forEach(key => {
+                const m = MODELS[key];
+                const isSelected = key === currentModelKey;
+                const btn = document.createElement('button');
+                btn.className = `py-1.5 px-1 rounded-lg border text-center transition-all flex flex-col items-center justify-center leading-tight ${
+                    isSelected 
+                    ? 'bg-indigo-600 border-indigo-400 text-white font-bold shadow' 
+                    : 'bg-slate-900 border-slate-800 text-slate-400'
+                }`;
+                btn.onclick = () => selectModel(key);
+                btn.innerHTML = `
+                    <span class="text-xs">${m.name}</span>
+                    <span class="text-[9px] code-font ${isSelected ? 'text-indigo-200' : 'text-slate-500'}">${m.limitRatio.toFixed(3)}</span>
+                `;
+                modelSelectGroup.appendChild(btn);
             });
-
-            if (controls) {
-                const dist = size === 1 ? 7 : 13;
-                camera.position.set(dist * 0.7, dist * 0.5, dist);
-                controls.update();
-            }
-
-            updateAll();
         }
 
-        function init3D() {
-            const container = document.getElementById('canvas3d-container');
+        function setExactLimitForCurrentModel() {
+            const m = MODELS[currentModelKey];
+            const exactRMinus = LATTICE_A_PX / 2;
+            const exactRPlus = exactRMinus * m.limitRatio;
+
+            rMinusSlider.value = exactRMinus.toFixed(1);
+            rPlusSlider.value = exactRPlus.toFixed(1);
+        }
+
+        function selectModel(key) {
+            currentModelKey = key;
+            setExactLimitForCurrentModel();
+            initModelSelector();
+            updateValues();
+        }
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.resetTransform();
+            ctx.scale(dpr, dpr);
+
+            // 画面幅・高さに合わせて最適な格子サイズを算出（2D図と3D図が重ならないように調整）
+            const prevA = LATTICE_A_PX;
+            LATTICE_A_PX = Math.min(rect.width * 0.42, rect.height * 0.42, 170);
             
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x020617);
+            // スライダーの相対比率を維持して更新
+            const scaleRatio = LATTICE_A_PX / prevA;
+            rMinusSlider.max = Math.round(LATTICE_A_PX * 0.78);
+            rPlusSlider.max = Math.round(LATTICE_A_PX * 0.78);
+            rMinusSlider.value = (parseFloat(rMinusSlider.value) * scaleRatio).toFixed(1);
+            rPlusSlider.value = (parseFloat(rPlusSlider.value) * scaleRatio).toFixed(1);
 
-            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
-            camera.position.set(5, 4, 7);
+            updateValues();
+        }
 
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(container.clientWidth, container.clientHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            renderer.shadowMap.enabled = true;
-            container.appendChild(renderer.domElement);
+        function evaluateGeometry(rMinus, rPlus, modelId) {
+            let anionDist = LATTICE_A_PX;
+            let cationAnionDist = 0;
 
-            controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.08;
-
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
-            scene.add(ambientLight);
-
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
-            dirLight.position.set(10, 15, 10);
-            scene.add(dirLight);
-
-            const dirLight2 = new THREE.DirectionalLight(0x38bdf8, 0.35);
-            dirLight2.position.set(-10, -10, -10);
-            scene.add(dirLight2);
-
-            window.addEventListener('resize', onWindowResize);
-
-            function animate() {
-                requestAnimationFrame(animate);
-                controls.update();
-                renderer.render(scene, camera);
+            if (modelId === 'nacl') {
+                cationAnionDist = (LATTICE_A_PX * Math.SQRT2) / 2;
+            } else if (modelId === 'cscl') {
+                cationAnionDist = (LATTICE_A_PX * Math.sqrt(3)) / 2;
+            } else if (modelId === 'zns') {
+                cationAnionDist = LATTICE_A_PX * (Math.sqrt(1.5) / 2);
             }
-            animate();
+
+            return {
+                anionDist,
+                cationAnionDist,
+                anionOverlap: (2 * rMinus) - anionDist,
+                cationAnionOverlap: (rPlus + rMinus) - cationAnionDist
+            };
         }
 
-        function onWindowResize() {
-            const container = document.getElementById('canvas3d-container');
-            if (!container) return;
-            camera.aspect = container.clientWidth / container.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(container.clientWidth, container.clientHeight);
-            render2D();
-        }
+        function updateValues() {
+            const rMinus = parseFloat(rMinusSlider.value);
+            const rPlus = parseFloat(rPlusSlider.value);
+            const m = MODELS[currentModelKey];
+            const ratio = rPlus / rMinus;
 
-        function setupEvents() {
-            ratioSlider.addEventListener('input', (e) => {
-                state.ratio = parseFloat(e.target.value);
-                state.rPlus = state.ratio * state.rMinus;
-                updateAll();
-            });
+            rMinusVal.innerText = Math.round(rMinus);
+            rPlusVal.innerText = Math.round(rPlus);
+            currentRatioEl.innerText = ratio.toFixed(3);
+            targetRatioHint.innerText = `/ ${m.limitRatio.toFixed(3)}`;
 
-            opacitySlider.addEventListener('input', (e) => {
-                state.opacity = parseFloat(e.target.value);
-                document.getElementById('opacityVal').innerText = state.opacity.toFixed(2);
-                update3DMaterials();
-            });
+            const geom = evaluateGeometry(rMinus, rPlus, m.id);
+            const isAtLimitRatio = Math.abs(ratio - m.limitRatio) <= 0.008;
+            const isExactTouch = Math.abs(geom.anionOverlap) <= 3.5 && Math.abs(geom.cationAnionOverlap) <= 3.5;
+            const isLimitHighlighted = isAtLimitRatio && isExactTouch;
 
-            showBoxCheck.addEventListener('change', (e) => {
-                state.showBox = e.target.checked;
-                boxHelpers.forEach(box => {
-                    box.visible = state.showBox;
-                });
-            });
+            // 限界時の枠線強調
+            canvasCard.style.borderColor = isLimitHighlighted ? '#facc15' : '#1e293b';
 
-            smallSpheresCheck.addEventListener('change', (e) => {
-                state.smallSpheres = e.target.checked;
-                updateAll();
-            });
-        }
-
-        function setRatio(val) {
-            state.ratio = val;
-            ratioSlider.value = val;
-            state.rPlus = state.ratio * state.rMinus;
-            updateAll();
-        }
-
-        function switchView(mode) {
-            state.viewMode = mode;
-            const btn3d = document.getElementById('view3dBtn');
-            const btn2d = document.getElementById('view2dBtn');
-            const c3d = document.getElementById('canvas3d-container');
-            const c2d = document.getElementById('canvas2d-container');
-
-            if (mode === '3D') {
-                btn3d.className = "px-2.5 py-1 rounded text-[11px] font-bold bg-indigo-600 text-white transition-colors";
-                btn2d.className = "px-2.5 py-1 rounded text-[11px] font-bold text-slate-400 hover:text-white transition-colors";
-                c3d.classList.remove('hidden');
-                c2d.classList.add('hidden');
+            // コンパクトな状態バッジ更新
+            if (geom.anionOverlap > 2.5 && geom.cationAnionOverlap > 2.5) {
+                statusBadge.className = 'px-2 py-0.5 rounded text-[11px] font-bold bg-red-950 text-red-300 border border-red-700';
+                statusBadge.innerText = '不安定（イオン過重なり）';
+            } else if (geom.anionOverlap > 2.5) {
+                statusBadge.className = 'px-2 py-0.5 rounded text-[11px] font-bold bg-red-950 text-red-300 border border-red-700';
+                statusBadge.innerText = '不安定（陰イオン同士重なり）';
+            } else if (geom.cationAnionOverlap > 2.5) {
+                statusBadge.className = 'px-2 py-0.5 rounded text-[11px] font-bold bg-amber-950 text-amber-300 border border-amber-700';
+                statusBadge.innerText = '格子膨張（陽イオン過大）';
+            } else if (geom.cationAnionOverlap < -2.5) {
+                statusBadge.className = 'px-2 py-0.5 rounded text-[11px] font-bold bg-slate-800 text-slate-300 border border-slate-600';
+                statusBadge.innerText = '隙間あり（非接触・仮想状態）';
+            } else if (isLimitHighlighted) {
+                statusBadge.className = 'px-2 py-0.5 rounded text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-400';
+                statusBadge.innerText = '★ 限界状態（全イオン接触）';
+            } else if (ratio < m.limitRatio) {
+                statusBadge.className = 'px-2 py-0.5 rounded text-[11px] font-bold bg-red-950 text-red-300 border border-red-700';
+                statusBadge.innerText = '不安定（陽イオン過小）';
             } else {
-                btn2d.className = "px-2.5 py-1 rounded text-[11px] font-bold bg-indigo-600 text-white transition-colors";
-                btn3d.className = "px-2.5 py-1 rounded text-[11px] font-bold text-slate-400 hover:text-white transition-colors";
-                c2d.classList.remove('hidden');
-                c3d.classList.add('hidden');
-                render2D();
+                statusBadge.className = 'px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-700';
+                statusBadge.innerText = `安定（${m.coord}配位維持）`;
             }
+
+            planeLabel.innerText = m.planeName;
+            formulaCompact.innerText = m.formula;
+
+            draw(geom, isLimitHighlighted);
         }
 
-        function updateAll() {
-            document.getElementById('ratioVal').innerText = state.ratio.toFixed(3);
+        function drawDimensionLine(ctx, x1, y1, x2, y2, label, color, offset = 0) {
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const len = Math.hypot(dx, dy);
+            if (len < 1) return;
 
-            let coord, typeName, warningMsg, expHtml;
-            const r = state.ratio;
+            const ux = dx / len;
+            const uy = dy / len;
+            const nx = -uy;
+            const ny = ux;
 
-            document.getElementById('row8').className = "transition-colors";
-            document.getElementById('row6').className = "transition-colors";
-            document.getElementById('row4').className = "transition-colors";
+            const sx1 = x1 + nx * offset;
+            const sy1 = y1 + ny * offset;
+            const sx2 = x2 + nx * offset;
+            const sy2 = y2 + ny * offset;
 
-            if (r >= 0.732) {
-                coord = 8;
-                typeName = "CsCl 型 (体心立方状)";
-                document.getElementById('row8').className = "bg-indigo-950/80 font-bold border-l-2 border-indigo-500 text-indigo-300";
-                
-                if (Math.abs(r - 0.732) < 0.01) {
-                    warningMsg = "限界半径比 (0.732): 8個の陰イオンと中央陽イオンが同時接触";
-                } else {
-                    warningMsg = "安定: 陽イオンが大きく陰イオンが反発しません";
-                }
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 1.3;
 
-                expHtml = `
-                    <p><strong class="text-indigo-400">配位数 8 (CsCl型)</strong></p>
-                    <p>頂点に陰イオン8個、中心に陽イオン1個。r⁺/r⁻ < 0.732 で配位数6へ転移します。</p>
-                `;
-            } else if (r >= 0.414) {
-                coord = 6;
-                typeName = "NaCl 型 (塩化ナトリウム型)";
-                document.getElementById('row6').className = "bg-indigo-950/80 font-bold border-l-2 border-indigo-500 text-indigo-300";
-
-                if (Math.abs(r - 0.414) < 0.01) {
-                    warningMsg = "限界半径比 (0.414): 6個の陰イオンと中央陽イオンが同時接触";
-                } else if (r > 0.70) {
-                    warningMsg = "不安定化: 0.732以上で CsCl型 の方が安定";
-                } else {
-                    warningMsg = "安定: 正八面体配位";
-                }
-
-                expHtml = `
-                    <p><strong class="text-indigo-400">配位数 6 (NaCl型)</strong></p>
-                    <p>前後左右上下に陰イオン6個。r⁺/r⁻ < 0.414 で配位数4へ転移します。</p>
-                `;
-            } else {
-                coord = 4;
-                typeName = "ZnS 型 (閃亜鉛鉱型)";
-                document.getElementById('row4').className = "bg-indigo-950/80 font-bold border-l-2 border-indigo-500 text-indigo-300";
-
-                if (Math.abs(r - 0.225) < 0.01) {
-                    warningMsg = "限界半径比 (0.225): 4個の陰イオンと中央陽イオンが同時接触";
-                } else {
-                    warningMsg = "配位数 4: 陽イオンが小さく4個配位が限界";
-                }
-
-                expHtml = `
-                    <p><strong class="text-indigo-400">配位数 4 (ZnS型)</strong></p>
-                    <p>正四面体の頂点に陰イオン4個。r⁺/r⁻ < 0.225 で結晶構造維持が不可能になります。</p>
-                `;
+            if (Math.abs(offset) > 2) {
+                ctx.save();
+                ctx.setLineDash([2, 2]);
+                ctx.globalAlpha = 0.45;
+                ctx.beginPath();
+                ctx.moveTo(x1, y1); ctx.lineTo(sx1, sy1);
+                ctx.moveTo(x2, y2); ctx.lineTo(sx2, sy2);
+                ctx.stroke();
+                ctx.restore();
             }
 
-            document.getElementById('coordBadge').innerText = `配位数: ${coord}`;
-            document.getElementById('structureTitle').innerText = typeName;
-            document.getElementById('warningText').innerText = warningMsg;
-            document.getElementById('explanationBox').innerHTML = expHtml;
-
-            build3DScene(coord);
-            if (state.viewMode === '2D') {
-                render2D();
-            }
-        }
-
-        function build3DScene(coord) {
-            anionMeshes.forEach(m => scene.remove(m));
-            cationMeshes.forEach(m => scene.remove(m));
-            boxHelpers.forEach(b => scene.remove(b));
-            anionMeshes = [];
-            cationMeshes = [];
-            boxHelpers = [];
-
-            const scaleFactor = state.smallSpheres ? 0.35 : 1.0;
-            const effectiveRMinus = state.rMinus * scaleFactor;
-            const effectiveRPlus = state.rPlus * scaleFactor;
-
-            const anionGeo = new THREE.SphereGeometry(effectiveRMinus, 20, 20);
-            const cationGeo = new THREE.SphereGeometry(effectiveRPlus, 20, 20);
-
-            const anionMat = new THREE.MeshStandardMaterial({
-                color: 0xec4899,
-                transparent: true,
-                opacity: state.smallSpheres ? 0.95 : state.opacity,
-                roughness: 0.3
-            });
-
-            const cationMat = new THREE.MeshStandardMaterial({
-                color: 0x06b6d4,
-                roughness: 0.2
-            });
-
-            const lineMat = new THREE.LineBasicMaterial({ color: 0x64748b, linewidth: 1 });
-
-            const anionPositionsSet = new Set();
-            const cationPositionsSet = new Set();
-
-            function addAnion(x, y, z) {
-                const key = `${x.toFixed(3)},${y.toFixed(3)},${z.toFixed(3)}`;
-                if (!anionPositionsSet.has(key)) {
-                    anionPositionsSet.add(key);
-                    const mesh = new THREE.Mesh(anionGeo, anionMat);
-                    mesh.position.set(x, y, z);
-                    scene.add(mesh);
-                    anionMeshes.push(mesh);
-                }
-            }
-
-            function addCation(x, y, z) {
-                const key = `${x.toFixed(3)},${y.toFixed(3)},${z.toFixed(3)}`;
-                if (!cationPositionsSet.has(key)) {
-                    cationPositionsSet.add(key);
-                    const mesh = new THREE.Mesh(cationGeo, cationMat);
-                    mesh.position.set(x, y, z);
-                    scene.add(mesh);
-                    cationMeshes.push(mesh);
-                }
-            }
-
-            const N = state.gridSize;
-
-            if (coord === 8) {
-                const d = (state.rMinus + state.rPlus) / Math.sqrt(3);
-                const L = d * 2;
-                const offset = (N * L) / 2;
-
-                const baseAnions = [
-                    [-d, -d, -d], [d, -d, -d], [-d, d, -d], [d, d, -d],
-                    [-d, -d,  d], [d, -d,  d], [-d, d,  d], [d, d,  d]
-                ];
-
-                for (let ix = 0; ix < N; ix++) {
-                    for (let iy = 0; iy < N; iy++) {
-                        for (let iz = 0; iz < N; iz++) {
-                            const cx = (ix + 0.5) * L - offset;
-                            const cy = (iy + 0.5) * L - offset;
-                            const cz = (iz + 0.5) * L - offset;
-
-                            baseAnions.forEach(pos => addAnion(cx + pos[0], cy + pos[1], cz + pos[2]));
-                            addCation(cx, cy, cz);
-
-                            const boxGeo = new THREE.BoxGeometry(L, L, L);
-                            const wireGeo = new THREE.WireframeGeometry(boxGeo);
-                            const box = new THREE.LineSegments(wireGeo, lineMat);
-                            box.position.set(cx, cy, cz);
-                            box.visible = state.showBox;
-                            scene.add(box);
-                            boxHelpers.push(box);
-                        }
-                    }
-                }
-
-            } else if (coord === 6) {
-                const a = (state.rMinus + state.rPlus) * 2;
-                const offset = (N * a) / 2;
-
-                for (let ix = 0; ix < N; ix++) {
-                    for (let iy = 0; iy < N; iy++) {
-                        for (let iz = 0; iz < N; iz++) {
-                            const x0 = ix * a - offset;
-                            const y0 = iy * a - offset;
-                            const z0 = iz * a - offset;
-
-                            const anionRels = [
-                                [0,0,0], [a,0,0], [0,a,0], [a,a,0], [0,0,a], [a,0,a], [0,a,a], [a,a,a],
-                                [a/2, a/2, 0], [a/2, a/2, a], [a/2, 0, a/2], [a/2, a, a/2], [0, a/2, a/2], [a, a/2, a/2]
-                            ];
-                            anionRels.forEach(p => addAnion(x0 + p[0], y0 + p[1], z0 + p[2]));
-
-                            const cationRels = [
-                                [a/2, 0, 0], [0, a/2, 0], [0, 0, a/2],
-                                [a/2, a, 0], [a, a/2, 0], [a/2, 0, a], [0, a/2, a], [a/2, a, a], [a, a/2, a],
-                                [0, a, a/2], [a, 0, a/2], [a, a, a/2],
-                                [a/2, a/2, a/2]
-                            ];
-                            cationRels.forEach(p => addCation(x0 + p[0], y0 + p[1], z0 + p[2]));
-
-                            const boxGeo = new THREE.BoxGeometry(a, a, a);
-                            const wireGeo = new THREE.WireframeGeometry(boxGeo);
-                            const box = new THREE.LineSegments(wireGeo, lineMat);
-                            box.position.set(x0 + a/2, y0 + a/2, z0 + a/2);
-                            box.visible = state.showBox;
-                            scene.add(box);
-                            boxHelpers.push(box);
-                        }
-                    }
-                }
-
-            } else if (coord === 4) {
-                const a = ((state.rMinus + state.rPlus) * 4) / Math.sqrt(3);
-                const offset = (N * a) / 2;
-
-                for (let ix = 0; ix < N; ix++) {
-                    for (let iy = 0; iy < N; iy++) {
-                        for (let iz = 0; iz < N; iz++) {
-                            const x0 = ix * a - offset;
-                            const y0 = iy * a - offset;
-                            const z0 = iz * a - offset;
-
-                            const anionRels = [
-                                [0,0,0], [a,0,0], [0,a,0], [a,a,0], [0,0,a], [a,0,a], [0,a,a], [a,a,a],
-                                [a/2, a/2, 0], [a/2, a/2, a], [a/2, 0, a/2], [a/2, a, a/2], [0, a/2, a/2], [a, a/2, a/2]
-                            ];
-                            anionRels.forEach(p => addAnion(x0 + p[0], y0 + p[1], z0 + p[2]));
-
-                            const cationRels = [
-                                [a/4, a/4, a/4],
-                                [3*a/4, 3*a/4, a/4],
-                                [3*a/4, a/4, 3*a/4],
-                                [a/4, 3*a/4, 3*a/4]
-                            ];
-                            cationRels.forEach(p => addCation(x0 + p[0], y0 + p[1], z0 + p[2]));
-
-                            const boxGeo = new THREE.BoxGeometry(a, a, a);
-                            const wireGeo = new THREE.WireframeGeometry(boxGeo);
-                            const box = new THREE.LineSegments(wireGeo, lineMat);
-                            box.position.set(x0 + a/2, y0 + a/2, z0 + a/2);
-                            box.visible = state.showBox;
-                            scene.add(box);
-                            boxHelpers.push(box);
-                        }
-                    }
-                }
-            }
-        }
-
-        function update3DMaterials() {
-            anionMeshes.forEach(mesh => {
-                mesh.material.opacity = state.opacity;
-            });
-        }
-
-        function render2D() {
-            const canvas = document.getElementById('canvas2d');
-            const ctx = canvas.getContext('2d');
-            
-            const size = Math.min(canvas.parentElement.clientWidth - 20, canvas.parentElement.clientHeight - 20, 320);
-            canvas.width = size;
-            canvas.height = size;
-
-            ctx.clearRect(0, 0, size, size);
-
-            const centerX = size / 2;
-            const centerY = size / 2;
-            const scale = size / 4.5;
-
-            const scaleFactor = state.smallSpheres ? 0.35 : 1.0;
-            const rPlus = state.rPlus * scale * scaleFactor;
-            const rMinus = state.rMinus * scale * scaleFactor;
-
-            const r = state.ratio;
-
-            if (r >= 0.732) {
-                const distCorner = (state.rMinus + state.rPlus) * scale;
-                drawCircle(ctx, centerX, centerY, rPlus, '#06b6d4', '#06b6d4');
-
-                const angles = [Math.PI/4, 3*Math.PI/4, 5*Math.PI/4, 7*Math.PI/4];
-                angles.forEach(ang => {
-                    const x = centerX + Math.cos(ang) * distCorner;
-                    const y = centerY + Math.sin(ang) * distCorner;
-                    drawCircle(ctx, x, y, rMinus, state.smallSpheres ? 'rgba(236, 72, 153, 0.9)' : 'rgba(236, 72, 153, 0.5)', '#ec4899');
-                });
-
-                drawContactLines(ctx, centerX, centerY, distCorner, angles);
-
-            } else if (r >= 0.414) {
-                const distAxis = (state.rMinus + state.rPlus) * scale;
-                drawCircle(ctx, centerX, centerY, rPlus, '#06b6d4', '#06b6d4');
-
-                const angles = [0, Math.PI/2, Math.PI, 3*Math.PI/2];
-                angles.forEach(ang => {
-                    const x = centerX + Math.cos(ang) * distAxis;
-                    const y = centerY + Math.sin(ang) * distAxis;
-                    drawCircle(ctx, x, y, rMinus, state.smallSpheres ? 'rgba(236, 72, 153, 0.9)' : 'rgba(236, 72, 153, 0.5)', '#ec4899');
-                });
-
-                drawContactLines(ctx, centerX, centerY, distAxis, angles);
-
-            } else {
-                const dist = (state.rMinus + state.rPlus) * scale * 0.8;
-                drawCircle(ctx, centerX, centerY, rPlus, '#06b6d4', '#06b6d4');
-
-                const angles = [Math.PI/6, 5*Math.PI/6, 3*Math.PI/2];
-                angles.forEach(ang => {
-                    const x = centerX + Math.cos(ang) * dist;
-                    const y = centerY + Math.sin(ang) * dist;
-                    drawCircle(ctx, x, y, rMinus, state.smallSpheres ? 'rgba(236, 72, 153, 0.9)' : 'rgba(236, 72, 153, 0.5)', '#ec4899');
-                });
-
-                drawContactLines(ctx, centerX, centerY, dist, angles);
-            }
-        }
-
-        function drawCircle(ctx, x, y, r, fillColor, strokeColor) {
             ctx.beginPath();
-            ctx.arc(x, y, Math.max(r, 2), 0, Math.PI * 2);
-            ctx.fillStyle = fillColor;
-            ctx.fill();
-            ctx.strokeStyle = strokeColor;
-            ctx.lineWidth = 1.5;
+            ctx.moveTo(sx1, sy1);
+            ctx.lineTo(sx2, sy2);
             ctx.stroke();
-        }
 
-        function drawContactLines(ctx, cx, cy, dist, angles) {
-            ctx.strokeStyle = '#e2e8f0';
-            ctx.lineWidth = 1;
-            ctx.setLineDash([3, 3]);
-
-            angles.forEach(ang => {
-                const ex = cx + Math.cos(ang) * dist;
-                const ey = cy + Math.sin(ang) * dist;
+            const arrowSize = Math.min(5, len * 0.25);
+            if (len > 8) {
+                ctx.beginPath();
+                ctx.moveTo(sx1, sy1);
+                ctx.lineTo(sx1 + ux * arrowSize + nx * (arrowSize * 0.5), sy1 + uy * arrowSize + ny * (arrowSize * 0.5));
+                ctx.lineTo(sx1 + ux * arrowSize - nx * (arrowSize * 0.5), sy1 + uy * arrowSize - ny * (arrowSize * 0.5));
+                ctx.fill();
 
                 ctx.beginPath();
-                ctx.moveTo(cx, cy);
-                ctx.lineTo(ex, ey);
+                ctx.moveTo(sx2, sy2);
+                ctx.lineTo(sx2 - ux * arrowSize + nx * (arrowSize * 0.5), sy2 - uy * arrowSize + ny * (arrowSize * 0.5));
+                ctx.lineTo(sx2 - ux * arrowSize - nx * (arrowSize * 0.5), sy2 - uy * arrowSize - ny * (arrowSize * 0.5));
+                ctx.fill();
+            }
+
+            const midX = (sx1 + sx2) / 2;
+            const midY = (sy1 + sy2) / 2;
+            ctx.font = 'bold 10px "JetBrains Mono", sans-serif';
+            const boxW = ctx.measureText(label).width + 6;
+            const boxH = 13;
+
+            ctx.fillStyle = 'rgba(2, 6, 23, 0.9)';
+            ctx.beginPath();
+            ctx.roundRect(midX - boxW / 2, midY - boxH / 2, boxW, boxH, 3);
+            ctx.fill();
+
+            ctx.fillStyle = color;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(label, midX, midY + 0.5);
+            ctx.restore();
+        }
+
+        function drawOverlapHighlight(ctx, x1, y1, r1, x2, y2, r2) {
+            const d = Math.hypot(x2 - x1, y2 - y1);
+            if (d >= r1 + r2 - 1.5 || d <= Math.abs(r1 - r2)) return;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(x1, y1, r1, 0, Math.PI * 2);
+            ctx.clip();
+
+            ctx.beginPath();
+            ctx.arc(x2, y2, r2, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.45)';
+            ctx.fill();
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = '#ef4444';
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function draw(geom, isLimitHighlighted) {
+            const dpr = window.devicePixelRatio || 1;
+            const w = canvas.width / dpr;
+            const h = canvas.height / dpr;
+            ctx.clearRect(0, 0, w, h);
+
+            const rMinus = parseFloat(rMinusSlider.value);
+            const rPlus = parseFloat(rPlusSlider.value);
+            const m = MODELS[currentModelKey];
+            if (!geom) geom = evaluateGeometry(rMinus, rPlus, m.id);
+
+            // 縦型画面レイアウト：上部〜中央に2D断面図、右下に3Dミニマップを配置
+            const centerX = w * 0.46;
+            const centerY = h * 0.46;
+
+            ctx.save();
+            ctx.translate(centerX, centerY);
+
+            if (isLimitHighlighted) {
+                const grad = ctx.createRadialGradient(0, 0, 5, 0, 0, LATTICE_A_PX);
+                grad.addColorStop(0, 'rgba(250, 204, 21, 0.16)');
+                grad.addColorStop(1, 'rgba(250, 204, 21, 0)');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(0, 0, LATTICE_A_PX, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            let anionPositions = [];
+            let rectW = LATTICE_A_PX;
+            let rectH = LATTICE_A_PX;
+
+            if (m.id === 'nacl') {
+                const hw = rectW / 2, hh = rectH / 2;
+                anionPositions = [[-hw, -hh], [hw, -hh], [-hw, hh], [hw, hh]];
+            } else if (m.id === 'cscl') {
+                rectW = LATTICE_A_PX * Math.SQRT2;
+                rectH = LATTICE_A_PX;
+                const hw = rectW / 2, hh = rectH / 2;
+                anionPositions = [[-hw, -hh], [hw, -hh], [-hw, hh], [hw, hh]];
+            } else if (m.id === 'zns') {
+                rectW = LATTICE_A_PX;
+                rectH = LATTICE_A_PX / Math.SQRT2;
+                const hw = rectW / 2, hh = rectH / 2;
+                anionPositions = [[-hw, -hh], [hw, -hh]];
+            }
+
+            const hw = rectW / 2;
+            const hh = rectH / 2;
+
+            // 断面枠線
+            ctx.strokeStyle = isLimitHighlighted ? '#facc15' : '#475569';
+            ctx.lineWidth = isLimitHighlighted ? 1.8 : 1.2;
+            ctx.setLineDash([4, 3]);
+            ctx.strokeRect(-hw, -hh, rectW, rectH);
+            ctx.setLineDash([]);
+
+            // 対角補助線
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            if (m.id === 'zns') {
+                ctx.moveTo(-hw, -hh); ctx.lineTo(0, 0);
+                ctx.moveTo(hw, -hh); ctx.lineTo(0, 0);
+            } else {
+                ctx.moveTo(-hw, -hh); ctx.lineTo(hw, hh);
+                ctx.moveTo(hw, -hh); ctx.lineTo(-hw, hh);
+            }
+            ctx.stroke();
+
+            // 陰イオン描画
+            anionPositions.forEach(([cx, cy]) => {
+                ctx.beginPath();
+                ctx.arc(cx, cy, rMinus, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(16, 185, 129, 0.3)';
+                ctx.fill();
+                ctx.strokeStyle = isLimitHighlighted ? '#34d399' : '#10b981';
+                ctx.lineWidth = 1.8;
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(cx, cy, 2, 0, Math.PI * 2);
+                ctx.fillStyle = '#34d399';
+                ctx.fill();
+            });
+
+            // 陰イオン同士の重なり
+            for (let i = 0; i < anionPositions.length; i++) {
+                for (let j = i + 1; j < anionPositions.length; j++) {
+                    drawOverlapHighlight(ctx, anionPositions[i][0], anionPositions[i][1], rMinus, anionPositions[j][0], anionPositions[j][1], rMinus);
+                }
+            }
+
+            // 陽イオン描画
+            ctx.beginPath();
+            ctx.arc(0, 0, rPlus, 0, Math.PI * 2);
+            ctx.fillStyle = isLimitHighlighted ? 'rgba(250, 204, 21, 0.35)' : 'rgba(99, 102, 241, 0.45)';
+            ctx.fill();
+            ctx.strokeStyle = isLimitHighlighted ? '#facc15' : '#818cf8';
+            ctx.lineWidth = isLimitHighlighted ? 2.5 : 1.8;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(0, 0, 2, 0, Math.PI * 2);
+            ctx.fillStyle = isLimitHighlighted ? '#facc15' : '#a5b4fc';
+            ctx.fill();
+
+            // 陽イオンと陰イオンの重なり
+            anionPositions.forEach(([cx, cy]) => {
+                drawOverlapHighlight(ctx, 0, 0, rPlus, cx, cy, rMinus);
+            });
+
+            // 寸法線描画
+            if (m.id === 'nacl') {
+                drawDimensionLine(ctx, -hw, hh, hw, hh, 'a', '#fbbf24', 18);
+            } else if (m.id === 'cscl') {
+                drawDimensionLine(ctx, -hw, -hh, -hw, hh, 'a', '#fbbf24', -18);
+                drawDimensionLine(ctx, -hw, hh, hw, hh, '√2a', '#94a3b8', 18);
+            } else if (m.id === 'zns') {
+                drawDimensionLine(ctx, -hw, -hh, -hw, hh, 'a/2', '#fbbf24', -18);
+                drawDimensionLine(ctx, -hw, -hh, hw, -hh, '(√2/2)a', '#94a3b8', -18);
+            }
+
+            const targetAnion = anionPositions.find(([x, y]) => x > 0 && y < 0) || anionPositions[0];
+            if (targetAnion) {
+                const [ax, ay] = targetAnion;
+                const dist = Math.hypot(ax, ay);
+                if (dist > 0) {
+                    const ux = ax / dist, uy = ay / dist;
+                    drawDimensionLine(ctx, 0, 0, ux * rPlus, uy * rPlus, 'r+', '#a5b4fc', 0);
+                    drawDimensionLine(ctx, ax, ay, ax - ux * rMinus, ay - uy * rMinus, 'r-', '#34d399', 0);
+                }
+            }
+
+            ctx.restore();
+
+            // 右上に3D図を配置（凡例は左上に縦積みにして重なりを回避）
+            draw3DMiniMap(w - 50, 46, m.id);
+        }
+
+        function project3D(x, y, z) {
+            const angleX = Math.PI / 4.2;
+            const angleY = Math.PI / 3.6;
+            const cosY = Math.cos(angleY), sinY = Math.sin(angleY);
+            const x1 = x * cosY - z * sinY;
+            const z1 = x * sinY + z * cosY;
+            const cosX = Math.cos(angleX), sinX = Math.sin(angleX);
+            const y2 = y * cosX - z1 * sinX;
+            return { x: x1, y: y2 };
+        }
+
+        function draw3DMiniMap(cx, cy, modelId) {
+            const hSize = 24;
+            const rawVertices = [
+                [-1, -1, -1], [ 1, -1, -1], [ 1,  1, -1], [-1,  1, -1],
+                [-1, -1,  1], [ 1, -1,  1], [ 1,  1,  1], [-1,  1,  1]
+            ];
+
+            const pts = rawVertices.map(([vx, vy, vz]) => {
+                const p = project3D(vx * hSize, vy * hSize, vz * hSize);
+                return { x: cx + p.x, y: cy + p.y };
+            });
+
+            ctx.save();
+            // 背景カード風枠
+            ctx.fillStyle = 'rgba(2, 6, 23, 0.75)';
+            ctx.strokeStyle = 'rgba(51, 65, 85, 0.7)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.roundRect(cx - 42, cy - 36, 84, 76, 8);
+            ctx.fill();
+            ctx.stroke();
+
+            // 切断面
+            ctx.fillStyle = 'rgba(234, 179, 8, 0.45)';
+            ctx.strokeStyle = '#facc15';
+            ctx.lineWidth = 1.5;
+
+            if (modelId === 'nacl') {
+                ctx.beginPath();
+                ctx.moveTo(pts[4].x, pts[4].y);
+                ctx.lineTo(pts[5].x, pts[5].y);
+                ctx.lineTo(pts[6].x, pts[6].y);
+                ctx.lineTo(pts[7].x, pts[7].y);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            } else {
+                ctx.beginPath();
+                ctx.moveTo(pts[4].x, pts[4].y);
+                ctx.lineTo(pts[1].x, pts[1].y);
+                ctx.lineTo(pts[2].x, pts[2].y);
+                ctx.lineTo(pts[7].x, pts[7].y);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+
+            // 立方体エッジ
+            const edges = [
+                [0,1], [1,2], [2,3], [3,0],
+                [4,5], [5,6], [6,7], [7,4],
+                [0,4], [1,5], [2,6], [3,7]
+            ];
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.5)';
+            ctx.lineWidth = 1;
+            edges.forEach(([i, j]) => {
+                ctx.beginPath();
+                ctx.moveTo(pts[i].x, pts[i].y);
+                ctx.lineTo(pts[j].x, pts[j].y);
                 ctx.stroke();
             });
 
-            ctx.setLineDash([]);
+            // イオン球
+            pts.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+                ctx.fillStyle = '#10b981';
+                ctx.fill();
+            });
+
+            const centerP = project3D(0, 0, 0);
+            ctx.beginPath();
+            ctx.arc(cx + centerP.x, cy + centerP.y, 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#6366f1';
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 0.8;
+            ctx.stroke();
+
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '9px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('3D切断面', cx, cy + 33);
+            ctx.restore();
         }
+
+        // 吸着スナップ機能
+        function handleRMinusInput() {
+            let val = parseFloat(rMinusSlider.value);
+            const rPlus = parseFloat(rPlusSlider.value);
+            const m = MODELS[currentModelKey];
+            const geom = evaluateGeometry(val, rPlus, m.id);
+            const snapThreshold = 3.0;
+
+            const targets = [
+                geom.anionDist / 2,
+                geom.cationAnionDist - rPlus,
+                rPlus / m.limitRatio
+            ];
+            for (const t of targets) {
+                if (t >= parseFloat(rMinusSlider.min) && t <= parseFloat(rMinusSlider.max) && Math.abs(val - t) < snapThreshold) {
+                    rMinusSlider.value = t.toFixed(1);
+                    break;
+                }
+            }
+            updateValues();
+        }
+
+        function handleRPlusInput() {
+            let val = parseFloat(rPlusSlider.value);
+            const rMinus = parseFloat(rMinusSlider.value);
+            const m = MODELS[currentModelKey];
+            const geom = evaluateGeometry(rMinus, val, m.id);
+            const snapThreshold = 3.0;
+
+            const targets = [
+                geom.cationAnionDist - rMinus,
+                rMinus * m.limitRatio
+            ];
+            for (const t of targets) {
+                if (t >= parseFloat(rPlusSlider.min) && t <= parseFloat(rPlusSlider.max) && Math.abs(val - t) < snapThreshold) {
+                    rPlusSlider.value = t.toFixed(1);
+                    break;
+                }
+            }
+            updateValues();
+        }
+
+        rMinusSlider.addEventListener('input', handleRMinusInput);
+        rPlusSlider.addEventListener('input', handleRPlusInput);
+        snapBtn.addEventListener('click', () => {
+            setExactLimitForCurrentModel();
+            updateValues();
+        });
+
+        window.addEventListener('resize', resizeCanvas);
+
+        // 初期化
+        initModelSelector();
+        resizeCanvas();
+        setExactLimitForCurrentModel();
+        updateValues();
     </script>
 </body>
 </html>
