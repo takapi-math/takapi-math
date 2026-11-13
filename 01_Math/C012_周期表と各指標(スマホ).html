@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>周期表＆物性値ヒートマップ（スマホ横向き用）</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & Noto Sans JP -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* 周期表のグリッド設定（スマホ横向き1画面に収まる比率） */
+        .ptable-grid-18 {
+            display: grid;
+            grid-template-columns: repeat(18, minmax(0, 1fr));
+            gap: 2px;
+        }
+
+        .ptable-grid-8 {
+            display: grid;
+            grid-template-columns: repeat(8, minmax(0, 1fr));
+            gap: 3px;
+        }
+
+        /* 元素セルのスタイル（横向き画面の高さに収まるコンパクト設計） */
+        .element-cell {
+            height: 36px;
+            transition: transform 0.12s ease, background-color 0.25s ease;
+            user-select: none;
+            overflow: hidden;
+        }
+
+        @media (min-height: 450px) {
+            .element-cell {
+                height: 42px;
+            }
+        }
+
+        .element-cell:active {
+            transform: scale(1.15);
+            z-index: 30;
+        }
+
+        /* ヒートマップカラーバー */
+        .heatmap-bar {
+            background: linear-gradient(90deg, #3b82f6 0%, #06b6d4 25%, #10b981 50%, #eab308 75%, #ef4444 100%);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- ファーストビュー：横向き1画面に収まるメインエリア（指標選択 ＋ 周期表 ＋ 簡易凡例） -->
+    <div class="w-full max-w-6xl mx-auto px-2 py-1.5 flex flex-col gap-1.5">
+
+        <!-- 上部コントロールバー：指標8ボタン ＋ 遷移元素切替スイッチを横並び配置 -->
+        <section class="bg-white px-2 py-1.5 rounded-xl shadow-xs border border-slate-200 flex items-stretch gap-1.5">
+            <!-- 指標選択ボタン群（4列×2行の超コンパクトグリッド） -->
+            <div id="metric-buttons" class="flex-grow grid grid-cols-4 gap-1">
+                <!-- JavaScriptで動的に生成 -->
+            </div>
+
+            <!-- 右端：18族 / 典型元素 切替ボタン（縦2段積み） -->
+            <div class="shrink-0 flex flex-col justify-between bg-slate-100 p-0.5 rounded-lg border border-slate-200 w-[86px]">
+                <button id="btn-include-trans" class="w-full py-1 px-1.5 rounded-md text-[10px] font-bold leading-tight transition-all bg-white text-indigo-600 shadow-2xs text-center">
+                    18族 (全元素)
+                </button>
+                <button id="btn-exclude-trans" class="w-full py-1 px-1.5 rounded-md text-[10px] font-bold leading-tight transition-all text-slate-600 hover:text-slate-900 text-center">
+                    典型のみ (8族)
+                </button>
+            </div>
+        </section>
+
+        <!-- 中央メイン：周期表（横スクロール不要で画面幅にフィット） -->
+        <section class="bg-white px-1.5 py-1.5 rounded-xl shadow-xs border border-slate-200">
+            <div id="periodic-table" class="w-full">
+                <!-- JavaScriptで周期表セルを生成 -->
+            </div>
+        </section>
+
+        <!-- 下部コンパクトステータスバー：選択中の指標概要 / ヒートマップ凡例 / 元素分類色 -->
+        <section id="compact-status-bar" class="bg-white px-2.5 py-1 rounded-xl shadow-xs border border-slate-200 flex items-center justify-between gap-2 text-[10px] leading-tight">
+            <!-- 標準モード時の分類凡例 -->
+            <div id="category-legend-inline" class="flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
+                <span class="font-bold text-slate-500">分類:</span>
+                <span class="font-bold text-red-600">■アルカリ</span>
+                <span class="font-bold text-orange-600">■アルカリ土類</span>
+                <span class="font-bold text-amber-600">■遷移</span>
+                <span class="font-bold text-emerald-700">■他金属</span>
+                <span class="font-bold text-teal-600">■半金属</span>
+                <span class="font-bold text-blue-600">■非金属</span>
+                <span class="font-bold text-purple-600">■ハロゲン</span>
+                <span class="font-bold text-pink-600">■貴ガス</span>
+            </div>
+
+            <!-- 指標選択時のヒートマップバー＆現在値レンジ -->
+            <div id="heatmap-legend-inline" class="hidden flex-grow flex items-center justify-between gap-3">
+                <div class="flex items-center gap-1.5 truncate">
+                    <span id="inline-metric-name" class="font-bold text-indigo-700 text-xs shrink-0">指標名</span>
+                    <span id="inline-metric-hint" class="text-slate-500 truncate hidden sm:inline">セルをタップで詳細・下に解説とグラフ</span>
+                </div>
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <span id="legend-min" class="font-mono font-bold text-slate-600">最小</span>
+                    <div class="w-24 sm:w-32 h-2.5 rounded-full heatmap-bar border border-slate-300/60"></div>
+                    <span id="legend-max" class="font-mono font-bold text-slate-600">最大</span>
+                    <span id="legend-unit" class="font-mono text-indigo-600 font-bold ml-0.5">単位</span>
+                </div>
+            </div>
+
+            <span class="text-[9px] text-slate-400 shrink-0 hidden md:inline">※セルをタップで全データ表示</span>
+        </section>
+
+    </div>
+
+    <!-- スクロール領域：指標の詳しい解説＆1〜36番推移グラフ -->
+    <div class="w-full max-w-6xl mx-auto px-2 pb-4 flex flex-col gap-2">
+
+        <!-- 指標の定義・解説エリア -->
+        <section id="definition-box" class="bg-indigo-50/80 border border-indigo-100 rounded-xl p-2.5 transition-all">
+            <div class="flex items-center gap-2 mb-0.5">
+                <span id="def-badge" class="px-1.5 py-0.5 text-[10px] font-bold bg-slate-600 text-white rounded">標準モード</span>
+                <h3 id="def-title" class="font-bold text-slate-800 text-xs sm:text-sm">元素の分類（文字色による区分）</h3>
+            </div>
+            <p id="def-text" class="text-xs text-slate-600 leading-relaxed">
+                元素記号の文字色で元素の分類を表しています。上部の指標ボタンをタップすると数値データとヒートマップに切り替わり、再度タップすると標準表示に戻ります。
+            </p>
+        </section>
+
+        <!-- 原子番号 1〜36 (H〜Kr) の指標推移グラフ -->
+        <section id="chart-section" class="bg-white p-2.5 rounded-xl shadow-xs border border-slate-200 hidden">
+            <div class="flex items-center justify-between gap-2 mb-1.5">
+                <h3 id="chart-title" class="font-bold text-slate-800 text-xs sm:text-sm">指標の周期的変化（原子番号 1〜36：H 〜 Kr）</h3>
+                <span id="chart-unit-badge" class="px-2 py-0.5 text-[10px] font-mono font-semibold bg-slate-100 text-slate-600 rounded border border-slate-200">単位: pm</span>
+            </div>
+            <div id="chart-container" class="relative w-full overflow-x-auto">
+                <div id="chart-wrapper" class="min-w-[600px] w-full relative">
+                    <svg id="trend-chart" class="w-full h-48 block select-none"></svg>
+                    <div id="chart-tooltip" class="pointer-events-none hidden absolute z-20 bg-slate-900/95 text-white text-[11px] rounded-md px-2 py-1 shadow-lg whitespace-nowrap"></div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- 元素詳細モーダル（セルタップ時に表示） -->
+    <div id="element-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs hidden items-center justify-center z-50 p-3">
+        <div class="bg-white rounded-2xl max-w-md w-full p-4 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-2.5">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-12 h-12 rounded-xl bg-slate-100 flex flex-col items-center justify-center border border-slate-200">
+                        <span id="modal-number" class="text-[10px] font-bold text-slate-500">1</span>
+                        <span id="modal-symbol" class="text-xl font-extrabold">H</span>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-1.5">
+                            <span id="modal-category" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">非金属</span>
+                            <span id="modal-group-period" class="text-[11px] text-slate-500">第1周期 / 1族</span>
+                        </div>
+                        <h3 id="modal-name" class="text-base font-bold text-slate-800 mt-0.5">水素</h3>
+                    </div>
+                </div>
+                <button id="close-modal" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg bg-slate-100">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div id="modal-metrics-list" class="grid grid-cols-2 gap-1.5 border-t border-slate-100 pt-2.5 text-xs">
+                <!-- 全指標の数値リスト（横向きでも見やすい2列グリッド） -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * 8つの指標定義（コンパクト表示用の短縮ラベル shortName 付き）
+         */
+        const METRICS = {
+            atomicRadius: {
+                id: 'atomicRadius',
+                name: '原子半径',
+                shortName: '原子半径',
+                unit: 'pm',
+                decimals: 0,
+                definition: '単体結晶中の隣接する同種原子の核間距離の半分。同周期では右に行くほど有効核電荷が増し小さくなり、同族では下に行くほど電子殻が増え大きくなります。'
+            },
+            ionizationEnergy: {
+                id: 'ionizationEnergy',
+                name: '第一イオン化エネルギー',
+                shortName: 'イオン化E',
+                unit: 'kJ/mol',
+                decimals: 0,
+                definition: '気体状態の中性原子1モルから電子1モルを取り去って1価の陽イオンにするのに必要なエネルギー。貴ガスで極大、アルカリ金属で極小となります。'
+            },
+            density: {
+                id: 'density',
+                name: '単体の密度',
+                shortName: '密度',
+                unit: 'g/cm³',
+                decimals: 2,
+                definition: '室温・常圧付近における単体の単位体積あたりの質量（気体元素は標準状態）。周期表の中央下部に位置する遷移元素（Os, Ir）で極めて大きな値をとります。'
+            },
+            boilingPoint: {
+                id: 'boilingPoint',
+                name: '沸点',
+                shortName: '沸点',
+                unit: 'K',
+                decimals: 0,
+                definition: '標準圧力（1気圧）下において単体が液体から気体へ沸騰する温度（絶対温度 K）。金属結合の強い高周期遷移元素（Re, W）で極めて高い値を示します。'
+            },
+            ionicRadius: {
+                id: 'ionicRadius',
+                name: 'イオン半径',
+                shortName: 'イオン半径',
+                unit: 'pm',
+                decimals: 0,
+                definition: '結晶中における代表的イオンの半径（希ガスはデータなし）。陽イオンは元の原子半径より小さく、陰イオンは電子間反発により大きくなります。'
+            },
+            electronAffinity: {
+                id: 'electronAffinity',
+                name: '電子親和力',
+                shortName: '電子親和力',
+                unit: 'kJ/mol',
+                decimals: 0,
+                definition: '気体状態の中性原子1モルが電子1モルを受け取って1価の陰イオンになるときに放出されるエネルギー。ハロゲン元素が極めて大きな正の値をとります。'
+            },
+            electronegativity: {
+                id: 'electronegativity',
+                name: '電気陰性度',
+                shortName: '電気陰性度',
+                unit: 'Pauling',
+                decimals: 2,
+                definition: '分子内の原子が共有電子対を引きつける強さの尺度（ポーリング値）。フッ素(F)が最大値(3.98)をとり、貴ガスを除いて右上ほど大きくなります。'
+            },
+            meltingPoint: {
+                id: 'meltingPoint',
+                name: '融点',
+                shortName: '融点',
+                unit: 'K',
+                decimals: 0,
+                definition: '標準圧力下において単体が固体から液体へ融解する温度（絶対温度 K）。共有結合結晶の炭素(C)や、金属結合が強いタングステン(W)等で非常に高くなります。'
+            }
+        };
+
+        /**
+         * 代表的イオンの価数表示マップ
+         */
+        const ION_CHARGES = {
+            H: '−', Li: '+', Be: '2+', B: '3+', C: '4+', N: '3−', O: '2−', F: '−',
+            Na: '+', Mg: '2+', Al: '3+', Si: '4+', P: '3−', S: '2−', Cl: '−',
+            K: '+', Ca: '2+', Sc: '3+', Ti: '4+', V: '5+', Cr: '3+', Mn: '2+', Fe: '3+', Co: '2+', Ni: '2+', Cu: '2+', Zn: '2+',
+            Ga: '3+', Ge: '4+', As: '3−', Se: '2−', Br: '−',
+            Rb: '+', Sr: '2+', Y: '3+', Zr: '4+', Nb: '5+', Mo: '6+', Tc: '4+', Ru: '3+', Rh: '3+', Pd: '2+', Ag: '+', Cd: '2+',
+            In: '3+', Sn: '4+', Sb: '3+', Te: '2−', I: '−',
+            Cs: '+', Ba: '2+', Hf: '4+', Ta: '5+', W: '6+', Re: '4+', Os: '4+', Ir: '3+', Pt: '2+', Au: '3+', Hg: '2+',
+            Tl: '+', Pb: '2+', Bi: '3+', Po: '4+', At: '−',
+            Fr: '+', Ra: '2+'
+        };
+
+        /**
+         * 全元素データ（ランタノイド・アクチノイドを除く 1〜118番）
+         */
+        const ELEMENTS = [
+            // 第1周期
+            { z: 1, sym: 'H', name: '水素', p: 1, g: 1, cat: 'nonmetal', vals: { atomicRadius: 53, ionicRadius: 140, ionizationEnergy: 1312, electronegativity: 2.20, electronAffinity: 73, meltingPoint: 14, boilingPoint: 20, density: 0.00009 } },
+            { z: 2, sym: 'He', name: 'ヘリウム', p: 1, g: 18, cat: 'noble', vals: { atomicRadius: 31, ionicRadius: null, ionizationEnergy: 2372, electronegativity: null, electronAffinity: -50, meltingPoint: 1, boilingPoint: 4, density: 0.00018 } },
+            // 第2周期
+            { z: 3, sym: 'Li', name: 'リチウム', p: 2, g: 1, cat: 'alkali', vals: { atomicRadius: 167, ionicRadius: 76, ionizationEnergy: 520, electronegativity: 0.98, electronAffinity: 60, meltingPoint: 454, boilingPoint: 1603, density: 0.53 } },
+            { z: 4, sym: 'Be', name: 'ベリリウム', p: 2, g: 2, cat: 'alkaline', vals: { atomicRadius: 112, ionicRadius: 45, ionizationEnergy: 900, electronegativity: 1.57, electronAffinity: -50, meltingPoint: 1560, boilingPoint: 2742, density: 1.85 } },
+            { z: 5, sym: 'B', name: 'ホウ素', p: 2, g: 13, cat: 'metalloid', vals: { atomicRadius: 87, ionicRadius: 27, ionizationEnergy: 801, electronegativity: 2.04, electronAffinity: 27, meltingPoint: 2349, boilingPoint: 4200, density: 2.34 } },
+            { z: 6, sym: 'C', name: '炭素', p: 2, g: 14, cat: 'nonmetal', vals: { atomicRadius: 67, ionicRadius: 16, ionizationEnergy: 1086, electronegativity: 2.55, electronAffinity: 122, meltingPoint: 3823, boilingPoint: 4098, density: 2.27 } },
+            { z: 7, sym: 'N', name: '窒素', p: 2, g: 15, cat: 'nonmetal', vals: { atomicRadius: 56, ionicRadius: 146, ionizationEnergy: 1402, electronegativity: 3.04, electronAffinity: -7, meltingPoint: 63, boilingPoint: 77, density: 0.00125 } },
+            { z: 8, sym: 'O', name: '酸素', p: 2, g: 16, cat: 'nonmetal', vals: { atomicRadius: 48, ionicRadius: 140, ionizationEnergy: 1314, electronegativity: 3.44, electronAffinity: 141, meltingPoint: 54, boilingPoint: 90, density: 0.00143 } },
+            { z: 9, sym: 'F', name: 'フッ素', p: 2, g: 17, cat: 'halogen', vals: { atomicRadius: 42, ionicRadius: 133, ionizationEnergy: 1681, electronegativity: 3.98, electronAffinity: 328, meltingPoint: 53, boilingPoint: 85, density: 0.00170 } },
+            { z: 10, sym: 'Ne', name: 'ネオン', p: 2, g: 18, cat: 'noble', vals: { atomicRadius: 38, ionicRadius: null, ionizationEnergy: 2081, electronegativity: null, electronAffinity: -120, meltingPoint: 25, boilingPoint: 27, density: 0.00090 } },
+            // 第3周期
+            { z: 11, sym: 'Na', name: 'ナトリウム', p: 3, g: 1, cat: 'alkali', vals: { atomicRadius: 190, ionicRadius: 102, ionizationEnergy: 496, electronegativity: 0.93, electronAffinity: 53, meltingPoint: 371, boilingPoint: 1156, density: 0.97 } },
+            { z: 12, sym: 'Mg', name: 'マグネシウム', p: 3, g: 2, cat: 'alkaline', vals: { atomicRadius: 145, ionicRadius: 72, ionizationEnergy: 738, electronegativity: 1.31, electronAffinity: -40, meltingPoint: 923, boilingPoint: 1363, density: 1.74 } },
+            { z: 13, sym: 'Al', name: 'アルミニウム', p: 3, g: 13, cat: 'postTrans', vals: { atomicRadius: 118, ionicRadius: 54, ionizationEnergy: 578, electronegativity: 1.61, electronAffinity: 42, meltingPoint: 933, boilingPoint: 2792, density: 2.70 } },
+            { z: 14, sym: 'Si', name: 'ケイ素', p: 3, g: 14, cat: 'metalloid', vals: { atomicRadius: 111, ionicRadius: 40, ionizationEnergy: 787, electronegativity: 1.90, electronAffinity: 134, meltingPoint: 1687, boilingPoint: 3538, density: 2.33 } },
+            { z: 15, sym: 'P', name: 'リン', p: 3, g: 15, cat: 'nonmetal', vals: { atomicRadius: 98, ionicRadius: 44, ionizationEnergy: 1012, electronegativity: 2.19, electronAffinity: 72, meltingPoint: 317, boilingPoint: 554, density: 1.82 } },
+            { z: 16, sym: 'S', name: '硫黄', p: 3, g: 16, cat: 'nonmetal', vals: { atomicRadius: 88, ionicRadius: 184, ionizationEnergy: 1000, electronegativity: 2.58, electronAffinity: 200, meltingPoint: 388, boilingPoint: 718, density: 2.07 } },
+            { z: 17, sym: 'Cl', name: '塩素', p: 3, g: 17, cat: 'halogen', vals: { atomicRadius: 79, ionicRadius: 181, ionizationEnergy: 1251, electronegativity: 3.16, electronAffinity: 349, meltingPoint: 172, boilingPoint: 239, density: 0.00321 } },
+            { z: 18, sym: 'Ar', name: 'アルゴン', p: 3, g: 18, cat: 'noble', vals: { atomicRadius: 71, ionicRadius: null, ionizationEnergy: 1521, electronegativity: null, electronAffinity: -96, meltingPoint: 84, boilingPoint: 87, density: 0.00178 } },
+            // 第4周期
+            { z: 19, sym: 'K', name: 'カリウム', p: 4, g: 1, cat: 'alkali', vals: { atomicRadius: 243, ionicRadius: 138, ionizationEnergy: 419, electronegativity: 0.82, electronAffinity: 48, meltingPoint: 337, boilingPoint: 1032, density: 0.86 } },
+            { z: 20, sym: 'Ca', name: 'カルシウム', p: 4, g: 2, cat: 'alkaline', vals: { atomicRadius: 194, ionicRadius: 100, ionizationEnergy: 590, electronegativity: 1.00, electronAffinity: 2, meltingPoint: 1115, boilingPoint: 1757, density: 1.54 } },
+            { z: 21, sym: 'Sc', name: 'スカンジウム', p: 4, g: 3, cat: 'transition', vals: { atomicRadius: 184, ionicRadius: 75, ionizationEnergy: 633, electronegativity: 1.36, electronAffinity: 18, meltingPoint: 1814, boilingPoint: 3109, density: 2.99 } },
+            { z: 22, sym: 'Ti', name: 'チタン', p: 4, g: 4, cat: 'transition', vals: { atomicRadius: 176, ionicRadius: 61, ionizationEnergy: 659, electronegativity: 1.54, electronAffinity: 8, meltingPoint: 1941, boilingPoint: 3560, density: 4.51 } },
+            { z: 23, sym: 'V', name: 'バナジウム', p: 4, g: 5, cat: 'transition', vals: { atomicRadius: 171, ionicRadius: 54, ionizationEnergy: 651, electronegativity: 1.63, electronAffinity: 51, meltingPoint: 2183, boilingPoint: 3680, density: 6.00 } },
+            { z: 24, sym: 'Cr', name: 'クロム', p: 4, g: 6, cat: 'transition', vals: { atomicRadius: 166, ionicRadius: 62, ionizationEnergy: 653, electronegativity: 1.66, electronAffinity: 65, meltingPoint: 2180, boilingPoint: 2944, density: 7.15 } },
+            { z: 25, sym: 'Mn', name: 'マンガン', p: 4, g: 7, cat: 'transition', vals: { atomicRadius: 161, ionicRadius: 83, ionizationEnergy: 717, electronegativity: 1.55, electronAffinity: -50, meltingPoint: 1519, boilingPoint: 2334, density: 7.30 } },
+            { z: 26, sym: 'Fe', name: '鉄', p: 4, g: 8, cat: 'transition', vals: { atomicRadius: 156, ionicRadius: 65, ionizationEnergy: 762, electronegativity: 1.83, electronAffinity: 15, meltingPoint: 1811, boilingPoint: 3134, density: 7.87 } },
+            { z: 27, sym: 'Co', name: 'コバルト', p: 4, g: 9, cat: 'transition', vals: { atomicRadius: 152, ionicRadius: 65, ionizationEnergy: 760, electronegativity: 1.88, electronAffinity: 64, meltingPoint: 1768, boilingPoint: 3200, density: 8.86 } },
+            { z: 28, sym: 'Ni', name: 'ニッケル', p: 4, g: 10, cat: 'transition', vals: { atomicRadius: 149, ionicRadius: 69, ionizationEnergy: 737, electronegativity: 1.91, electronAffinity: 112, meltingPoint: 1728, boilingPoint: 3186, density: 8.91 } },
+            { z: 29, sym: 'Cu', name: '銅', p: 4, g: 11, cat: 'transition', vals: { atomicRadius: 145, ionicRadius: 73, ionizationEnergy: 745, electronegativity: 1.90, electronAffinity: 119, meltingPoint: 1358, boilingPoint: 2835, density: 8.96 } },
+            { z: 30, sym: 'Zn', name: '亜鉛', p: 4, g: 12, cat: 'transition', vals: { atomicRadius: 142, ionicRadius: 74, ionizationEnergy: 906, electronegativity: 1.65, electronAffinity: -60, meltingPoint: 693, boilingPoint: 1180, density: 7.13 } },
+            { z: 31, sym: 'Ga', name: 'ガリウム', p: 4, g: 13, cat: 'postTrans', vals: { atomicRadius: 136, ionicRadius: 62, ionizationEnergy: 579, electronegativity: 1.81, electronAffinity: 41, meltingPoint: 303, boilingPoint: 2673, density: 5.91 } },
+            { z: 32, sym: 'Ge', name: 'ゲルマニウム', p: 4, g: 14, cat: 'metalloid', vals: { atomicRadius: 125, ionicRadius: 53, ionizationEnergy: 762, electronegativity: 2.01, electronAffinity: 119, meltingPoint: 1211, boilingPoint: 3106, density: 5.32 } },
+            { z: 33, sym: 'As', name: 'ヒ素', p: 4, g: 15, cat: 'metalloid', vals: { atomicRadius: 114, ionicRadius: 58, ionizationEnergy: 947, electronegativity: 2.18, electronAffinity: 78, meltingPoint: 1090, boilingPoint: 887, density: 5.78 } },
+            { z: 34, sym: 'Se', name: 'セレン', p: 4, g: 16, cat: 'nonmetal', vals: { atomicRadius: 103, ionicRadius: 198, ionizationEnergy: 941, electronegativity: 2.55, electronAffinity: 195, meltingPoint: 494, boilingPoint: 958, density: 4.81 } },
+            { z: 35, sym: 'Br', name: '臭素', p: 4, g: 17, cat: 'halogen', vals: { atomicRadius: 94, ionicRadius: 196, ionizationEnergy: 1140, electronegativity: 2.96, electronAffinity: 325, meltingPoint: 266, boilingPoint: 332, density: 3.12 } },
+            { z: 36, sym: 'Kr', name: 'クリプトン', p: 4, g: 18, cat: 'noble', vals: { atomicRadius: 88, ionicRadius: null, ionizationEnergy: 1351, electronegativity: 3.00, electronAffinity: -60, meltingPoint: 116, boilingPoint: 120, density: 0.00373 } },
+            // 第5周期
+            { z: 37, sym: 'Rb', name: 'ルビジウム', p: 5, g: 1, cat: 'alkali', vals: { atomicRadius: 265, ionicRadius: 152, ionizationEnergy: 403, electronegativity: 0.82, electronAffinity: 47, meltingPoint: 312, boilingPoint: 961, density: 1.53 } },
+            { z: 38, sym: 'Sr', name: 'ストロンチウム', p: 5, g: 2, cat: 'alkaline', vals: { atomicRadius: 219, ionicRadius: 118, ionizationEnergy: 549, electronegativity: 0.95, electronAffinity: 5, meltingPoint: 1050, boilingPoint: 1655, density: 2.64 } },
+            { z: 39, sym: 'Y', name: 'イットリウム', p: 5, g: 3, cat: 'transition', vals: { atomicRadius: 212, ionicRadius: 90, ionizationEnergy: 600, electronegativity: 1.22, electronAffinity: 30, meltingPoint: 1799, boilingPoint: 3609, density: 4.47 } },
+            { z: 40, sym: 'Zr', name: 'ジルコニウム', p: 5, g: 4, cat: 'transition', vals: { atomicRadius: 206, ionicRadius: 72, ionizationEnergy: 640, electronegativity: 1.33, electronAffinity: 41, meltingPoint: 2128, boilingPoint: 4682, density: 6.52 } },
+            { z: 41, sym: 'Nb', name: 'ニオブ', p: 5, g: 5, cat: 'transition', vals: { atomicRadius: 198, ionicRadius: 64, ionizationEnergy: 652, electronegativity: 1.60, electronAffinity: 86, meltingPoint: 2750, boilingPoint: 5017, density: 8.57 } },
+            { z: 42, sym: 'Mo', name: 'モリブデン', p: 5, g: 6, cat: 'transition', vals: { atomicRadius: 190, ionicRadius: 65, ionizationEnergy: 684, electronegativity: 2.16, electronAffinity: 72, meltingPoint: 2896, boilingPoint: 4912, density: 10.28 } },
+            { z: 43, sym: 'Tc', name: 'テクネチウム', p: 5, g: 7, cat: 'transition', vals: { atomicRadius: 183, ionicRadius: 65, ionizationEnergy: 702, electronegativity: 1.90, electronAffinity: 53, meltingPoint: 2430, boilingPoint: 4538, density: 11.50 } },
+            { z: 44, sym: 'Ru', name: 'ルテニウム', p: 5, g: 8, cat: 'transition', vals: { atomicRadius: 178, ionicRadius: 68, ionizationEnergy: 710, electronegativity: 2.20, electronAffinity: 101, meltingPoint: 2607, boilingPoint: 4423, density: 12.37 } },
+            { z: 45, sym: 'Rh', name: 'ロジウム', p: 5, g: 9, cat: 'transition', vals: { atomicRadius: 173, ionicRadius: 67, ionizationEnergy: 720, electronegativity: 2.28, electronAffinity: 110, meltingPoint: 2237, boilingPoint: 3968, density: 12.41 } },
+            { z: 46, sym: 'Pd', name: 'パラジウム', p: 5, g: 10, cat: 'transition', vals: { atomicRadius: 169, ionicRadius: 86, ionizationEnergy: 804, electronegativity: 2.20, electronAffinity: 54, meltingPoint: 1828, boilingPoint: 3236, density: 12.02 } },
+            { z: 47, sym: 'Ag', name: '銀', p: 5, g: 11, cat: 'transition', vals: { atomicRadius: 165, ionicRadius: 115, ionizationEnergy: 731, electronegativity: 1.93, electronAffinity: 126, meltingPoint: 1235, boilingPoint: 2435, density: 10.49 } },
+            { z: 48, sym: 'Cd', name: 'カドミウム', p: 5, g: 12, cat: 'transition', vals: { atomicRadius: 161, ionicRadius: 95, ionizationEnergy: 868, electronegativity: 1.69, electronAffinity: -70, meltingPoint: 594, boilingPoint: 1040, density: 8.65 } },
+            { z: 49, sym: 'In', name: 'インジウム', p: 5, g: 13, cat: 'postTrans', vals: { atomicRadius: 156, ionicRadius: 80, ionizationEnergy: 558, electronegativity: 1.78, electronAffinity: 29, meltingPoint: 430, boilingPoint: 2345, density: 7.31 } },
+            { z: 50, sym: 'Sn', name: 'スズ', p: 5, g: 14, cat: 'postTrans', vals: { atomicRadius: 145, ionicRadius: 69, ionizationEnergy: 709, electronegativity: 1.96, electronAffinity: 107, meltingPoint: 505, boilingPoint: 2875, density: 7.29 } },
+            { z: 51, sym: 'Sb', name: 'アンチモン', p: 5, g: 15, cat: 'metalloid', vals: { atomicRadius: 133, ionicRadius: 76, ionizationEnergy: 834, electronegativity: 2.05, electronAffinity: 101, meltingPoint: 904, boilingPoint: 1860, density: 6.69 } },
+            { z: 52, sym: 'Te', name: 'テルル', p: 5, g: 16, cat: 'metalloid', vals: { atomicRadius: 123, ionicRadius: 221, ionizationEnergy: 869, electronegativity: 2.10, electronAffinity: 190, meltingPoint: 723, boilingPoint: 1261, density: 6.24 } },
+            { z: 53, sym: 'I', name: 'ヨウ素', p: 5, g: 17, cat: 'halogen', vals: { atomicRadius: 115, ionicRadius: 220, ionizationEnergy: 1008, electronegativity: 2.66, electronAffinity: 295, meltingPoint: 387, boilingPoint: 457, density: 4.93 } },
+            { z: 54, sym: 'Xe', name: 'キセノン', p: 5, g: 18, cat: 'noble', vals: { atomicRadius: 108, ionicRadius: null, ionizationEnergy: 1170, electronegativity: 2.60, electronAffinity: -80, meltingPoint: 161, boilingPoint: 165, density: 0.00589 } },
+            // 第6周期
+            { z: 55, sym: 'Cs', name: 'セシウム', p: 6, g: 1, cat: 'alkali', vals: { atomicRadius: 298, ionicRadius: 167, ionizationEnergy: 376, electronegativity: 0.79, electronAffinity: 46, meltingPoint: 302, boilingPoint: 944, density: 1.87 } },
+            { z: 56, sym: 'Ba', name: 'バリウム', p: 6, g: 2, cat: 'alkaline', vals: { atomicRadius: 253, ionicRadius: 135, ionizationEnergy: 503, electronegativity: 0.89, electronAffinity: 14, meltingPoint: 1000, boilingPoint: 2170, density: 3.51 } },
+            { z: 72, sym: 'Hf', name: 'ハフニウム', p: 6, g: 4, cat: 'transition', vals: { atomicRadius: 208, ionicRadius: 71, ionizationEnergy: 659, electronegativity: 1.30, electronAffinity: 17, meltingPoint: 2506, boilingPoint: 4876, density: 13.31 } },
+            { z: 73, sym: 'Ta', name: 'タンタル', p: 6, g: 5, cat: 'transition', vals: { atomicRadius: 200, ionicRadius: 64, ionizationEnergy: 761, electronegativity: 1.50, electronAffinity: 31, meltingPoint: 3290, boilingPoint: 5731, density: 16.65 } },
+            { z: 74, sym: 'W', name: 'タングステン', p: 6, g: 6, cat: 'transition', vals: { atomicRadius: 193, ionicRadius: 60, ionizationEnergy: 770, electronegativity: 2.36, electronAffinity: 79, meltingPoint: 3695, boilingPoint: 5828, density: 19.25 } },
+            { z: 75, sym: 'Re', name: 'レニウム', p: 6, g: 7, cat: 'transition', vals: { atomicRadius: 188, ionicRadius: 63, ionizationEnergy: 760, electronegativity: 1.90, electronAffinity: 6, meltingPoint: 3459, boilingPoint: 5869, density: 21.02 } },
+            { z: 76, sym: 'Os', name: 'オスミウム', p: 6, g: 8, cat: 'transition', vals: { atomicRadius: 185, ionicRadius: 63, ionizationEnergy: 840, electronegativity: 2.20, electronAffinity: 104, meltingPoint: 3306, boilingPoint: 5285, density: 22.59 } },
+            { z: 77, sym: 'Ir', name: 'イリジウム', p: 6, g: 9, cat: 'transition', vals: { atomicRadius: 180, ionicRadius: 68, ionizationEnergy: 880, electronegativity: 2.20, electronAffinity: 151, meltingPoint: 2719, boilingPoint: 4701, density: 22.56 } },
+            { z: 78, sym: 'Pt', name: '白金', p: 6, g: 10, cat: 'transition', vals: { atomicRadius: 177, ionicRadius: 86, ionizationEnergy: 870, electronegativity: 2.28, electronAffinity: 205, meltingPoint: 2041, boilingPoint: 4098, density: 21.45 } },
+            { z: 79, sym: 'Au', name: '金', p: 6, g: 11, cat: 'transition', vals: { atomicRadius: 174, ionicRadius: 137, ionizationEnergy: 890, electronegativity: 2.54, electronAffinity: 223, meltingPoint: 1337, boilingPoint: 3129, density: 19.30 } },
+            { z: 80, sym: 'Hg', name: '水銀', p: 6, g: 12, cat: 'transition', vals: { atomicRadius: 171, ionicRadius: 102, ionizationEnergy: 1007, electronegativity: 2.00, electronAffinity: -50, meltingPoint: 234, boilingPoint: 630, density: 13.53 } },
+            { z: 81, sym: 'Tl', name: 'タリウム', p: 6, g: 13, cat: 'postTrans', vals: { atomicRadius: 156, ionicRadius: 150, ionizationEnergy: 589, electronegativity: 1.62, electronAffinity: 36, meltingPoint: 577, boilingPoint: 1746, density: 11.85 } },
+            { z: 82, sym: 'Pb', name: '鉛', p: 6, g: 14, cat: 'postTrans', vals: { atomicRadius: 154, ionicRadius: 119, ionizationEnergy: 716, electronegativity: 2.33, electronAffinity: 35, meltingPoint: 601, boilingPoint: 2022, density: 11.34 } },
+            { z: 83, sym: 'Bi', name: 'ビスマス', p: 6, g: 15, cat: 'postTrans', vals: { atomicRadius: 143, ionicRadius: 103, ionizationEnergy: 703, electronegativity: 2.02, electronAffinity: 91, meltingPoint: 545, boilingPoint: 1837, density: 9.78 } },
+            { z: 84, sym: 'Po', name: 'ポロニウム', p: 6, g: 16, cat: 'metalloid', vals: { atomicRadius: 135, ionicRadius: 94, ionizationEnergy: 812, electronegativity: 2.00, electronAffinity: 136, meltingPoint: 527, boilingPoint: 1235, density: 9.20 } },
+            { z: 85, sym: 'At', name: 'アスタチン', p: 6, g: 17, cat: 'halogen', vals: { atomicRadius: 127, ionicRadius: 62, ionizationEnergy: 899, electronegativity: 2.20, electronAffinity: 233, meltingPoint: 575, boilingPoint: 610, density: 7.00 } },
+            { z: 86, sym: 'Rn', name: 'ラドン', p: 6, g: 18, cat: 'noble', vals: { atomicRadius: 120, ionicRadius: null, ionizationEnergy: 1037, electronegativity: 2.20, electronAffinity: -70, meltingPoint: 202, boilingPoint: 211, density: 0.00973 } },
+            // 第7周期
+            { z: 87, sym: 'Fr', name: 'フランシウム', p: 7, g: 1, cat: 'alkali', vals: { atomicRadius: 348, ionicRadius: 180, ionizationEnergy: 380, electronegativity: 0.70, electronAffinity: 47, meltingPoint: 300, boilingPoint: 950, density: 1.87 } },
+            { z: 88, sym: 'Ra', name: 'ラジウム', p: 7, g: 2, cat: 'alkaline', vals: { atomicRadius: 283, ionicRadius: 148, ionizationEnergy: 509, electronegativity: 0.90, electronAffinity: 10, meltingPoint: 973, boilingPoint: 2010, density: 5.50 } },
+            { z: 104, sym: 'Rf', name: 'ラザホージウム', p: 7, g: 4, cat: 'transition', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: 580, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } },
+            { z: 105, sym: 'Db', name: 'ドブニウム', p: 7, g: 5, cat: 'transition', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } },
+            { z: 106, sym: 'Sg', name: 'シーボーギウム', p: 7, g: 6, cat: 'transition', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } },
+            { z: 107, sym: 'Bh', name: 'ボーリウム', p: 7, g: 7, cat: 'transition', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } },
+            { z: 108, sym: 'Hs', name: 'ハッシウム', p: 7, g: 8, cat: 'transition', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } },
+            { z: 109, sym: 'Mt', name: 'マイトネリウム', p: 7, g: 9, cat: 'transition', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } },
+            { z: 110, sym: 'Ds', name: 'ダームスタチウム', p: 7, g: 10, cat: 'transition', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } },
+            { z: 111, sym: 'Rg', name: 'レントゲニウム', p: 7, g: 11, cat: 'transition', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } },
+            { z: 112, sym: 'Cn', name: 'コペルニシウム', p: 7, g: 12, cat: 'transition', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } },
+            { z: 113, sym: 'Nh', name: 'ニホニウム', p: 7, g: 13, cat: 'postTrans', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } },
+            { z: 114, sym: 'Fl', name: 'フレロビウム', p: 7, g: 14, cat: 'postTrans', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } },
+            { z: 115, sym: 'Mc', name: 'モスコビウム', p: 7, g: 15, cat: 'postTrans', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } },
+            { z: 116, sym: 'Lv', name: 'リバモリウム', p: 7, g: 16, cat: 'postTrans', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } },
+            { z: 117, sym: 'Ts', name: 'テネシン', p: 7, g: 17, cat: 'halogen', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } },
+            { z: 118, sym: 'Og', name: 'オガネソン', p: 7, g: 18, cat: 'noble', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } }
+        ];
+
+        const CATEGORIES = {
+            alkali: { label: 'アルカリ金属', textClass: 'text-red-600' },
+            alkaline: { label: 'アルカリ土類金属', textClass: 'text-orange-600' },
+            transition: { label: '遷移元素', textClass: 'text-amber-600' },
+            postTrans: { label: 'その他の金属', textClass: 'text-emerald-700' },
+            metalloid: { label: '半金属', textClass: 'text-teal-600' },
+            nonmetal: { label: '非金属', textClass: 'text-blue-600' },
+            halogen: { label: 'ハロゲン', textClass: 'text-purple-600' },
+            noble: { label: '貴ガス(希ガス)', textClass: 'text-pink-600' }
+        };
+
+        const state = {
+            selectedMetric: null,
+            includeTransition: true
+        };
+
+        /**
+         * セル内表示用の数値フォーマット（コンパクト幅に合わせて桁調整）
+         */
+        function formatValue(val, metricKey, isCompactCell = false) {
+            if (val === null || val === undefined) return '—';
+            const metric = METRICS[metricKey];
+            if (!metric) return String(val);
+            if (metricKey === 'density') {
+                if (Math.abs(val) < 0.01) {
+                    return isCompactCell ? Number(val).toFixed(3) : Number(val).toFixed(4);
+                }
+                return isCompactCell && val >= 10 ? Number(val).toFixed(1) : Number(val).toFixed(2);
+            }
+            return Number(val).toFixed(metric.decimals);
+        }
+
+        /**
+         * ヒートマップ背景色（青→水色→緑→黄→赤）
+         */
+        function getHeatmapStyle(val, min, max) {
+            if (val === null || val === undefined) {
+                return { bg: '#f1f5f9' };
+            }
+            const ratio = max === min ? 0.5 : Math.max(0, Math.min(1, (val - min) / (max - min)));
+            const hue = (1 - ratio) * 220;
+            return {
+                bg: `hsl(${hue.toFixed(0)}, 85%, 65%)`
+            };
+        }
+
+        /**
+         * 指標選択ボタンの描画（4列×2行のコンパクトボタン）
+         */
+        function renderMetricButtons() {
+            const container = document.getElementById('metric-buttons');
+            container.innerHTML = '';
+
+            Object.values(METRICS).forEach(m => {
+                const isSelected = state.selectedMetric === m.id;
+                const btn = document.createElement('button');
+                btn.className = `flex items-center justify-between gap-1 px-2 py-1 rounded-lg border text-left transition-all ${
+                    isSelected
+                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-2xs ring-1 ring-indigo-300'
+                        : 'bg-slate-50 border-slate-200 text-slate-700 active:bg-indigo-50'
+                }`;
+                btn.innerHTML = `
+                    <span class="font-bold text-[11px] sm:text-xs truncate">${m.shortName}</span>
+                    <span class="text-[9px] font-mono shrink-0 ${isSelected ? 'text-indigo-200' : 'text-slate-400'}">${m.unit}</span>
+                `;
+                btn.addEventListener('click', () => {
+                    state.selectedMetric = (state.selectedMetric === m.id) ? null : m.id;
+                    updateUI();
+                });
+                container.appendChild(btn);
+            });
+        }
+
+        /**
+         * ステータスバーと定義エリアの更新
+         */
+        function updateDefinitionArea() {
+            const badge = document.getElementById('def-badge');
+            const title = document.getElementById('def-title');
+            const text = document.getElementById('def-text');
+
+            const catInline = document.getElementById('category-legend-inline');
+            const hmInline = document.getElementById('heatmap-legend-inline');
+
+            if (!state.selectedMetric) {
+                badge.textContent = '標準モード';
+                badge.className = 'px-1.5 py-0.5 text-[10px] font-bold bg-slate-600 text-white rounded';
+                title.textContent = '元素の分類（文字色による区分）';
+                text.textContent = '元素記号の文字色で元素の分類を表しています。上部の指標ボタンをタップすると数値データとヒートマップに切り替わり、再度タップすると標準表示に戻ります。';
+
+                catInline.classList.remove('hidden');
+                hmInline.classList.add('hidden');
+            } else {
+                const m = METRICS[state.selectedMetric];
+                badge.textContent = `単位: ${m.unit}`;
+                badge.className = 'px-1.5 py-0.5 text-[10px] font-bold bg-indigo-600 text-white rounded';
+                title.textContent = m.name;
+                text.textContent = m.definition;
+
+                const visibleElements = getVisibleElements();
+                const values = visibleElements
+                    .map(el => el.vals[state.selectedMetric])
+                    .filter(v => v !== null && v !== undefined);
+                const min = Math.min(...values);
+                const max = Math.max(...values);
+
+                document.getElementById('inline-metric-name').textContent = m.name;
+                document.getElementById('legend-min').textContent = formatValue(min, state.selectedMetric);
+                document.getElementById('legend-max').textContent = formatValue(max, state.selectedMetric);
+                document.getElementById('legend-unit').textContent = m.unit;
+
+                catInline.classList.add('hidden');
+                hmInline.classList.remove('hidden');
+            }
+        }
+
+        function getVisibleElements() {
+            if (state.includeTransition) {
+                return ELEMENTS;
+            } else {
+                return ELEMENTS.filter(el => el.g <= 2 || el.g >= 13);
+            }
+        }
+
+        /**
+         * 周期表の描画（横幅100%に収まるコンパクトグリッド）
+         */
+        function renderPeriodicTable() {
+            const container = document.getElementById('periodic-table');
+            container.innerHTML = '';
+
+            const visibleElements = getVisibleElements();
+
+            let minVal = 0, maxVal = 1;
+            if (state.selectedMetric) {
+                const vals = visibleElements
+                    .map(el => el.vals[state.selectedMetric])
+                    .filter(v => v !== null && v !== undefined);
+                minVal = Math.min(...vals);
+                maxVal = Math.max(...vals);
+            }
+
+            if (state.includeTransition) {
+                container.className = 'ptable-grid-18 w-full';
+
+                // 族番号ヘッダー（1〜18）
+                for (let g = 1; g <= 18; g++) {
+                    const headerCell = document.createElement('div');
+                    headerCell.className = 'text-center text-[9px] font-bold text-slate-400 leading-none pb-0.5';
+                    headerCell.textContent = g;
+                    container.appendChild(headerCell);
+                }
+
+                for (let p = 1; p <= 7; p++) {
+                    for (let g = 1; g <= 18; g++) {
+                        if ((p === 6 || p === 7) && g === 3) {
+                            const placeholder = document.createElement('div');
+                            placeholder.className = 'element-cell rounded border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center text-[7px] text-slate-400 leading-none text-center';
+                            placeholder.innerHTML = p === 6 ? '57-71' : '89-103';
+                            container.appendChild(placeholder);
+                            continue;
+                        }
+
+                        const el = visibleElements.find(e => e.p === p && e.g === g);
+                        if (el) {
+                            container.appendChild(createElementCell(el, minVal, maxVal, false));
+                        } else {
+                            container.appendChild(document.createElement('div'));
+                        }
+                    }
+                }
+            } else {
+                // 典型元素のみ（8族短周期レイアウト）
+                container.className = 'ptable-grid-8 max-w-2xl mx-auto';
+                const mainGroups = [1, 2, 13, 14, 15, 16, 17, 18];
+
+                mainGroups.forEach(g => {
+                    const headerCell = document.createElement('div');
+                    headerCell.className = 'text-center text-[10px] font-bold text-slate-500 leading-none pb-0.5';
+                    headerCell.textContent = `${g}族`;
+                    container.appendChild(headerCell);
+                });
+
+                for (let p = 1; p <= 7; p++) {
+                    for (let col = 0; col < mainGroups.length; col++) {
+                        const g = mainGroups[col];
+                        const el = visibleElements.find(e => e.p === p && e.g === g);
+                        if (el) {
+                            container.appendChild(createElementCell(el, minVal, maxVal, true));
+                        } else {
+                            container.appendChild(document.createElement('div'));
+                        }
+                    }
+                }
+            }
+        }
+
+        /**
+         * 個別の元素セルDOM生成（18族時は高密度・8族時は元素名も表示）
+         */
+        function createElementCell(el, minVal, maxVal, isWideMode) {
+            const cell = document.createElement('div');
+            const catInfo = CATEGORIES[el.cat];
+            const metricKey = state.selectedMetric;
+            const val = metricKey ? el.vals[metricKey] : null;
+
+            let bgStyle = 'background-color: #ffffff;';
+            let borderClass = 'border-slate-200';
+            let symbolOutlineStyle = '';
+
+            if (metricKey) {
+                const hm = getHeatmapStyle(val, minVal, maxVal);
+                bgStyle = `background-color: ${hm.bg};`;
+                borderClass = val !== null ? 'border-slate-400/50' : 'border-slate-200';
+                symbolOutlineStyle = 'text-shadow: -0.8px -0.8px 0 #fff, 0.8px -0.8px 0 #fff, -0.8px 0.8px 0 #fff, 0.8px 0.8px 0 #fff, 0px 0px 3px rgba(255,255,255,0.95);';
+            }
+
+            cell.className = `element-cell rounded border ${borderClass} px-0.5 py-0.5 flex flex-col justify-between cursor-pointer relative`;
+            cell.style = bgStyle;
+
+            // 上段：原子番号
+            const topRow = `
+                <div class="flex justify-start items-center text-[7px] sm:text-[8px] leading-none font-semibold text-slate-600">
+                    <span>${el.z}</span>
+                </div>
+            `;
+
+            // 中段：元素記号
+            const charge = (metricKey === 'ionicRadius' && ION_CHARGES[el.sym]) ? ION_CHARGES[el.sym] : '';
+            const symbolDisplay = charge
+                ? `${el.sym}<sup class="text-[7px] font-bold leading-none">${charge}</sup>`
+                : el.sym;
+
+            const midRow = `
+                <div class="flex-grow flex items-center justify-center font-extrabold ${isWideMode ? 'text-xs sm:text-sm' : 'text-[11px] sm:text-xs'} leading-none whitespace-nowrap ${catInfo.textClass}" style="${symbolOutlineStyle}">
+                    ${symbolDisplay}
+                </div>
+            `;
+
+            // 下段：指標選択時は数値、標準時は8族モードなら元素名・18族モードならスッキリ表示
+            let bottomRow = '';
+            if (metricKey) {
+                const formatted = formatValue(val, metricKey, !isWideMode);
+                bottomRow = `
+                    <div class="w-full text-center text-[7.5px] sm:text-[8.5px] font-bold text-slate-900 bg-white/80 rounded-[2px] px-px truncate leading-tight tracking-tighter">
+                        ${formatted}
+                    </div>
+                `;
+            } else if (isWideMode) {
+                bottomRow = `
+                    <div class="w-full text-center text-[8px] text-slate-500 truncate leading-none">
+                        ${el.name}
+                    </div>
+                `;
+            } else {
+                bottomRow = `<div class="h-1"></div>`;
+            }
+
+            cell.innerHTML = topRow + midRow + bottomRow;
+            cell.addEventListener('click', () => openElementModal(el));
+
+            return cell;
+        }
+
+        /**
+         * 元素詳細モーダル表示
+         */
+        function openElementModal(el) {
+            const modal = document.getElementById('element-modal');
+            const catInfo = CATEGORIES[el.cat];
+
+            document.getElementById('modal-number').textContent = `No.${el.z}`;
+            const symEl = document.getElementById('modal-symbol');
+            symEl.textContent = el.sym;
+            symEl.className = `text-xl font-extrabold ${catInfo.textClass}`;
+
+            document.getElementById('modal-category').textContent = catInfo.label;
+            document.getElementById('modal-name').textContent = el.name;
+            document.getElementById('modal-group-period').textContent = `第${el.p}周期 / ${el.g}族`;
+
+            const list = document.getElementById('modal-metrics-list');
+            list.innerHTML = '';
+
+            const modalOrder = [
+                'atomicRadius', 'ionicRadius',
+                'ionizationEnergy', 'electronAffinity',
+                'electronegativity', 'density',
+                'meltingPoint', 'boilingPoint'
+            ];
+
+            modalOrder.forEach(key => {
+                const m = METRICS[key];
+                const val = el.vals[m.id];
+                const formatted = formatValue(val, m.id, false);
+                const isCurrent = state.selectedMetric === m.id;
+
+                const row = document.createElement('div');
+                row.className = `flex justify-between items-center py-1 px-2 rounded-lg border ${isCurrent ? 'bg-indigo-50 border-indigo-200 font-bold text-indigo-900' : 'bg-slate-50/70 border-slate-100'}`;
+                row.innerHTML = `
+                    <span class="text-[11px] text-slate-600 truncate mr-1">${m.shortName}</span>
+                    <span class="font-mono font-semibold text-xs shrink-0">${formatted} <span class="text-[9px] text-slate-400 font-normal">${val !== null ? m.unit : ''}</span></span>
+                `;
+                list.appendChild(row);
+            });
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        /**
+         * 原子番号1〜36までの折れ線グラフ描画
+         */
+        function renderTrendChart() {
+            const section = document.getElementById('chart-section');
+            const svg = document.getElementById('trend-chart');
+            const tooltip = document.getElementById('chart-tooltip');
+
+            if (!state.selectedMetric) {
+                section.classList.add('hidden');
+                return;
+            }
+
+            section.classList.remove('hidden');
+            const metric = METRICS[state.selectedMetric];
+
+            document.getElementById('chart-title').textContent = `${metric.name}の推移（原子番号 1〜36：H 〜 Kr）`;
+            document.getElementById('chart-unit-badge').textContent = `単位: ${metric.unit}`;
+
+            const targetElements = getVisibleElements().filter(el => el.z <= 36);
+            const validPoints = targetElements
+                .map(el => ({ el, val: el.vals[state.selectedMetric] }))
+                .filter(d => d.val !== null && d.val !== undefined);
+
+            const width = 880;
+            const height = 210;
+            const padLeft = 52;
+            const padRight = 18;
+            const padTop = 16;
+            const padBottom = 38;
+            const plotW = width - padLeft - padRight;
+            const plotH = height - padTop - padBottom;
+
+            svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+            svg.innerHTML = '';
+
+            if (validPoints.length === 0) return;
+
+            const rawMin = Math.min(...validPoints.map(d => d.val));
+            const rawMax = Math.max(...validPoints.map(d => d.val));
+            const yMin = rawMin > 0 ? 0 : rawMin * 1.1;
+            const yMax = rawMax === yMin ? rawMax + 1 : rawMax * 1.08;
+
+            const getX = (z) => padLeft + ((z - 1) / 35) * plotW;
+            const getY = (val) => padTop + plotH - ((val - yMin) / (yMax - yMin)) * plotH;
+
+            const createSvgEl = (tag, attrs) => {
+                const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+                Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+                return el;
+            };
+
+            const periodRanges = [
+                { label: '第1周期', start: 1, end: 2, fill: '#f8fafc' },
+                { label: '第2周期', start: 3, end: 10, fill: '#ffffff' },
+                { label: '第3周期', start: 11, end: 18, fill: '#f8fafc' },
+                { label: '第4周期', start: 19, end: 36, fill: '#ffffff' }
+            ];
+
+            periodRanges.forEach(pr => {
+                const x1 = pr.start === 1 ? padLeft : (getX(pr.start - 1) + getX(pr.start)) / 2;
+                const x2 = pr.end === 36 ? padLeft + plotW : (getX(pr.end) + getX(pr.end + 1)) / 2;
+                svg.appendChild(createSvgEl('rect', {
+                    x: x1, y: padTop, width: x2 - x1, height: plotH, fill: pr.fill
+                }));
+                const pLabel = createSvgEl('text', {
+                    x: (x1 + x2) / 2, y: padTop + 11,
+                    'text-anchor': 'middle', fill: '#94a3b8', 'font-size': '9', 'font-weight': '600'
+                });
+                pLabel.textContent = pr.label;
+                svg.appendChild(pLabel);
+            });
+
+            const ticks = 4;
+            for (let i = 0; i <= ticks; i++) {
+                const ratio = i / ticks;
+                const val = yMin + (yMax - yMin) * ratio;
+                const y = getY(val);
+
+                svg.appendChild(createSvgEl('line', {
+                    x1: padLeft, y1: y, x2: padLeft + plotW, y2: y,
+                    stroke: i === 0 ? '#94a3b8' : '#e2e8f0',
+                    'stroke-width': i === 0 ? '1.2' : '1',
+                    'stroke-dasharray': i === 0 ? '' : '3,3'
+                }));
+
+                const label = createSvgEl('text', {
+                    x: padLeft - 6, y: y + 3,
+                    'text-anchor': 'end', fill: '#64748b', 'font-size': '9', 'font-family': 'monospace'
+                });
+                label.textContent = formatValue(val, state.selectedMetric, false);
+                svg.appendChild(label);
+            }
+
+            if (yMin < 0 && yMax > 0) {
+                const zeroY = getY(0);
+                svg.appendChild(createSvgEl('line', {
+                    x1: padLeft, y1: zeroY, x2: padLeft + plotW, y2: zeroY,
+                    stroke: '#64748b', 'stroke-width': '1'
+                }));
+            }
+
+            for (let z = 1; z <= 36; z++) {
+                const el = ELEMENTS.find(e => e.z === z);
+                if (!el) continue;
+                const isVisible = targetElements.some(e => e.z === z);
+                const x = getX(z);
+
+                const symText = createSvgEl('text', {
+                    x: x, y: padTop + plotH + 13,
+                    'text-anchor': 'middle',
+                    fill: isVisible ? '#334155' : '#cbd5e1',
+                    'font-size': '9.5',
+                    'font-weight': isVisible ? '700' : '400'
+                });
+                symText.textContent = el.sym;
+                svg.appendChild(symText);
+
+                const zText = createSvgEl('text', {
+                    x: x, y: padTop + plotH + 24,
+                    'text-anchor': 'middle',
+                    fill: isVisible ? '#64748b' : '#cbd5e1',
+                    'font-size': '8',
+                    'font-family': 'monospace'
+                });
+                zText.textContent = z;
+                svg.appendChild(zText);
+            }
+
+            let pathD = '';
+            let prevConnected = false;
+            targetElements.forEach(el => {
+                const val = el.vals[state.selectedMetric];
+                if (val === null || val === undefined) {
+                    prevConnected = false;
+                    return;
+                }
+                const x = getX(el.z);
+                const y = getY(val);
+                pathD += `${prevConnected ? 'L' : 'M'} ${x.toFixed(1)} ${y.toFixed(1)} `;
+                prevConnected = true;
+            });
+
+            if (pathD) {
+                svg.appendChild(createSvgEl('path', {
+                    d: pathD.trim(),
+                    fill: 'none',
+                    stroke: '#6366f1',
+                    'stroke-width': '2',
+                    'stroke-linejoin': 'round'
+                }));
+            }
+
+            validPoints.forEach(({ el, val }) => {
+                const x = getX(el.z);
+                const y = getY(val);
+                const hm = getHeatmapStyle(val, rawMin, rawMax);
+
+                const circle = createSvgEl('circle', {
+                    cx: x, cy: y, r: '4',
+                    fill: hm.bg,
+                    stroke: '#1e293b',
+                    'stroke-width': '1.1'
+                });
+
+                const hitArea = createSvgEl('circle', {
+                    cx: x, cy: y, r: '11',
+                    fill: 'transparent',
+                    class: 'cursor-pointer'
+                });
+
+                const showTooltip = () => {
+                    circle.setAttribute('r', '6.5');
+                    const formatted = formatValue(val, state.selectedMetric, false);
+                    const charge = (state.selectedMetric === 'ionicRadius' && ION_CHARGES[el.sym]) ? ION_CHARGES[el.sym] : '';
+                    tooltip.innerHTML = `<span class="font-bold text-indigo-300">${el.z}. ${el.sym}${charge} (${el.name})</span> : <span class="font-mono font-bold">${formatted} ${metric.unit}</span>`;
+                    tooltip.classList.remove('hidden');
+
+                    const pctX = (x / width) * 100;
+                    const pctY = (y / height) * 100;
+                    tooltip.style.left = `calc(${pctX}% - ${pctX > 75 ? '120px' : pctX < 20 ? '10px' : '60px'})`;
+                    tooltip.style.top = `calc(${pctY}% - 34px)`;
+                };
+
+                const hideTooltip = () => {
+                    circle.setAttribute('r', '4');
+                    tooltip.classList.add('hidden');
+                };
+
+                hitArea.addEventListener('mouseenter', showTooltip);
+                hitArea.addEventListener('mouseleave', hideTooltip);
+                hitArea.addEventListener('click', () => {
+                    showTooltip();
+                    openElementModal(el);
+                });
+
+                svg.appendChild(circle);
+                svg.appendChild(hitArea);
+            });
+        }
+
+        function updateUI() {
+            renderMetricButtons();
+            updateDefinitionArea();
+            renderPeriodicTable();
+            renderTrendChart();
+
+            const btnInc = document.getElementById('btn-include-trans');
+            const btnExc = document.getElementById('btn-exclude-trans');
+            if (state.includeTransition) {
+                btnInc.className = 'w-full py-1 px-1.5 rounded-md text-[10px] font-bold leading-tight transition-all bg-white text-indigo-600 shadow-2xs text-center';
+                btnExc.className = 'w-full py-1 px-1.5 rounded-md text-[10px] font-bold leading-tight transition-all text-slate-600 hover:text-slate-900 text-center';
+            } else {
+                btnExc.className = 'w-full py-1 px-1.5 rounded-md text-[10px] font-bold leading-tight transition-all bg-white text-indigo-600 shadow-2xs text-center';
+                btnInc.className = 'w-full py-1 px-1.5 rounded-md text-[10px] font-bold leading-tight transition-all text-slate-600 hover:text-slate-900 text-center';
+            }
+        }
+
+        document.getElementById('btn-include-trans').addEventListener('click', () => {
+            state.includeTransition = true;
+            updateUI();
+        });
+
+        document.getElementById('btn-exclude-trans').addEventListener('click', () => {
+            state.includeTransition = false;
+            updateUI();
+        });
+
+        document.getElementById('close-modal').addEventListener('click', () => {
+            const modal = document.getElementById('element-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        });
+
+        document.getElementById('element-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'element-modal') {
+                e.target.classList.add('hidden');
+                e.target.classList.remove('flex');
+            }
+        });
+
+        updateUI();
+    </script>
+</body>
+</html>

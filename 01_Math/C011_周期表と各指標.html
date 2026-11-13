@@ -145,6 +145,23 @@
             <span class="text-[11px] text-slate-400 ml-auto">※ヒートマップ表示時は視認性のため白黒反転/縁取り調整されます</span>
         </section>
 
+        <!-- 5. 原子番号 1〜36 (H〜Kr) の指標推移グラフ -->
+        <section id="chart-section" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 hidden">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                <div>
+                    <h3 id="chart-title" class="font-bold text-slate-800 text-sm sm:text-base">指標の周期的変化（原子番号 1〜36：H 〜 Kr）</h3>
+                    <p class="text-xs text-slate-500">横軸：原子番号（元素記号） / 縦軸：<span id="chart-yaxis-label">指標値</span>（点にカーソルを合わせると数値を表示）</p>
+                </div>
+                <span id="chart-unit-badge" class="self-start sm:self-auto px-2.5 py-1 text-xs font-mono font-semibold bg-slate-100 text-slate-600 rounded-lg border border-slate-200">単位: pm</span>
+            </div>
+            <div id="chart-container" class="relative w-full overflow-x-auto">
+                <div id="chart-wrapper" class="min-w-[680px] w-full relative">
+                    <svg id="trend-chart" class="w-full h-64 block select-none"></svg>
+                    <div id="chart-tooltip" class="pointer-events-none hidden absolute z-20 bg-slate-900/95 text-white text-xs rounded-lg px-2.5 py-1.5 shadow-lg whitespace-nowrap"></div>
+                </div>
+            </div>
+        </section>
+
     </main>
 
     <!-- 元素詳細モーダル / ポップオーバー（クリック時に詳細表示） -->
@@ -648,7 +665,20 @@
             const list = document.getElementById('modal-metrics-list');
             list.innerHTML = '';
 
-            Object.values(METRICS).forEach(m => {
+            // 詳細モーダル内の指定表示順
+            const modalOrder = [
+                'atomicRadius',
+                'ionicRadius',
+                'ionizationEnergy',
+                'electronAffinity',
+                'electronegativity',
+                'boilingPoint',
+                'meltingPoint',
+                'density'
+            ];
+
+            modalOrder.forEach(key => {
+                const m = METRICS[key];
                 const val = el.vals[m.id];
                 const formatted = formatValue(val, m.id);
                 const isCurrent = state.selectedMetric === m.id;
@@ -667,12 +697,233 @@
         }
 
         /**
+         * 原子番号1〜36までの折れ線・散布図グラフの描画
+         */
+        function renderTrendChart() {
+            const section = document.getElementById('chart-section');
+            const svg = document.getElementById('trend-chart');
+            const tooltip = document.getElementById('chart-tooltip');
+
+            if (!state.selectedMetric) {
+                section.classList.add('hidden');
+                return;
+            }
+
+            section.classList.remove('hidden');
+            const metric = METRICS[state.selectedMetric];
+
+            document.getElementById('chart-title').textContent = `${metric.name}の周期的変化（原子番号 1〜36：H 〜 Kr）`;
+            document.getElementById('chart-yaxis-label').textContent = `${metric.name} (${metric.unit})`;
+            document.getElementById('chart-unit-badge').textContent = `単位: ${metric.unit}`;
+
+            // 現在の表示モード（遷移元素含む/含まない）に応じた1〜36番元素を取得
+            const targetElements = getVisibleElements().filter(el => el.z <= 36);
+            const validPoints = targetElements
+                .map(el => ({ el, val: el.vals[state.selectedMetric] }))
+                .filter(d => d.val !== null && d.val !== undefined);
+
+            const width = 920;
+            const height = 260;
+            const padLeft = 58;
+            const padRight = 24;
+            const padTop = 20;
+            const padBottom = 46;
+            const plotW = width - padLeft - padRight;
+            const plotH = height - padTop - padBottom;
+
+            svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+            svg.innerHTML = '';
+
+            if (validPoints.length === 0) return;
+
+            const rawMin = Math.min(...validPoints.map(d => d.val));
+            const rawMax = Math.max(...validPoints.map(d => d.val));
+            const yMin = rawMin > 0 ? 0 : rawMin * 1.1;
+            const yMax = rawMax === yMin ? rawMax + 1 : rawMax * 1.08;
+
+            const getX = (z) => padLeft + ((z - 1) / 35) * plotW;
+            const getY = (val) => padTop + plotH - ((val - yMin) / (yMax - yMin)) * plotH;
+
+            // SVG要素作成ヘルパー
+            const createSvgEl = (tag, attrs) => {
+                const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+                Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+                return el;
+            };
+
+            // 周期の区切り背景（第1〜第4周期）
+            const periodRanges = [
+                { label: '第1周期', start: 1, end: 2, fill: '#f8fafc' },
+                { label: '第2周期', start: 3, end: 10, fill: '#ffffff' },
+                { label: '第3周期', start: 11, end: 18, fill: '#f8fafc' },
+                { label: '第4周期', start: 19, end: 36, fill: '#ffffff' }
+            ];
+
+            periodRanges.forEach(pr => {
+                const x1 = pr.start === 1 ? padLeft : (getX(pr.start - 1) + getX(pr.start)) / 2;
+                const x2 = pr.end === 36 ? padLeft + plotW : (getX(pr.end) + getX(pr.end + 1)) / 2;
+                svg.appendChild(createSvgEl('rect', {
+                    x: x1, y: padTop, width: x2 - x1, height: plotH, fill: pr.fill
+                }));
+                const pLabel = createSvgEl('text', {
+                    x: (x1 + x2) / 2, y: padTop + 13,
+                    'text-anchor': 'middle', fill: '#94a3b8', 'font-size': '10', 'font-weight': '600'
+                });
+                pLabel.textContent = pr.label;
+                svg.appendChild(pLabel);
+            });
+
+            // 横グリッド線とY軸目盛り（5段階）
+            const ticks = 5;
+            for (let i = 0; i <= ticks; i++) {
+                const ratio = i / ticks;
+                const val = yMin + (yMax - yMin) * ratio;
+                const y = getY(val);
+
+                svg.appendChild(createSvgEl('line', {
+                    x1: padLeft, y1: y, x2: padLeft + plotW, y2: y,
+                    stroke: i === 0 ? '#94a3b8' : '#e2e8f0',
+                    'stroke-width': i === 0 ? '1.5' : '1',
+                    'stroke-dasharray': i === 0 ? '' : '3,3'
+                }));
+
+                const label = createSvgEl('text', {
+                    x: padLeft - 8, y: y + 3.5,
+                    'text-anchor': 'end', fill: '#64748b', 'font-size': '10', 'font-family': 'monospace'
+                });
+                label.textContent = formatValue(val, state.selectedMetric);
+                svg.appendChild(label);
+            }
+
+            // ゼロ基準線（負の値を含む指標の場合）
+            if (yMin < 0 && yMax > 0) {
+                const zeroY = getY(0);
+                svg.appendChild(createSvgEl('line', {
+                    x1: padLeft, y1: zeroY, x2: padLeft + plotW, y2: zeroY,
+                    stroke: '#64748b', 'stroke-width': '1.2'
+                }));
+            }
+
+            // X軸ラベル（1〜36番の原子番号と元素記号）
+            for (let z = 1; z <= 36; z++) {
+                const el = ELEMENTS.find(e => e.z === z);
+                if (!el) continue;
+                const isVisible = targetElements.some(e => e.z === z);
+                const x = getX(z);
+
+                // 縦の薄いガイド線
+                svg.appendChild(createSvgEl('line', {
+                    x1: x, y1: padTop, x2: x, y2: padTop + plotH,
+                    stroke: '#f1f5f9', 'stroke-width': '1'
+                }));
+
+                // 元素記号
+                const symText = createSvgEl('text', {
+                    x: x, y: padTop + plotH + 15,
+                    'text-anchor': 'middle',
+                    fill: isVisible ? '#334155' : '#cbd5e1',
+                    'font-size': '10',
+                    'font-weight': isVisible ? '700' : '400'
+                });
+                symText.textContent = el.sym;
+                svg.appendChild(symText);
+
+                // 原子番号
+                const zText = createSvgEl('text', {
+                    x: x, y: padTop + plotH + 28,
+                    'text-anchor': 'middle',
+                    fill: isVisible ? '#64748b' : '#cbd5e1',
+                    'font-size': '9',
+                    'font-family': 'monospace'
+                });
+                zText.textContent = z;
+                svg.appendChild(zText);
+            }
+
+            // 折れ線パス（欠損値がある場合は線を区切る）
+            let pathD = '';
+            let prevConnected = false;
+            targetElements.forEach(el => {
+                const val = el.vals[state.selectedMetric];
+                if (val === null || val === undefined) {
+                    prevConnected = false;
+                    return;
+                }
+                const x = getX(el.z);
+                const y = getY(val);
+                pathD += `${prevConnected ? 'L' : 'M'} ${x.toFixed(1)} ${y.toFixed(1)} `;
+                prevConnected = true;
+            });
+
+            if (pathD) {
+                svg.appendChild(createSvgEl('path', {
+                    d: pathD.trim(),
+                    fill: 'none',
+                    stroke: '#6366f1',
+                    'stroke-width': '2.2',
+                    'stroke-linejoin': 'round',
+                    'stroke-linecap': 'round'
+                }));
+            }
+
+            // データポイント（丸点）とホバー操作
+            validPoints.forEach(({ el, val }) => {
+                const x = getX(el.z);
+                const y = getY(val);
+
+                // ヒートマップと同系色の塗りつぶし
+                const hm = getHeatmapStyle(val, rawMin, rawMax);
+
+                const circle = createSvgEl('circle', {
+                    cx: x, cy: y, r: '4.5',
+                    fill: hm.bg,
+                    stroke: '#1e293b',
+                    'stroke-width': '1.2',
+                    class: 'cursor-pointer transition-transform'
+                });
+
+                // 透明な大きめヒットエリア（タッチ・マウス操作しやすくする）
+                const hitArea = createSvgEl('circle', {
+                    cx: x, cy: y, r: '10',
+                    fill: 'transparent',
+                    class: 'cursor-pointer'
+                });
+
+                const showTooltip = () => {
+                    circle.setAttribute('r', '7');
+                    const formatted = formatValue(val, state.selectedMetric);
+                    const charge = (state.selectedMetric === 'ionicRadius' && ION_CHARGES[el.sym]) ? ION_CHARGES[el.sym] : '';
+                    tooltip.innerHTML = `<span class="font-bold text-indigo-300">${el.z}. ${el.sym}${charge} (${el.name})</span> : <span class="font-mono font-bold">${formatted} ${metric.unit}</span>`;
+                    tooltip.classList.remove('hidden');
+
+                    const pctX = (x / width) * 100;
+                    const pctY = (y / height) * 100;
+                    tooltip.style.left = `calc(${pctX}% - ${pctX > 75 ? '130px' : pctX < 20 ? '10px' : '65px'})`;
+                    tooltip.style.top = `calc(${pctY}% - 38px)`;
+                };
+
+                const hideTooltip = () => {
+                    circle.setAttribute('r', '4.5');
+                    tooltip.classList.add('hidden');
+                };
+
+                hitArea.addEventListener('mouseenter', showTooltip);
+                hitArea.addEventListener('mouseleave', hideTooltip);
+                hitArea.addEventListener('click', () => openElementModal(el));
+
+                svg.appendChild(circle);
+                svg.appendChild(hitArea);
+            });
+        }
+
+        /**
          * UI全体の再描画
          */
         function updateUI() {
             renderMetricButtons();
             updateDefinitionArea();
             renderPeriodicTable();
+            renderTrendChart();
 
             // 遷移元素切り替えボタンの見た目更新
             const btnInc = document.getElementById('btn-include-trans');
