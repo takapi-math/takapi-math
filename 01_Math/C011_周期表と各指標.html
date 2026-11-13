@@ -18,21 +18,22 @@
         /* 周期表のグリッド設定 */
         .ptable-grid-18 {
             display: grid;
-            grid-template-columns: repeat(18, minmax(46px, 1fr));
-            gap: 4px;
+            grid-template-columns: repeat(18, minmax(44px, 1fr));
+            gap: 3px;
         }
 
         .ptable-grid-8 {
             display: grid;
-            grid-template-columns: repeat(8, minmax(64px, 1fr));
-            gap: 6px;
+            grid-template-columns: repeat(8, minmax(60px, 1fr));
+            gap: 5px;
         }
 
-        /* 元素セルのスタイル */
+        /* 元素セルのスタイル（縦幅をコンパクトにしつつサイズ固定） */
         .element-cell {
-            aspect-ratio: 1 / 1.15;
+            height: 52px;
             transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.3s ease;
             user-select: none;
+            overflow: hidden;
         }
 
         .element-cell:hover {
@@ -65,20 +66,15 @@
 </head>
 <body class="min-h-screen flex flex-col">
 
-    <!-- ヘッダー -->
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
-            <div class="flex items-center gap-2">
-                <div class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow">H</div>
-                <h1 class="text-xl font-bold text-slate-800 tracking-tight">周期表＆物性ヒートマップ</h1>
-            </div>
-
+    <!-- ヘッダー（タイトルを削除しコンパクト化） -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 py-1.5 flex items-center justify-end gap-4">
             <!-- 遷移元素の切り替えスイッチ -->
-            <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                <button id="btn-include-trans" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all bg-white text-indigo-600 shadow-sm">
+            <div class="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                <button id="btn-include-trans" class="px-3 py-1 rounded-lg text-xs sm:text-sm font-medium transition-all bg-white text-indigo-600 shadow-sm">
                     遷移元素を含む (18族)
                 </button>
-                <button id="btn-exclude-trans" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all text-slate-600 hover:text-slate-900">
+                <button id="btn-exclude-trans" class="px-3 py-1 rounded-lg text-xs sm:text-sm font-medium transition-all text-slate-600 hover:text-slate-900">
                     典型元素のみ (短周期)
                 </button>
             </div>
@@ -86,20 +82,20 @@
     </header>
 
     <!-- メインコンテンツ -->
-    <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6 flex flex-col gap-5">
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-3 flex flex-col gap-3">
 
         <!-- 1. 指標選択ボタン群 -->
-        <section class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
-            <div class="mb-2.5">
-                <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider">表示する指標を選択</h2>
+        <section class="bg-white px-4 py-2.5 rounded-2xl shadow-sm border border-slate-200">
+            <div class="flex items-center justify-between mb-1.5">
+                <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider">表示する指標を選択（再クリックで標準表示）</h2>
             </div>
-            <div id="metric-buttons" class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <!-- JavaScriptで動的に生成（7つの指標 + 標準表示の計8個） -->
+            <div id="metric-buttons" class="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                <!-- JavaScriptで動的に生成（指定順の8指標） -->
             </div>
         </section>
 
         <!-- 2. 周期表メインコンテナ -->
-        <section class="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200 table-container overflow-x-auto">
+        <section class="bg-white px-3 py-3 sm:px-5 sm:py-3.5 rounded-2xl shadow-sm border border-slate-200 table-container overflow-x-auto">
             <div id="periodic-table" class="min-w-[850px] mx-auto">
                 <!-- JavaScriptで周期表セルを生成 -->
             </div>
@@ -178,29 +174,9 @@
 
     <script>
         /**
-         * アプリケーションの状態管理
-         */
-        const state = {
-            selectedMetric: null,     // 選択中の指標ID（nullなら標準表示）
-            includeTransition: true   // 遷移元素を含むか（true: 18族, false: 典型元素のみ）
-        };
-
-        /**
-         * 元素分類の定義（文字色クラスとラベル）
-         */
-        const CATEGORIES = {
-            alkali:      { label: 'アルカリ金属',       textClass: 'text-red-600' },
-            alkaline:    { label: 'アルカリ土類金属',   textClass: 'text-orange-600' },
-            transition:  { label: '遷移元素',           textClass: 'text-amber-600' },
-            postTrans:   { label: 'その他の金属',       textClass: 'text-emerald-700' },
-            metalloid:   { label: '半金属',             textClass: 'text-teal-600' },
-            nonmetal:    { label: '非金属',             textClass: 'text-blue-600' },
-            halogen:     { label: 'ハロゲン',           textClass: 'text-purple-600' },
-            noble:       { label: '貴ガス(希ガス)',     textClass: 'text-pink-600' }
-        };
-
-        /**
-         * 7つの指標定義（名称、単位、定義文、小数点桁数）
+         * 8つの指標定義（指定の並び順：
+         * 1行目: 原子半径、第一イオン化エネルギー、単体の密度、沸点
+         * 2行目: イオン半径、電子親和力、電気陰性度、融点）
          */
         const METRICS = {
             atomicRadius: {
@@ -210,13 +186,6 @@
                 decimals: 0,
                 definition: '単体結晶中の隣接する同種原子の核間距離の半分（ファンデルワールス半径や共有結合半径等に基づく標準値）。同周期では右に行くほど有効核電荷が増し小さくなり、同族では下に行くほど電子殻が増え大きくなります。'
             },
-            ionicRadius: {
-                id: 'ionicRadius',
-                name: 'イオン半径',
-                unit: 'pm',
-                decimals: 0,
-                definition: '結晶中における最も安定な代表的イオンの半径（希ガスはイオンを形成しにくいためデータなし）。陽イオンは電子殻が減少するため元の原子半径より小さく、陰イオンは電子間の反発が増すため大きくなります。'
-            },
             ionizationEnergy: {
                 id: 'ionizationEnergy',
                 name: '第一イオン化エネルギー',
@@ -224,12 +193,26 @@
                 decimals: 0,
                 definition: '気体状態の中性原子1モルから電子1モルを取り去って1価の陽イオンにするのに必要なエネルギー。貴ガスで極大、アルカリ金属で極小となり、周期表の右上に向かうほど大きくなる傾向があります。'
             },
-            electronegativity: {
-                id: 'electronegativity',
-                name: '電気陰性度',
-                unit: 'Pauling',
+            density: {
+                id: 'density',
+                name: '単体の密度',
+                unit: 'g/cm³',
                 decimals: 2,
-                definition: '分子内の原子が共有電子対を引きつける強さの相対的な尺度（ポーリングの電気陰性度）。フッ素(F)が最大値(3.98)をとり、貴ガスを除いて周期表の右上ほど大きく、左下ほど小さくなります。'
+                definition: '室温・常圧付近における単体の単位体積あたりの質量（気体元素は標準状態での密度）。周期表の中央下部に位置する遷移元素（オスミウム Os やイリジウム Ir）で極めて大きな値をとります。'
+            },
+            boilingPoint: {
+                id: 'boilingPoint',
+                name: '沸点',
+                unit: 'K',
+                decimals: 0,
+                definition: '標準圧力（1気圧）下において単体が液体から気体へ沸騰・相転移する温度（絶対温度 K）。金属結合の強い高周期遷移元素（レニウム Re やタングステン W など）で極めて高く、希ガスや二原子分子の気体元素で非常に低い値をとります。'
+            },
+            ionicRadius: {
+                id: 'ionicRadius',
+                name: 'イオン半径',
+                unit: 'pm',
+                decimals: 0,
+                definition: '結晶中における最も安定な代表的イオンの半径（希ガスはイオンを形成しにくいためデータなし）。陽イオンは電子殻が減少するため元の原子半径より小さく、陰イオンは電子間の反発が増すため大きくなります。'
             },
             electronAffinity: {
                 id: 'electronAffinity',
@@ -238,20 +221,35 @@
                 decimals: 0,
                 definition: '気体状態の中性原子1モルが電子1モルを受け取って1価の陰イオンになるときに放出されるエネルギー。ハロゲン元素が極めて大きな正の値をとり、陰イオンになりやすいことを示します。'
             },
+            electronegativity: {
+                id: 'electronegativity',
+                name: '電気陰性度',
+                unit: 'Pauling',
+                decimals: 2,
+                definition: '分子内の原子が共有電子対を引きつける強さの相対的な尺度（ポーリングの電気陰性度）。フッ素(F)が最大値(3.98)をとり、貴ガスを除いて周期表の右上ほど大きく、左下ほど小さくなります。'
+            },
             meltingPoint: {
                 id: 'meltingPoint',
                 name: '融点',
                 unit: 'K',
                 decimals: 0,
                 definition: '標準圧力下において単体が固体から液体へ相転移する温度（絶対温度 K）。共有結合結晶をつくる炭素(C)や、金属結合が強い第6周期の遷移元素（タングステン W など）で非常に高い値を示します。'
-            },
-            density: {
-                id: 'density',
-                name: '単体の密度',
-                unit: 'g/cm³',
-                decimals: 2,
-                definition: '室温・常圧付近における単体の単位体積あたりの質量（気体元素は標準状態での密度）。周期表の中央下部に位置する遷移元素（オスミウム Os やイリジウム Ir）で極めて大きな値をとります。'
             }
+        };
+
+        /**
+         * 代表的イオンの価数表示マップ（イオン半径モード時に元素記号の右上に表示）
+         */
+        const ION_CHARGES = {
+            H: '−', Li: '+', Be: '2+', B: '3+', C: '4+', N: '3−', O: '2−', F: '−',
+            Na: '+', Mg: '2+', Al: '3+', Si: '4+', P: '3−', S: '2−', Cl: '−',
+            K: '+', Ca: '2+', Sc: '3+', Ti: '4+', V: '5+', Cr: '3+', Mn: '2+', Fe: '3+', Co: '2+', Ni: '2+', Cu: '2+', Zn: '2+',
+            Ga: '3+', Ge: '4+', As: '3−', Se: '2−', Br: '−',
+            Rb: '+', Sr: '2+', Y: '3+', Zr: '4+', Nb: '5+', Mo: '6+', Tc: '4+', Ru: '3+', Rh: '3+', Pd: '2+', Ag: '+', Cd: '2+',
+            In: '3+', Sn: '4+', Sb: '3+', Te: '2−', I: '−',
+            Cs: '+', Ba: '2+', Hf: '4+', Ta: '5+', W: '6+', Re: '4+', Os: '4+', Ir: '3+', Pt: '2+', Au: '3+', Hg: '2+',
+            Tl: '+', Pb: '2+', Bi: '3+', Po: '4+', At: '−',
+            Fr: '+', Ra: '2+'
         };
 
         /**
@@ -260,113 +258,133 @@
          */
         const ELEMENTS = [
             // 第1周期
-            { z: 1, sym: 'H', name: '水素', p: 1, g: 1, cat: 'nonmetal', vals: { atomicRadius: 53, ionicRadius: 140, ionizationEnergy: 1312, electronegativity: 2.20, electronAffinity: 73, meltingPoint: 14, density: 0.00009 } },
-            { z: 2, sym: 'He', name: 'ヘリウム', p: 1, g: 18, cat: 'noble', vals: { atomicRadius: 31, ionicRadius: null, ionizationEnergy: 2372, electronegativity: null, electronAffinity: -50, meltingPoint: 1, density: 0.00018 } },
+            { z: 1, sym: 'H', name: '水素', p: 1, g: 1, cat: 'nonmetal', vals: { atomicRadius: 53, ionicRadius: 140, ionizationEnergy: 1312, electronegativity: 2.20, electronAffinity: 73, meltingPoint: 14, boilingPoint: 20, density: 0.00009 } },
+            { z: 2, sym: 'He', name: 'ヘリウム', p: 1, g: 18, cat: 'noble', vals: { atomicRadius: 31, ionicRadius: null, ionizationEnergy: 2372, electronegativity: null, electronAffinity: -50, meltingPoint: 1, boilingPoint: 4, density: 0.00018 } },
             // 第2周期
-            { z: 3, sym: 'Li', name: 'リチウム', p: 2, g: 1, cat: 'alkali', vals: { atomicRadius: 167, ionicRadius: 76, ionizationEnergy: 520, electronegativity: 0.98, electronAffinity: 60, meltingPoint: 454, density: 0.53 } },
-            { z: 4, sym: 'Be', name: 'ベリリウム', p: 2, g: 2, cat: 'alkaline', vals: { atomicRadius: 112, ionicRadius: 45, ionizationEnergy: 900, electronegativity: 1.57, electronAffinity: -50, meltingPoint: 1560, density: 1.85 } },
-            { z: 5, sym: 'B', name: 'ホウ素', p: 2, g: 13, cat: 'metalloid', vals: { atomicRadius: 87, ionicRadius: 27, ionizationEnergy: 801, electronegativity: 2.04, electronAffinity: 27, meltingPoint: 2349, density: 2.34 } },
-            { z: 6, sym: 'C', name: '炭素', p: 2, g: 14, cat: 'nonmetal', vals: { atomicRadius: 67, ionicRadius: 16, ionizationEnergy: 1086, electronegativity: 2.55, electronAffinity: 122, meltingPoint: 3823, density: 2.27 } },
-            { z: 7, sym: 'N', name: '窒素', p: 2, g: 15, cat: 'nonmetal', vals: { atomicRadius: 56, ionicRadius: 146, ionizationEnergy: 1402, electronegativity: 3.04, electronAffinity: -7, meltingPoint: 63, density: 0.00125 } },
-            { z: 8, sym: 'O', name: '酸素', p: 2, g: 16, cat: 'nonmetal', vals: { atomicRadius: 48, ionicRadius: 140, ionizationEnergy: 1314, electronegativity: 3.44, electronAffinity: 141, meltingPoint: 54, density: 0.00143 } },
-            { z: 9, sym: 'F', name: 'フッ素', p: 2, g: 17, cat: 'halogen', vals: { atomicRadius: 42, ionicRadius: 133, ionizationEnergy: 1681, electronegativity: 3.98, electronAffinity: 328, meltingPoint: 53, density: 0.00170 } },
-            { z: 10, sym: 'Ne', name: 'ネオン', p: 2, g: 18, cat: 'noble', vals: { atomicRadius: 38, ionicRadius: null, ionizationEnergy: 2081, electronegativity: null, electronAffinity: -120, meltingPoint: 25, density: 0.00090 } },
+            { z: 3, sym: 'Li', name: 'リチウム', p: 2, g: 1, cat: 'alkali', vals: { atomicRadius: 167, ionicRadius: 76, ionizationEnergy: 520, electronegativity: 0.98, electronAffinity: 60, meltingPoint: 454, boilingPoint: 1603, density: 0.53 } },
+            { z: 4, sym: 'Be', name: 'ベリリウム', p: 2, g: 2, cat: 'alkaline', vals: { atomicRadius: 112, ionicRadius: 45, ionizationEnergy: 900, electronegativity: 1.57, electronAffinity: -50, meltingPoint: 1560, boilingPoint: 2742, density: 1.85 } },
+            { z: 5, sym: 'B', name: 'ホウ素', p: 2, g: 13, cat: 'metalloid', vals: { atomicRadius: 87, ionicRadius: 27, ionizationEnergy: 801, electronegativity: 2.04, electronAffinity: 27, meltingPoint: 2349, boilingPoint: 4200, density: 2.34 } },
+            { z: 6, sym: 'C', name: '炭素', p: 2, g: 14, cat: 'nonmetal', vals: { atomicRadius: 67, ionicRadius: 16, ionizationEnergy: 1086, electronegativity: 2.55, electronAffinity: 122, meltingPoint: 3823, boilingPoint: 4098, density: 2.27 } },
+            { z: 7, sym: 'N', name: '窒素', p: 2, g: 15, cat: 'nonmetal', vals: { atomicRadius: 56, ionicRadius: 146, ionizationEnergy: 1402, electronegativity: 3.04, electronAffinity: -7, meltingPoint: 63, boilingPoint: 77, density: 0.00125 } },
+            { z: 8, sym: 'O', name: '酸素', p: 2, g: 16, cat: 'nonmetal', vals: { atomicRadius: 48, ionicRadius: 140, ionizationEnergy: 1314, electronegativity: 3.44, electronAffinity: 141, meltingPoint: 54, boilingPoint: 90, density: 0.00143 } },
+            { z: 9, sym: 'F', name: 'フッ素', p: 2, g: 17, cat: 'halogen', vals: { atomicRadius: 42, ionicRadius: 133, ionizationEnergy: 1681, electronegativity: 3.98, electronAffinity: 328, meltingPoint: 53, boilingPoint: 85, density: 0.00170 } },
+            { z: 10, sym: 'Ne', name: 'ネオン', p: 2, g: 18, cat: 'noble', vals: { atomicRadius: 38, ionicRadius: null, ionizationEnergy: 2081, electronegativity: null, electronAffinity: -120, meltingPoint: 25, boilingPoint: 27, density: 0.00090 } },
             // 第3周期
-            { z: 11, sym: 'Na', name: 'ナトリウム', p: 3, g: 1, cat: 'alkali', vals: { atomicRadius: 190, ionicRadius: 102, ionizationEnergy: 496, electronegativity: 0.93, electronAffinity: 53, meltingPoint: 371, density: 0.97 } },
-            { z: 12, sym: 'Mg', name: 'マグネシウム', p: 3, g: 2, cat: 'alkaline', vals: { atomicRadius: 145, ionicRadius: 72, ionizationEnergy: 738, electronegativity: 1.31, electronAffinity: -40, meltingPoint: 923, density: 1.74 } },
-            { z: 13, sym: 'Al', name: 'アルミニウム', p: 3, g: 13, cat: 'postTrans', vals: { atomicRadius: 118, ionicRadius: 54, ionizationEnergy: 578, electronegativity: 1.61, electronAffinity: 42, meltingPoint: 933, density: 2.70 } },
-            { z: 14, sym: 'Si', name: 'ケイ素', p: 3, g: 14, cat: 'metalloid', vals: { atomicRadius: 111, ionicRadius: 40, ionizationEnergy: 787, electronegativity: 1.90, electronAffinity: 134, meltingPoint: 1687, density: 2.33 } },
-            { z: 15, sym: 'P', name: 'リン', p: 3, g: 15, cat: 'nonmetal', vals: { atomicRadius: 98, ionicRadius: 44, ionizationEnergy: 1012, electronegativity: 2.19, electronAffinity: 72, meltingPoint: 317, density: 1.82 } },
-            { z: 16, sym: 'S', name: '硫黄', p: 3, g: 16, cat: 'nonmetal', vals: { atomicRadius: 88, ionicRadius: 184, ionizationEnergy: 1000, electronegativity: 2.58, electronAffinity: 200, meltingPoint: 388, density: 2.07 } },
-            { z: 17, sym: 'Cl', name: '塩素', p: 3, g: 17, cat: 'halogen', vals: { atomicRadius: 79, ionicRadius: 181, ionizationEnergy: 1251, electronegativity: 3.16, electronAffinity: 349, meltingPoint: 172, density: 0.00321 } },
-            { z: 18, sym: 'Ar', name: 'アルゴン', p: 3, g: 18, cat: 'noble', vals: { atomicRadius: 71, ionicRadius: null, ionizationEnergy: 1521, electronegativity: null, electronAffinity: -96, meltingPoint: 84, density: 0.00178 } },
+            { z: 11, sym: 'Na', name: 'ナトリウム', p: 3, g: 1, cat: 'alkali', vals: { atomicRadius: 190, ionicRadius: 102, ionizationEnergy: 496, electronegativity: 0.93, electronAffinity: 53, meltingPoint: 371, boilingPoint: 1156, density: 0.97 } },
+            { z: 12, sym: 'Mg', name: 'マグネシウム', p: 3, g: 2, cat: 'alkaline', vals: { atomicRadius: 145, ionicRadius: 72, ionizationEnergy: 738, electronegativity: 1.31, electronAffinity: -40, meltingPoint: 923, boilingPoint: 1363, density: 1.74 } },
+            { z: 13, sym: 'Al', name: 'アルミニウム', p: 3, g: 13, cat: 'postTrans', vals: { atomicRadius: 118, ionicRadius: 54, ionizationEnergy: 578, electronegativity: 1.61, electronAffinity: 42, meltingPoint: 933, boilingPoint: 2792, density: 2.70 } },
+            { z: 14, sym: 'Si', name: 'ケイ素', p: 3, g: 14, cat: 'metalloid', vals: { atomicRadius: 111, ionicRadius: 40, ionizationEnergy: 787, electronegativity: 1.90, electronAffinity: 134, meltingPoint: 1687, boilingPoint: 3538, density: 2.33 } },
+            { z: 15, sym: 'P', name: 'リン', p: 3, g: 15, cat: 'nonmetal', vals: { atomicRadius: 98, ionicRadius: 44, ionizationEnergy: 1012, electronegativity: 2.19, electronAffinity: 72, meltingPoint: 317, boilingPoint: 554, density: 1.82 } },
+            { z: 16, sym: 'S', name: '硫黄', p: 3, g: 16, cat: 'nonmetal', vals: { atomicRadius: 88, ionicRadius: 184, ionizationEnergy: 1000, electronegativity: 2.58, electronAffinity: 200, meltingPoint: 388, boilingPoint: 718, density: 2.07 } },
+            { z: 17, sym: 'Cl', name: '塩素', p: 3, g: 17, cat: 'halogen', vals: { atomicRadius: 79, ionicRadius: 181, ionizationEnergy: 1251, electronegativity: 3.16, electronAffinity: 349, meltingPoint: 172, boilingPoint: 239, density: 0.00321 } },
+            { z: 18, sym: 'Ar', name: 'アルゴン', p: 3, g: 18, cat: 'noble', vals: { atomicRadius: 71, ionicRadius: null, ionizationEnergy: 1521, electronegativity: null, electronAffinity: -96, meltingPoint: 84, boilingPoint: 87, density: 0.00178 } },
             // 第4周期
-            { z: 19, sym: 'K', name: 'カリウム', p: 4, g: 1, cat: 'alkali', vals: { atomicRadius: 243, ionicRadius: 138, ionizationEnergy: 419, electronegativity: 0.82, electronAffinity: 48, meltingPoint: 337, density: 0.86 } },
-            { z: 20, sym: 'Ca', name: 'カルシウム', p: 4, g: 2, cat: 'alkaline', vals: { atomicRadius: 194, ionicRadius: 100, ionizationEnergy: 590, electronegativity: 1.00, electronAffinity: 2, meltingPoint: 1115, density: 1.54 } },
-            { z: 21, sym: 'Sc', name: 'スカンジウム', p: 4, g: 3, cat: 'transition', vals: { atomicRadius: 184, ionicRadius: 75, ionizationEnergy: 633, electronegativity: 1.36, electronAffinity: 18, meltingPoint: 1814, density: 2.99 } },
-            { z: 22, sym: 'Ti', name: 'チタン', p: 4, g: 4, cat: 'transition', vals: { atomicRadius: 176, ionicRadius: 61, ionizationEnergy: 659, electronegativity: 1.54, electronAffinity: 8, meltingPoint: 1941, density: 4.51 } },
-            { z: 23, sym: 'V', name: 'バナジウム', p: 4, g: 5, cat: 'transition', vals: { atomicRadius: 171, ionicRadius: 54, ionizationEnergy: 651, electronegativity: 1.63, electronAffinity: 51, meltingPoint: 2183, density: 6.00 } },
-            { z: 24, sym: 'Cr', name: 'クロム', p: 4, g: 6, cat: 'transition', vals: { atomicRadius: 166, ionicRadius: 62, ionizationEnergy: 653, electronegativity: 1.66, electronAffinity: 65, meltingPoint: 2180, density: 7.15 } },
-            { z: 25, sym: 'Mn', name: 'マンガン', p: 4, g: 7, cat: 'transition', vals: { atomicRadius: 161, ionicRadius: 83, ionizationEnergy: 717, electronegativity: 1.55, electronAffinity: -50, meltingPoint: 1519, density: 7.30 } },
-            { z: 26, sym: 'Fe', name: '鉄', p: 4, g: 8, cat: 'transition', vals: { atomicRadius: 156, ionicRadius: 65, ionizationEnergy: 762, electronegativity: 1.83, electronAffinity: 15, meltingPoint: 1811, density: 7.87 } },
-            { z: 27, sym: 'Co', name: 'コバルト', p: 4, g: 9, cat: 'transition', vals: { atomicRadius: 152, ionicRadius: 65, ionizationEnergy: 760, electronegativity: 1.88, electronAffinity: 64, meltingPoint: 1768, density: 8.86 } },
-            { z: 28, sym: 'Ni', name: 'ニッケル', p: 4, g: 10, cat: 'transition', vals: { atomicRadius: 149, ionicRadius: 69, ionizationEnergy: 737, electronegativity: 1.91, electronAffinity: 112, meltingPoint: 1728, density: 8.91 } },
-            { z: 29, sym: 'Cu', name: '銅', p: 4, g: 11, cat: 'transition', vals: { atomicRadius: 145, ionicRadius: 73, ionizationEnergy: 745, electronegativity: 1.90, electronAffinity: 119, meltingPoint: 1358, density: 8.96 } },
-            { z: 30, sym: 'Zn', name: '亜鉛', p: 4, g: 12, cat: 'transition', vals: { atomicRadius: 142, ionicRadius: 74, ionizationEnergy: 906, electronegativity: 1.65, electronAffinity: -60, meltingPoint: 693, density: 7.13 } },
-            { z: 31, sym: 'Ga', name: 'ガリウム', p: 4, g: 13, cat: 'postTrans', vals: { atomicRadius: 136, ionicRadius: 62, ionizationEnergy: 579, electronegativity: 1.81, electronAffinity: 41, meltingPoint: 303, density: 5.91 } },
-            { z: 32, sym: 'Ge', name: 'ゲルマニウム', p: 4, g: 14, cat: 'metalloid', vals: { atomicRadius: 125, ionicRadius: 53, ionizationEnergy: 762, electronegativity: 2.01, electronAffinity: 119, meltingPoint: 1211, density: 5.32 } },
-            { z: 33, sym: 'As', name: 'ヒ素', p: 4, g: 15, cat: 'metalloid', vals: { atomicRadius: 114, ionicRadius: 58, ionizationEnergy: 947, electronegativity: 2.18, electronAffinity: 78, meltingPoint: 1090, density: 5.78 } },
-            { z: 34, sym: 'Se', name: 'セレン', p: 4, g: 16, cat: 'nonmetal', vals: { atomicRadius: 103, ionicRadius: 198, ionizationEnergy: 941, electronegativity: 2.55, electronAffinity: 195, meltingPoint: 494, density: 4.81 } },
-            { z: 35, sym: 'Br', name: '臭素', p: 4, g: 17, cat: 'halogen', vals: { atomicRadius: 94, ionicRadius: 196, ionizationEnergy: 1140, electronegativity: 2.96, electronAffinity: 325, meltingPoint: 266, density: 3.12 } },
-            { z: 36, sym: 'Kr', name: 'クリプトン', p: 4, g: 18, cat: 'noble', vals: { atomicRadius: 88, ionicRadius: null, ionizationEnergy: 1351, electronegativity: 3.00, electronAffinity: -60, meltingPoint: 116, density: 0.00373 } },
+            { z: 19, sym: 'K', name: 'カリウム', p: 4, g: 1, cat: 'alkali', vals: { atomicRadius: 243, ionicRadius: 138, ionizationEnergy: 419, electronegativity: 0.82, electronAffinity: 48, meltingPoint: 337, boilingPoint: 1032, density: 0.86 } },
+            { z: 20, sym: 'Ca', name: 'カルシウム', p: 4, g: 2, cat: 'alkaline', vals: { atomicRadius: 194, ionicRadius: 100, ionizationEnergy: 590, electronegativity: 1.00, electronAffinity: 2, meltingPoint: 1115, boilingPoint: 1757, density: 1.54 } },
+            { z: 21, sym: 'Sc', name: 'スカンジウム', p: 4, g: 3, cat: 'transition', vals: { atomicRadius: 184, ionicRadius: 75, ionizationEnergy: 633, electronegativity: 1.36, electronAffinity: 18, meltingPoint: 1814, boilingPoint: 3109, density: 2.99 } },
+            { z: 22, sym: 'Ti', name: 'チタン', p: 4, g: 4, cat: 'transition', vals: { atomicRadius: 176, ionicRadius: 61, ionizationEnergy: 659, electronegativity: 1.54, electronAffinity: 8, meltingPoint: 1941, boilingPoint: 3560, density: 4.51 } },
+            { z: 23, sym: 'V', name: 'バナジウム', p: 4, g: 5, cat: 'transition', vals: { atomicRadius: 171, ionicRadius: 54, ionizationEnergy: 651, electronegativity: 1.63, electronAffinity: 51, meltingPoint: 2183, boilingPoint: 3680, density: 6.00 } },
+            { z: 24, sym: 'Cr', name: 'クロム', p: 4, g: 6, cat: 'transition', vals: { atomicRadius: 166, ionicRadius: 62, ionizationEnergy: 653, electronegativity: 1.66, electronAffinity: 65, meltingPoint: 2180, boilingPoint: 2944, density: 7.15 } },
+            { z: 25, sym: 'Mn', name: 'マンガン', p: 4, g: 7, cat: 'transition', vals: { atomicRadius: 161, ionicRadius: 83, ionizationEnergy: 717, electronegativity: 1.55, electronAffinity: -50, meltingPoint: 1519, boilingPoint: 2334, density: 7.30 } },
+            { z: 26, sym: 'Fe', name: '鉄', p: 4, g: 8, cat: 'transition', vals: { atomicRadius: 156, ionicRadius: 65, ionizationEnergy: 762, electronegativity: 1.83, electronAffinity: 15, meltingPoint: 1811, boilingPoint: 3134, density: 7.87 } },
+            { z: 27, sym: 'Co', name: 'コバルト', p: 4, g: 9, cat: 'transition', vals: { atomicRadius: 152, ionicRadius: 65, ionizationEnergy: 760, electronegativity: 1.88, electronAffinity: 64, meltingPoint: 1768, boilingPoint: 3200, density: 8.86 } },
+            { z: 28, sym: 'Ni', name: 'ニッケル', p: 4, g: 10, cat: 'transition', vals: { atomicRadius: 149, ionicRadius: 69, ionizationEnergy: 737, electronegativity: 1.91, electronAffinity: 112, meltingPoint: 1728, boilingPoint: 3186, density: 8.91 } },
+            { z: 29, sym: 'Cu', name: '銅', p: 4, g: 11, cat: 'transition', vals: { atomicRadius: 145, ionicRadius: 73, ionizationEnergy: 745, electronegativity: 1.90, electronAffinity: 119, meltingPoint: 1358, boilingPoint: 2835, density: 8.96 } },
+            { z: 30, sym: 'Zn', name: '亜鉛', p: 4, g: 12, cat: 'transition', vals: { atomicRadius: 142, ionicRadius: 74, ionizationEnergy: 906, electronegativity: 1.65, electronAffinity: -60, meltingPoint: 693, boilingPoint: 1180, density: 7.13 } },
+            { z: 31, sym: 'Ga', name: 'ガリウム', p: 4, g: 13, cat: 'postTrans', vals: { atomicRadius: 136, ionicRadius: 62, ionizationEnergy: 579, electronegativity: 1.81, electronAffinity: 41, meltingPoint: 303, boilingPoint: 2673, density: 5.91 } },
+            { z: 32, sym: 'Ge', name: 'ゲルマニウム', p: 4, g: 14, cat: 'metalloid', vals: { atomicRadius: 125, ionicRadius: 53, ionizationEnergy: 762, electronegativity: 2.01, electronAffinity: 119, meltingPoint: 1211, boilingPoint: 3106, density: 5.32 } },
+            { z: 33, sym: 'As', name: 'ヒ素', p: 4, g: 15, cat: 'metalloid', vals: { atomicRadius: 114, ionicRadius: 58, ionizationEnergy: 947, electronegativity: 2.18, electronAffinity: 78, meltingPoint: 1090, boilingPoint: 887, density: 5.78 } },
+            { z: 34, sym: 'Se', name: 'セレン', p: 4, g: 16, cat: 'nonmetal', vals: { atomicRadius: 103, ionicRadius: 198, ionizationEnergy: 941, electronegativity: 2.55, electronAffinity: 195, meltingPoint: 494, boilingPoint: 958, density: 4.81 } },
+            { z: 35, sym: 'Br', name: '臭素', p: 4, g: 17, cat: 'halogen', vals: { atomicRadius: 94, ionicRadius: 196, ionizationEnergy: 1140, electronegativity: 2.96, electronAffinity: 325, meltingPoint: 266, boilingPoint: 332, density: 3.12 } },
+            { z: 36, sym: 'Kr', name: 'クリプトン', p: 4, g: 18, cat: 'noble', vals: { atomicRadius: 88, ionicRadius: null, ionizationEnergy: 1351, electronegativity: 3.00, electronAffinity: -60, meltingPoint: 116, boilingPoint: 120, density: 0.00373 } },
             // 第5周期
-            { z: 37, sym: 'Rb', name: 'ルビジウム', p: 5, g: 1, cat: 'alkali', vals: { atomicRadius: 265, ionicRadius: 152, ionizationEnergy: 403, electronegativity: 0.82, electronAffinity: 47, meltingPoint: 312, density: 1.53 } },
-            { z: 38, sym: 'Sr', name: 'ストロンチウム', p: 5, g: 2, cat: 'alkaline', vals: { atomicRadius: 219, ionicRadius: 118, ionizationEnergy: 549, electronegativity: 0.95, electronAffinity: 5, meltingPoint: 1050, density: 2.64 } },
-            { z: 39, sym: 'Y', name: 'イットリウム', p: 5, g: 3, cat: 'transition', vals: { atomicRadius: 212, ionicRadius: 90, ionizationEnergy: 600, electronegativity: 1.22, electronAffinity: 30, meltingPoint: 1799, density: 4.47 } },
-            { z: 40, sym: 'Zr', name: 'ジルコニウム', p: 5, g: 4, cat: 'transition', vals: { atomicRadius: 206, ionicRadius: 72, ionizationEnergy: 640, electronegativity: 1.33, electronAffinity: 41, meltingPoint: 2128, density: 6.52 } },
-            { z: 41, sym: 'Nb', name: 'ニオブ', p: 5, g: 5, cat: 'transition', vals: { atomicRadius: 198, ionicRadius: 64, ionizationEnergy: 652, electronegativity: 1.60, electronAffinity: 86, meltingPoint: 2750, density: 8.57 } },
-            { z: 42, sym: 'Mo', name: 'モリブデン', p: 5, g: 6, cat: 'transition', vals: { atomicRadius: 190, ionicRadius: 65, ionizationEnergy: 684, electronegativity: 2.16, electronAffinity: 72, meltingPoint: 2896, density: 10.28 } },
-            { z: 43, sym: 'Tc', name: 'テクネチウム', p: 5, g: 7, cat: 'transition', vals: { atomicRadius: 183, ionicRadius: 65, ionizationEnergy: 702, electronegativity: 1.90, electronAffinity: 53, meltingPoint: 2430, density: 11.50 } },
-            { z: 44, sym: 'Ru', name: 'ルテニウム', p: 5, g: 8, cat: 'transition', vals: { atomicRadius: 178, ionicRadius: 68, ionizationEnergy: 710, electronegativity: 2.20, electronAffinity: 101, meltingPoint: 2607, density: 12.37 } },
-            { z: 45, sym: 'Rh', name: 'ロジウム', p: 5, g: 9, cat: 'transition', vals: { atomicRadius: 173, ionicRadius: 67, ionizationEnergy: 720, electronegativity: 2.28, electronAffinity: 110, meltingPoint: 2237, density: 12.41 } },
-            { z: 46, sym: 'Pd', name: 'パラジウム', p: 5, g: 10, cat: 'transition', vals: { atomicRadius: 169, ionicRadius: 86, ionizationEnergy: 804, electronegativity: 2.20, electronAffinity: 54, meltingPoint: 1828, density: 12.02 } },
-            { z: 47, sym: 'Ag', name: '銀', p: 5, g: 11, cat: 'transition', vals: { atomicRadius: 165, ionicRadius: 115, ionizationEnergy: 731, electronegativity: 1.93, electronAffinity: 126, meltingPoint: 1235, density: 10.49 } },
-            { z: 48, sym: 'Cd', name: 'カドミウム', p: 5, g: 12, cat: 'transition', vals: { atomicRadius: 161, ionicRadius: 95, ionizationEnergy: 868, electronegativity: 1.69, electronAffinity: -70, meltingPoint: 594, density: 8.65 } },
-            { z: 49, sym: 'In', name: 'インジウム', p: 5, g: 13, cat: 'postTrans', vals: { atomicRadius: 156, ionicRadius: 80, ionizationEnergy: 558, electronegativity: 1.78, electronAffinity: 29, meltingPoint: 430, density: 7.31 } },
-            { z: 50, sym: 'Sn', name: 'スズ', p: 5, g: 14, cat: 'postTrans', vals: { atomicRadius: 145, ionicRadius: 69, ionizationEnergy: 709, electronegativity: 1.96, electronAffinity: 107, meltingPoint: 505, density: 7.29 } },
-            { z: 51, sym: 'Sb', name: 'アンチモン', p: 5, g: 15, cat: 'metalloid', vals: { atomicRadius: 133, ionicRadius: 76, ionizationEnergy: 834, electronegativity: 2.05, electronAffinity: 101, meltingPoint: 904, density: 6.69 } },
-            { z: 52, sym: 'Te', name: 'テルル', p: 5, g: 16, cat: 'metalloid', vals: { atomicRadius: 123, ionicRadius: 221, ionizationEnergy: 869, electronegativity: 2.10, electronAffinity: 190, meltingPoint: 723, density: 6.24 } },
-            { z: 53, sym: 'I', name: 'ヨウ素', p: 5, g: 17, cat: 'halogen', vals: { atomicRadius: 115, ionicRadius: 220, ionizationEnergy: 1008, electronegativity: 2.66, electronAffinity: 295, meltingPoint: 387, density: 4.93 } },
-            { z: 54, sym: 'Xe', name: 'キセノン', p: 5, g: 18, cat: 'noble', vals: { atomicRadius: 108, ionicRadius: null, ionizationEnergy: 1170, electronegativity: 2.60, electronAffinity: -80, meltingPoint: 161, density: 0.00589 } },
+            { z: 37, sym: 'Rb', name: 'ルビジウム', p: 5, g: 1, cat: 'alkali', vals: { atomicRadius: 265, ionicRadius: 152, ionizationEnergy: 403, electronegativity: 0.82, electronAffinity: 47, meltingPoint: 312, boilingPoint: 961, density: 1.53 } },
+            { z: 38, sym: 'Sr', name: 'ストロンチウム', p: 5, g: 2, cat: 'alkaline', vals: { atomicRadius: 219, ionicRadius: 118, ionizationEnergy: 549, electronegativity: 0.95, electronAffinity: 5, meltingPoint: 1050, boilingPoint: 1655, density: 2.64 } },
+            { z: 39, sym: 'Y', name: 'イットリウム', p: 5, g: 3, cat: 'transition', vals: { atomicRadius: 212, ionicRadius: 90, ionizationEnergy: 600, electronegativity: 1.22, electronAffinity: 30, meltingPoint: 1799, boilingPoint: 3609, density: 4.47 } },
+            { z: 40, sym: 'Zr', name: 'ジルコニウム', p: 5, g: 4, cat: 'transition', vals: { atomicRadius: 206, ionicRadius: 72, ionizationEnergy: 640, electronegativity: 1.33, electronAffinity: 41, meltingPoint: 2128, boilingPoint: 4682, density: 6.52 } },
+            { z: 41, sym: 'Nb', name: 'ニオブ', p: 5, g: 5, cat: 'transition', vals: { atomicRadius: 198, ionicRadius: 64, ionizationEnergy: 652, electronegativity: 1.60, electronAffinity: 86, meltingPoint: 2750, boilingPoint: 5017, density: 8.57 } },
+            { z: 42, sym: 'Mo', name: 'モリブデン', p: 5, g: 6, cat: 'transition', vals: { atomicRadius: 190, ionicRadius: 65, ionizationEnergy: 684, electronegativity: 2.16, electronAffinity: 72, meltingPoint: 2896, boilingPoint: 4912, density: 10.28 } },
+            { z: 43, sym: 'Tc', name: 'テクネチウム', p: 5, g: 7, cat: 'transition', vals: { atomicRadius: 183, ionicRadius: 65, ionizationEnergy: 702, electronegativity: 1.90, electronAffinity: 53, meltingPoint: 2430, boilingPoint: 4538, density: 11.50 } },
+            { z: 44, sym: 'Ru', name: 'ルテニウム', p: 5, g: 8, cat: 'transition', vals: { atomicRadius: 178, ionicRadius: 68, ionizationEnergy: 710, electronegativity: 2.20, electronAffinity: 101, meltingPoint: 2607, boilingPoint: 4423, density: 12.37 } },
+            { z: 45, sym: 'Rh', name: 'ロジウム', p: 5, g: 9, cat: 'transition', vals: { atomicRadius: 173, ionicRadius: 67, ionizationEnergy: 720, electronegativity: 2.28, electronAffinity: 110, meltingPoint: 2237, boilingPoint: 3968, density: 12.41 } },
+            { z: 46, sym: 'Pd', name: 'パラジウム', p: 5, g: 10, cat: 'transition', vals: { atomicRadius: 169, ionicRadius: 86, ionizationEnergy: 804, electronegativity: 2.20, electronAffinity: 54, meltingPoint: 1828, boilingPoint: 3236, density: 12.02 } },
+            { z: 47, sym: 'Ag', name: '銀', p: 5, g: 11, cat: 'transition', vals: { atomicRadius: 165, ionicRadius: 115, ionizationEnergy: 731, electronegativity: 1.93, electronAffinity: 126, meltingPoint: 1235, boilingPoint: 2435, density: 10.49 } },
+            { z: 48, sym: 'Cd', name: 'カドミウム', p: 5, g: 12, cat: 'transition', vals: { atomicRadius: 161, ionicRadius: 95, ionizationEnergy: 868, electronegativity: 1.69, electronAffinity: -70, meltingPoint: 594, boilingPoint: 1040, density: 8.65 } },
+            { z: 49, sym: 'In', name: 'インジウム', p: 5, g: 13, cat: 'postTrans', vals: { atomicRadius: 156, ionicRadius: 80, ionizationEnergy: 558, electronegativity: 1.78, electronAffinity: 29, meltingPoint: 430, boilingPoint: 2345, density: 7.31 } },
+            { z: 50, sym: 'Sn', name: 'スズ', p: 5, g: 14, cat: 'postTrans', vals: { atomicRadius: 145, ionicRadius: 69, ionizationEnergy: 709, electronegativity: 1.96, electronAffinity: 107, meltingPoint: 505, boilingPoint: 2875, density: 7.29 } },
+            { z: 51, sym: 'Sb', name: 'アンチモン', p: 5, g: 15, cat: 'metalloid', vals: { atomicRadius: 133, ionicRadius: 76, ionizationEnergy: 834, electronegativity: 2.05, electronAffinity: 101, meltingPoint: 904, boilingPoint: 1860, density: 6.69 } },
+            { z: 52, sym: 'Te', name: 'テルル', p: 5, g: 16, cat: 'metalloid', vals: { atomicRadius: 123, ionicRadius: 221, ionizationEnergy: 869, electronegativity: 2.10, electronAffinity: 190, meltingPoint: 723, boilingPoint: 1261, density: 6.24 } },
+            { z: 53, sym: 'I', name: 'ヨウ素', p: 5, g: 17, cat: 'halogen', vals: { atomicRadius: 115, ionicRadius: 220, ionizationEnergy: 1008, electronegativity: 2.66, electronAffinity: 295, meltingPoint: 387, boilingPoint: 457, density: 4.93 } },
+            { z: 54, sym: 'Xe', name: 'キセノン', p: 5, g: 18, cat: 'noble', vals: { atomicRadius: 108, ionicRadius: null, ionizationEnergy: 1170, electronegativity: 2.60, electronAffinity: -80, meltingPoint: 161, boilingPoint: 165, density: 0.00589 } },
             // 第6周期（57-71 ランタノイドは除外）
-            { z: 55, sym: 'Cs', name: 'セシウム', p: 6, g: 1, cat: 'alkali', vals: { atomicRadius: 298, ionicRadius: 167, ionizationEnergy: 376, electronegativity: 0.79, electronAffinity: 46, meltingPoint: 302, density: 1.87 } },
-            { z: 56, sym: 'Ba', name: 'バリウム', p: 6, g: 2, cat: 'alkaline', vals: { atomicRadius: 253, ionicRadius: 135, ionizationEnergy: 503, electronegativity: 0.89, electronAffinity: 14, meltingPoint: 1000, density: 3.51 } },
-            { z: 72, sym: 'Hf', name: 'ハフニウム', p: 6, g: 4, cat: 'transition', vals: { atomicRadius: 208, ionicRadius: 71, ionizationEnergy: 659, electronegativity: 1.30, electronAffinity: 17, meltingPoint: 2506, density: 13.31 } },
-            { z: 73, sym: 'Ta', name: 'タンタル', p: 6, g: 5, cat: 'transition', vals: { atomicRadius: 200, ionicRadius: 64, ionizationEnergy: 761, electronegativity: 1.50, electronAffinity: 31, meltingPoint: 3290, density: 16.65 } },
-            { z: 74, sym: 'W', name: 'タングステン', p: 6, g: 6, cat: 'transition', vals: { atomicRadius: 193, ionicRadius: 60, ionizationEnergy: 770, electronegativity: 2.36, electronAffinity: 79, meltingPoint: 3695, density: 19.25 } },
-            { z: 75, sym: 'Re', name: 'レニウム', p: 6, g: 7, cat: 'transition', vals: { atomicRadius: 188, ionicRadius: 63, ionizationEnergy: 760, electronegativity: 1.90, electronAffinity: 6, meltingPoint: 3459, density: 21.02 } },
-            { z: 76, sym: 'Os', name: 'オスミウム', p: 6, g: 8, cat: 'transition', vals: { atomicRadius: 185, ionicRadius: 63, ionizationEnergy: 840, electronegativity: 2.20, electronAffinity: 104, meltingPoint: 3306, density: 22.59 } },
-            { z: 77, sym: 'Ir', name: 'イリジウム', p: 6, g: 9, cat: 'transition', vals: { atomicRadius: 180, ionicRadius: 68, ionizationEnergy: 880, electronegativity: 2.20, electronAffinity: 151, meltingPoint: 2719, density: 22.56 } },
-            { z: 78, sym: 'Pt', name: '白金', p: 6, g: 10, cat: 'transition', vals: { atomicRadius: 177, ionicRadius: 86, ionizationEnergy: 870, electronegativity: 2.28, electronAffinity: 205, meltingPoint: 2041, density: 21.45 } },
-            { z: 79, sym: 'Au', name: '金', p: 6, g: 11, cat: 'transition', vals: { atomicRadius: 174, ionicRadius: 137, ionizationEnergy: 890, electronegativity: 2.54, electronAffinity: 223, meltingPoint: 1337, density: 19.30 } },
-            { z: 80, sym: 'Hg', name: '水銀', p: 6, g: 12, cat: 'transition', vals: { atomicRadius: 171, ionicRadius: 102, ionizationEnergy: 1007, electronegativity: 2.00, electronAffinity: -50, meltingPoint: 234, density: 13.53 } },
-            { z: 81, sym: 'Tl', name: 'タリウム', p: 6, g: 13, cat: 'postTrans', vals: { atomicRadius: 156, ionicRadius: 150, ionizationEnergy: 589, electronegativity: 1.62, electronAffinity: 36, meltingPoint: 577, density: 11.85 } },
-            { z: 82, sym: 'Pb', name: '鉛', p: 6, g: 14, cat: 'postTrans', vals: { atomicRadius: 154, ionicRadius: 119, ionizationEnergy: 716, electronegativity: 2.33, electronAffinity: 35, meltingPoint: 601, density: 11.34 } },
-            { z: 83, sym: 'Bi', name: 'ビスマス', p: 6, g: 15, cat: 'postTrans', vals: { atomicRadius: 143, ionicRadius: 103, ionizationEnergy: 703, electronegativity: 2.02, electronAffinity: 91, meltingPoint: 545, density: 9.78 } },
-            { z: 84, sym: 'Po', name: 'ポロニウム', p: 6, g: 16, cat: 'metalloid', vals: { atomicRadius: 135, ionicRadius: 94, ionizationEnergy: 812, electronegativity: 2.00, electronAffinity: 136, meltingPoint: 527, density: 9.20 } },
-            { z: 85, sym: 'At', name: 'アスタチン', p: 6, g: 17, cat: 'halogen', vals: { atomicRadius: 127, ionicRadius: 62, ionizationEnergy: 899, electronegativity: 2.20, electronAffinity: 233, meltingPoint: 575, density: 7.00 } },
-            { z: 86, sym: 'Rn', name: 'ラドン', p: 6, g: 18, cat: 'noble', vals: { atomicRadius: 120, ionicRadius: null, ionizationEnergy: 1037, electronegativity: 2.20, electronAffinity: -70, meltingPoint: 202, density: 0.00973 } },
+            { z: 55, sym: 'Cs', name: 'セシウム', p: 6, g: 1, cat: 'alkali', vals: { atomicRadius: 298, ionicRadius: 167, ionizationEnergy: 376, electronegativity: 0.79, electronAffinity: 46, meltingPoint: 302, boilingPoint: 944, density: 1.87 } },
+            { z: 56, sym: 'Ba', name: 'バリウム', p: 6, g: 2, cat: 'alkaline', vals: { atomicRadius: 253, ionicRadius: 135, ionizationEnergy: 503, electronegativity: 0.89, electronAffinity: 14, meltingPoint: 1000, boilingPoint: 2170, density: 3.51 } },
+            { z: 72, sym: 'Hf', name: 'ハフニウム', p: 6, g: 4, cat: 'transition', vals: { atomicRadius: 208, ionicRadius: 71, ionizationEnergy: 659, electronegativity: 1.30, electronAffinity: 17, meltingPoint: 2506, boilingPoint: 4876, density: 13.31 } },
+            { z: 73, sym: 'Ta', name: 'タンタル', p: 6, g: 5, cat: 'transition', vals: { atomicRadius: 200, ionicRadius: 64, ionizationEnergy: 761, electronegativity: 1.50, electronAffinity: 31, meltingPoint: 3290, boilingPoint: 5731, density: 16.65 } },
+            { z: 74, sym: 'W', name: 'タングステン', p: 6, g: 6, cat: 'transition', vals: { atomicRadius: 193, ionicRadius: 60, ionizationEnergy: 770, electronegativity: 2.36, electronAffinity: 79, meltingPoint: 3695, boilingPoint: 5828, density: 19.25 } },
+            { z: 75, sym: 'Re', name: 'レニウム', p: 6, g: 7, cat: 'transition', vals: { atomicRadius: 188, ionicRadius: 63, ionizationEnergy: 760, electronegativity: 1.90, electronAffinity: 6, meltingPoint: 3459, boilingPoint: 5869, density: 21.02 } },
+            { z: 76, sym: 'Os', name: 'オスミウム', p: 6, g: 8, cat: 'transition', vals: { atomicRadius: 185, ionicRadius: 63, ionizationEnergy: 840, electronegativity: 2.20, electronAffinity: 104, meltingPoint: 3306, boilingPoint: 5285, density: 22.59 } },
+            { z: 77, sym: 'Ir', name: 'イリジウム', p: 6, g: 9, cat: 'transition', vals: { atomicRadius: 180, ionicRadius: 68, ionizationEnergy: 880, electronegativity: 2.20, electronAffinity: 151, meltingPoint: 2719, boilingPoint: 4701, density: 22.56 } },
+            { z: 78, sym: 'Pt', name: '白金', p: 6, g: 10, cat: 'transition', vals: { atomicRadius: 177, ionicRadius: 86, ionizationEnergy: 870, electronegativity: 2.28, electronAffinity: 205, meltingPoint: 2041, boilingPoint: 4098, density: 21.45 } },
+            { z: 79, sym: 'Au', name: '金', p: 6, g: 11, cat: 'transition', vals: { atomicRadius: 174, ionicRadius: 137, ionizationEnergy: 890, electronegativity: 2.54, electronAffinity: 223, meltingPoint: 1337, boilingPoint: 3129, density: 19.30 } },
+            { z: 80, sym: 'Hg', name: '水銀', p: 6, g: 12, cat: 'transition', vals: { atomicRadius: 171, ionicRadius: 102, ionizationEnergy: 1007, electronegativity: 2.00, electronAffinity: -50, meltingPoint: 234, boilingPoint: 630, density: 13.53 } },
+            { z: 81, sym: 'Tl', name: 'タリウム', p: 6, g: 13, cat: 'postTrans', vals: { atomicRadius: 156, ionicRadius: 150, ionizationEnergy: 589, electronegativity: 1.62, electronAffinity: 36, meltingPoint: 577, boilingPoint: 1746, density: 11.85 } },
+            { z: 82, sym: 'Pb', name: '鉛', p: 6, g: 14, cat: 'postTrans', vals: { atomicRadius: 154, ionicRadius: 119, ionizationEnergy: 716, electronegativity: 2.33, electronAffinity: 35, meltingPoint: 601, boilingPoint: 2022, density: 11.34 } },
+            { z: 83, sym: 'Bi', name: 'ビスマス', p: 6, g: 15, cat: 'postTrans', vals: { atomicRadius: 143, ionicRadius: 103, ionizationEnergy: 703, electronegativity: 2.02, electronAffinity: 91, meltingPoint: 545, boilingPoint: 1837, density: 9.78 } },
+            { z: 84, sym: 'Po', name: 'ポロニウム', p: 6, g: 16, cat: 'metalloid', vals: { atomicRadius: 135, ionicRadius: 94, ionizationEnergy: 812, electronegativity: 2.00, electronAffinity: 136, meltingPoint: 527, boilingPoint: 1235, density: 9.20 } },
+            { z: 85, sym: 'At', name: 'アスタチン', p: 6, g: 17, cat: 'halogen', vals: { atomicRadius: 127, ionicRadius: 62, ionizationEnergy: 899, electronegativity: 2.20, electronAffinity: 233, meltingPoint: 575, boilingPoint: 610, density: 7.00 } },
+            { z: 86, sym: 'Rn', name: 'ラドン', p: 6, g: 18, cat: 'noble', vals: { atomicRadius: 120, ionicRadius: null, ionizationEnergy: 1037, electronegativity: 2.20, electronAffinity: -70, meltingPoint: 202, boilingPoint: 211, density: 0.00973 } },
             // 第7周期（89-103 アクチノイドは除外）
-            { z: 87, sym: 'Fr', name: 'フランシウム', p: 7, g: 1, cat: 'alkali', vals: { atomicRadius: 348, ionicRadius: 180, ionizationEnergy: 380, electronegativity: 0.70, electronAffinity: 47, meltingPoint: 300, density: 1.87 } },
-            { z: 88, sym: 'Ra', name: 'ラジウム', p: 7, g: 2, cat: 'alkaline', vals: { atomicRadius: 283, ionicRadius: 148, ionizationEnergy: 509, electronegativity: 0.90, electronAffinity: 10, meltingPoint: 973, density: 5.50 } },
-            { z: 104, sym: 'Rf', name: 'ラザホージウム', p: 7, g: 4, cat: 'transition', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: 580, electronegativity: null, electronAffinity: null, meltingPoint: null, density: null } },
-            { z: 105, sym: 'Db', name: 'ドブニウム', p: 7, g: 5, cat: 'transition', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, density: null } },
-            { z: 106, sym: 'Sg', name: 'シーボーギウム', p: 7, g: 6, cat: 'transition', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, density: null } },
-            { z: 107, sym: 'Bh', name: 'ボーリウム', p: 7, g: 7, cat: 'transition', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, density: null } },
-            { z: 108, sym: 'Hs', name: 'ハッシウム', p: 7, g: 8, cat: 'transition', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, density: null } },
-            { z: 109, sym: 'Mt', name: 'マイトネリウム', p: 7, g: 9, cat: 'transition', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, density: null } },
-            { z: 110, sym: 'Ds', name: 'ダームスタチウム', p: 7, g: 10, cat: 'transition', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, density: null } },
-            { z: 111, sym: 'Rg', name: 'レントゲニウム', p: 7, g: 11, cat: 'transition', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, density: null } },
-            { z: 112, sym: 'Cn', name: 'コペルニシウム', p: 7, g: 12, cat: 'transition', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, density: null } },
-            { z: 113, sym: 'Nh', name: 'ニホニウム', p: 7, g: 13, cat: 'postTrans', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, density: null } },
-            { z: 114, sym: 'Fl', name: 'フレロビウム', p: 7, g: 14, cat: 'postTrans', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, density: null } },
-            { z: 115, sym: 'Mc', name: 'モスコビウム', p: 7, g: 15, cat: 'postTrans', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, density: null } },
-            { z: 116, sym: 'Lv', name: 'リバモリウム', p: 7, g: 16, cat: 'postTrans', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, density: null } },
-            { z: 117, sym: 'Ts', name: 'テネシン', p: 7, g: 17, cat: 'halogen', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, density: null } },
-            { z: 118, sym: 'Og', name: 'オガネソン', p: 7, g: 18, cat: 'noble', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, density: null } }
+            { z: 87, sym: 'Fr', name: 'フランシウム', p: 7, g: 1, cat: 'alkali', vals: { atomicRadius: 348, ionicRadius: 180, ionizationEnergy: 380, electronegativity: 0.70, electronAffinity: 47, meltingPoint: 300, boilingPoint: 950, density: 1.87 } },
+            { z: 88, sym: 'Ra', name: 'ラジウム', p: 7, g: 2, cat: 'alkaline', vals: { atomicRadius: 283, ionicRadius: 148, ionizationEnergy: 509, electronegativity: 0.90, electronAffinity: 10, meltingPoint: 973, boilingPoint: 2010, density: 5.50 } },
+            { z: 104, sym: 'Rf', name: 'ラザホージウム', p: 7, g: 4, cat: 'transition', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: 580, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } },
+            { z: 105, sym: 'Db', name: 'ドブニウム', p: 7, g: 5, cat: 'transition', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } },
+            { z: 106, sym: 'Sg', name: 'シーボーギウム', p: 7, g: 6, cat: 'transition', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } },
+            { z: 107, sym: 'Bh', name: 'ボーリウム', p: 7, g: 7, cat: 'transition', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } },
+            { z: 108, sym: 'Hs', name: 'ハッシウム', p: 7, g: 8, cat: 'transition', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } },
+            { z: 109, sym: 'Mt', name: 'マイトネリウム', p: 7, g: 9, cat: 'transition', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } },
+            { z: 110, sym: 'Ds', name: 'ダームスタチウム', p: 7, g: 10, cat: 'transition', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } },
+            { z: 111, sym: 'Rg', name: 'レントゲニウム', p: 7, g: 11, cat: 'transition', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } },
+            { z: 112, sym: 'Cn', name: 'コペルニシウム', p: 7, g: 12, cat: 'transition', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } },
+            { z: 113, sym: 'Nh', name: 'ニホニウム', p: 7, g: 13, cat: 'postTrans', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } },
+            { z: 114, sym: 'Fl', name: 'フレロビウム', p: 7, g: 14, cat: 'postTrans', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } },
+            { z: 115, sym: 'Mc', name: 'モスコビウム', p: 7, g: 15, cat: 'postTrans', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } },
+            { z: 116, sym: 'Lv', name: 'リバモリウム', p: 7, g: 16, cat: 'postTrans', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } },
+            { z: 117, sym: 'Ts', name: 'テネシン', p: 7, g: 17, cat: 'halogen', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } },
+            { z: 118, sym: 'Og', name: 'オガネソン', p: 7, g: 18, cat: 'noble', vals: { atomicRadius: null, ionicRadius: null, ionizationEnergy: null, electronegativity: null, electronAffinity: null, meltingPoint: null, boilingPoint: null, density: null } }
         ];
 
         /**
-         * 数値フォーマット用ヘルパー
+         * 元素分類の定義（文字色クラスとラベル）
+         */
+        const CATEGORIES = {
+            alkali: { label: 'アルカリ金属', textClass: 'text-red-600' },
+            alkaline: { label: 'アルカリ土類金属', textClass: 'text-orange-600' },
+            transition: { label: '遷移元素', textClass: 'text-amber-600' },
+            postTrans: { label: 'その他の金属', textClass: 'text-emerald-700' },
+            metalloid: { label: '半金属', textClass: 'text-teal-600' },
+            nonmetal: { label: '非金属', textClass: 'text-blue-600' },
+            halogen: { label: 'ハロゲン', textClass: 'text-purple-600' },
+            noble: { label: '貴ガス(希ガス)', textClass: 'text-pink-600' }
+        };
+
+        /**
+         * アプリケーションの状態管理
+         */
+        const state = {
+            selectedMetric: null, // null の場合は標準表示（分類のみ）
+            includeTransition: true // true: 18族表示, false: 典型元素のみ
+        };
+
+        /**
+         * 指標に応じた数値のフォーマット
          */
         function formatValue(val, metricKey) {
-            if (val === null || val === undefined) return '-';
+            if (val === null || val === undefined) return '—';
             const metric = METRICS[metricKey];
             if (!metric) return String(val);
-
-            // 非常に小さい気体密度などの表示調整
-            if (metricKey === 'density' && val > 0 && val < 0.01) {
-                return val.toFixed(4);
+            if (metricKey === 'density' && Math.abs(val) < 0.01) {
+                return Number(val).toFixed(4);
             }
             return Number(val).toFixed(metric.decimals);
         }
@@ -387,17 +405,16 @@
         }
 
         /**
-         * 指標選択ボタンの初期化（7指標 + 8番目に標準表示）
+         * 指標選択ボタンの初期化（指定順の8指標。再クリックで標準表示へ戻る）
          */
         function renderMetricButtons() {
             const container = document.getElementById('metric-buttons');
             container.innerHTML = '';
 
-            // 7つの指標ボタン
             Object.values(METRICS).forEach(m => {
                 const isSelected = state.selectedMetric === m.id;
                 const btn = document.createElement('button');
-                btn.className = `flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-left transition-all ${
+                btn.className = `flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl border text-left transition-all ${
                     isSelected
                         ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm ring-2 ring-indigo-300'
                         : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-indigo-50 hover:border-indigo-200'
@@ -407,29 +424,12 @@
                     <span class="text-[11px] font-mono shrink-0 ${isSelected ? 'text-indigo-200' : 'text-slate-400'}">${m.unit}</span>
                 `;
                 btn.addEventListener('click', () => {
+                    // すでに選択中なら解除して標準表示（null）に戻す
                     state.selectedMetric = (state.selectedMetric === m.id) ? null : m.id;
                     updateUI();
                 });
                 container.appendChild(btn);
             });
-
-            // 8番目：標準表示（分類のみ）ボタン
-            const isDefaultSelected = state.selectedMetric === null;
-            const defaultBtn = document.createElement('button');
-            defaultBtn.className = `flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-left transition-all ${
-                isDefaultSelected
-                    ? 'bg-slate-700 border-slate-700 text-white shadow-sm ring-2 ring-slate-300'
-                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300'
-            }`;
-            defaultBtn.innerHTML = `
-                <span class="font-bold text-xs sm:text-sm truncate">標準表示</span>
-                <span class="text-[11px] shrink-0 ${isDefaultSelected ? 'text-slate-300' : 'text-slate-400'}">分類のみ</span>
-            `;
-            defaultBtn.addEventListener('click', () => {
-                state.selectedMetric = null;
-                updateUI();
-            });
-            container.appendChild(defaultBtn);
         }
 
         /**
@@ -587,15 +587,20 @@
 
             // 上段：原子番号のみ（族番号は表の最上段へ移動）
             const topRow = `
-                <div class="flex justify-start items-center text-[10px] leading-none font-semibold text-slate-600">
+                <div class="flex justify-start items-center text-[9px] leading-none font-semibold text-slate-600 h-2.5">
                     <span>${el.z}</span>
                 </div>
             `;
 
-            // 中段：元素記号（分類ごとの文字色）
+            // 中段：元素記号（イオン半径モード時は上付きイオン価数を表示。ボックスサイズが変わらないよう高さを固定）
+            const charge = (metricKey === 'ionicRadius' && ION_CHARGES[el.sym]) ? ION_CHARGES[el.sym] : '';
+            const symbolDisplay = charge
+                ? `${el.sym}<sup class="text-[10px] font-bold leading-none ml-px">${charge}</sup>`
+                : el.sym;
+
             const midRow = `
-                <div class="text-center font-extrabold text-base sm:text-lg leading-tight ${catInfo.textClass}" style="${symbolOutlineStyle}">
-                    ${el.sym}
+                <div class="h-5 flex items-center justify-center font-extrabold text-sm sm:text-base leading-none whitespace-nowrap ${catInfo.textClass}" style="${symbolOutlineStyle}">
+                    ${symbolDisplay}
                 </div>
             `;
 
@@ -603,14 +608,14 @@
             let bottomRow = '';
             if (!metricKey) {
                 bottomRow = `
-                    <div class="text-center text-[9px] sm:text-[10px] text-slate-500 truncate font-medium">
+                    <div class="h-3.5 flex items-center justify-center text-[9px] text-slate-500 truncate font-medium leading-none">
                         ${el.name}
                     </div>
                 `;
             } else {
                 const formatted = formatValue(val, metricKey);
                 bottomRow = `
-                    <div class="text-center text-[10px] sm:text-[11px] font-bold text-slate-900 bg-white/75 rounded px-0.5 truncate">
+                    <div class="h-3.5 flex items-center justify-center text-[9px] sm:text-[10px] font-bold text-slate-900 bg-white/75 rounded px-0.5 truncate leading-none">
                         ${formatted}
                     </div>
                 `;
