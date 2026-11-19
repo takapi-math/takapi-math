@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>蒸気圧と体積シミュレーター</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+            touch-action: manipulation;
+        }
+        /* スマホで操作しやすい大きめのスライダーつまみ */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 28px;
+            width: 28px;
+            border-radius: 50%;
+            background: #2563eb;
+            cursor: pointer;
+            margin-top: -9px;
+            box-shadow: 0 2px 6px rgba(37, 99, 235, 0.4);
+            border: 3px solid #ffffff;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 10px;
+            cursor: pointer;
+            background: #cbd5e1;
+            border-radius: 5px;
+        }
+        .dark input[type=range]::-webkit-slider-runnable-track {
+            background: #475569;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 h-[100dvh] overflow-hidden flex flex-col">
+
+    <!-- 最上部：操作パネル（体積スライダー＆N2切り替えスイッチ） -->
+    <!-- 最上部：操作パネル（体積スライダー＆モード切り替えボタン） -->
+    <header class="bg-white dark:bg-slate-800 shadow-sm border-b border-slate-200 dark:border-slate-700 px-3 py-2 shrink-0 z-20">
+        <div class="max-w-md mx-auto space-y-1.5">
+            <div class="flex items-center justify-between gap-1.5">
+                <div class="flex items-baseline gap-1 shrink-0">
+                    <span class="text-xs font-bold text-slate-600 dark:text-slate-300">体積:</span>
+                    <span class="text-lg font-extrabold font-mono text-blue-600 dark:text-blue-400 leading-none"><span id="volValue">5.0</span><span class="text-xs font-normal ml-0.5">L</span></span>
+                </div>
+                <!-- H2O+N2 / H2Oのみ / N2のみ 切り替えボタン -->
+                <div class="flex bg-slate-100 dark:bg-slate-900 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-[11px] font-bold">
+                    <button type="button" data-mode="both" class="mode-btn px-2 py-1 rounded-md bg-blue-600 text-white shadow-sm transition-all">H₂O+N₂</button>
+                    <button type="button" data-mode="h2o" class="mode-btn px-2 py-1 rounded-md text-slate-600 dark:text-slate-300 transition-all">H₂Oのみ</button>
+                    <button type="button" data-mode="n2" class="mode-btn px-2 py-1 rounded-md text-slate-600 dark:text-slate-300 transition-all">N₂のみ</button>
+                </div>
+            </div>
+
+            <!-- 体積スライダー -->
+            <div>
+                <input type="range" id="volumeSlider" min="2.5" max="15.0" step="0.5" value="5.0" class="w-full block">
+                <div id="sliderLabels" class="flex justify-between text-[9px] font-bold mt-0.5 leading-none">
+                    <span class="text-rose-600 dark:text-rose-400">◀ ボイルNG (2.5〜10L)</span>
+                    <span class="text-amber-600 dark:text-amber-400">▲ 10L境界</span>
+                    <span class="text-emerald-600 dark:text-emerald-400">ボイルOK (10〜15L) ▶</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- メインコンテンツ（1画面に収まるフレックス構成） -->
+    <main class="max-w-md w-full mx-auto px-2.5 py-2 flex-1 flex flex-col justify-between gap-2 min-h-0">
+
+        <!-- 1. 分圧（スライダーのすぐ下に配置） -->
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-2 space-y-1.5 shrink-0">
+            <div class="flex justify-between items-center">
+                <span class="text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                    分圧
+                </span>
+                <span class="text-[10px] font-mono text-slate-500">×10³ Pa</span>
+            </div>
+            
+            <!-- 積み上げ圧力バー -->
+            <div class="w-full h-5 bg-slate-100 dark:bg-slate-900 rounded-md overflow-hidden flex border border-slate-200 dark:border-slate-700">
+                <div id="waterPressureBar" class="bg-blue-500 h-full flex items-center justify-center text-[10px] font-bold text-white transition-all duration-75" style="width: 60%;">
+                    水 3.6
+                </div>
+                <div id="nitrogenPressureBar" class="bg-amber-500 h-full flex items-center justify-center text-[10px] font-bold text-white transition-all duration-75" style="width: 40%;">
+                    N₂ 2.4
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-1.5 text-center">
+                <div id="waterBox" class="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 py-1 px-1.5 rounded-lg flex items-center justify-between">
+                    <span class="text-[10px] text-blue-700 dark:text-blue-300 font-bold">水蒸気</span>
+                    <span class="text-xs font-extrabold font-mono text-blue-600 dark:text-blue-400" id="waterPVal">3.6</span>
+                </div>
+                <div id="nitrogenBox" class="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 py-1 px-1.5 rounded-lg flex items-center justify-between">
+                    <span class="text-[10px] text-amber-700 dark:text-amber-300 font-bold">窒素(N₂)</span>
+                    <span class="text-xs font-extrabold font-mono text-amber-600 dark:text-amber-400" id="nitrogenPVal">2.4</span>
+                </div>
+                <div class="bg-slate-100 dark:bg-slate-700/60 border border-slate-200 dark:border-slate-600 py-1 px-1.5 rounded-lg flex items-center justify-between">
+                    <span class="text-[10px] text-slate-600 dark:text-slate-300 font-bold">全圧</span>
+                    <span class="text-xs font-extrabold font-mono text-slate-800 dark:text-white" id="totalPVal">6.0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. ボイル・シャルルの法則 可否＆状態バナー -->
+        <div id="statusBanner" class="px-2.5 py-2 rounded-xl border-2 transition-all duration-200 bg-rose-50 border-rose-400 dark:bg-rose-950/50 dark:border-rose-600 shrink-0">
+            <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2 min-w-0">
+                    <div id="boyleBadge" class="px-1.5 py-1 rounded-lg bg-rose-600 text-white text-center shrink-0">
+                        <div class="text-[8px] leading-none opacity-90">水に対して</div>
+                        <div class="text-[11px] font-extrabold leading-tight mt-0.5">ボイル NG</div>
+                    </div>
+                    <div class="min-w-0">
+                        <div id="statusTitle" class="font-bold text-xs text-rose-900 dark:text-rose-200 truncate">
+                            液体あり（水が水蒸気に変化中）
+                        </div>
+                        <div id="statusSub" class="text-[10px] text-rose-700 dark:text-rose-300 leading-tight truncate">
+                            水が蒸発して分子が増えるため、水蒸気圧は <b>3.6</b> で一定！
+                        </div>
+                    </div>
+                </div>
+                <div class="text-right shrink-0 bg-white/90 dark:bg-slate-800/90 px-2 py-0.5 rounded-lg border border-rose-200 dark:border-rose-800">
+                    <div class="text-[9px] text-slate-500 dark:text-slate-400 leading-none">全圧 P</div>
+                    <div class="text-sm font-extrabold text-slate-800 dark:text-white font-mono leading-tight">
+                        <span id="bannerPressure">6.0</span><span class="text-[9px] font-normal ml-0.5">×10³Pa</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. シリンダーとP-Vグラフ（可変高さで画面いっぱいにフィット） -->
+        <div class="grid grid-cols-2 gap-2 flex-1 min-h-[150px]">
+            <!-- 左：シリンダー -->
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-1.5 flex flex-col min-w-0">
+                <div class="text-[10px] font-bold text-slate-600 dark:text-slate-300 mb-1 flex justify-between items-center shrink-0">
+                    <span>シリンダー</span>
+                    <span id="densityBadge" class="text-[9px] font-mono bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200 px-1 rounded font-bold">
+                        H₂O密:100%
+                    </span>
+                </div>
+                <div id="cylinderContainer" class="relative w-full flex-1 bg-slate-100 dark:bg-slate-900 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 cursor-ns-resize select-none">
+                    <canvas id="cylinderCanvas"></canvas>
+                </div>
+            </div>
+
+            <!-- 右：P-Vグラフ -->
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-1.5 flex flex-col min-w-0">
+                <div class="text-[10px] font-bold text-slate-600 dark:text-slate-300 mb-1 flex justify-between items-center shrink-0">
+                    <span>P-V グラフ</span>
+                    <span class="text-[9px] font-mono bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 px-1 rounded font-bold">
+                        境界: 10L
+                    </span>
+                </div>
+                <div id="graphContainer" class="relative w-full flex-1 bg-slate-50 dark:bg-slate-900 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
+                    <canvas id="graphCanvas"></canvas>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        /**
+         * 物理設定
+         * 温度: 27℃ (300K) 一定
+         * 27℃の飽和蒸気圧: 3.6 × 10^3 Pa
+         * 体積 10L でちょうど液体がなくなる → P_water * V = 36.0 (×10^3 Pa・L)
+         * 窒素は常に気体なので P_nitrogen * V = 2.4 * 5.0 = 12.0 (×10^3 Pa・L)
+         */
+        const SAT_PRESSURE_KPA = 3.6;      // 3.6 × 10^3 Pa
+        const CRITICAL_VOL = 10.0;         // 10.0 L でちょうど液体消滅
+        const WATER_PV_CONST = 36.0;       // すべて気体のときの P*V (3.6 * 10)
+        const NITROGEN_PV_CONST = 12.0;    // 窒素の P*V (2.4 * 5.0)
+        const MAX_VOL = 15.0;
+        const MIN_VOL = 2.5;
+
+        const state = {
+            volume: 5.0,
+            mode: 'both',           // 'both' (H2O+N2), 'h2o' (H2Oのみ), 'n2' (N2のみ)
+            hasWater: true,
+            hasNitrogen: true,
+            waterPressure: 3.6,     // ×10^3 Pa
+            nitrogenPressure: 2.4,  // ×10^3 Pa
+            totalPressure: 6.0,     // ×10^3 Pa
+            isLiquidPresent: true,
+            liquidRatio: 0.5,       // 残っている液体の割合 (0〜1)
+            gasWaterRatio: 0.5      // 気体になっている水の割合 (0〜1)
+        };
+
+        let waterParticles = [];
+        let nitrogenParticles = [];
+        const MAX_WATER_PARTICLES = 72;
+        const NITROGEN_PARTICLE_COUNT = 24;
+
+        const dom = {
+            volumeSlider: document.getElementById('volumeSlider'),
+            volValue: document.getElementById('volValue'),
+            modeBtns: document.querySelectorAll('.mode-btn'),
+            sliderLabels: document.getElementById('sliderLabels'),
+
+            statusBanner: document.getElementById('statusBanner'),
+            boyleBadge: document.getElementById('boyleBadge'),
+            statusTitle: document.getElementById('statusTitle'),
+            statusSub: document.getElementById('statusSub'),
+            bannerPressure: document.getElementById('bannerPressure'),
+
+            waterPressureBar: document.getElementById('waterPressureBar'),
+            nitrogenPressureBar: document.getElementById('nitrogenPressureBar'),
+            waterPVal: document.getElementById('waterPVal'),
+            nitrogenPVal: document.getElementById('nitrogenPVal'),
+            totalPVal: document.getElementById('totalPVal'),
+            waterBox: document.getElementById('waterBox'),
+            nitrogenBox: document.getElementById('nitrogenBox'),
+            densityBadge: document.getElementById('densityBadge'),
+
+            cylinderCanvas: document.getElementById('cylinderCanvas'),
+            cylinderContainer: document.getElementById('cylinderContainer'),
+            graphCanvas: document.getElementById('graphCanvas'),
+            graphContainer: document.getElementById('graphContainer')
+        };
+
+        function calculatePhysics() {
+            const V = state.volume;
+            state.hasWater = (state.mode === 'both' || state.mode === 'h2o');
+            state.hasNitrogen = (state.mode === 'both' || state.mode === 'n2');
+
+            if (state.hasWater) {
+                const idealWaterP = WATER_PV_CONST / V;
+                if (V < CRITICAL_VOL) {
+                    state.isLiquidPresent = true;
+                    state.waterPressure = SAT_PRESSURE_KPA;
+                    state.gasWaterRatio = V / CRITICAL_VOL;
+                    state.liquidRatio = 1.0 - state.gasWaterRatio;
+                } else {
+                    state.isLiquidPresent = false;
+                    state.waterPressure = idealWaterP;
+                    state.gasWaterRatio = 1.0;
+                    state.liquidRatio = 0.0;
+                }
+            } else {
+                state.isLiquidPresent = false;
+                state.waterPressure = 0;
+                state.gasWaterRatio = 0;
+                state.liquidRatio = 0;
+            }
+
+            state.nitrogenPressure = state.hasNitrogen ? (NITROGEN_PV_CONST / V) : 0;
+            state.totalPressure = state.waterPressure + state.nitrogenPressure;
+
+            updateUI();
+        }
+
+        function updateUI() {
+            const V = state.volume;
+            dom.volValue.textContent = V.toFixed(1);
+            dom.bannerPressure.textContent = state.totalPressure.toFixed(1);
+            dom.waterPVal.textContent = state.hasWater ? state.waterPressure.toFixed(1) : "0.0";
+            dom.nitrogenPVal.textContent = state.hasNitrogen ? state.nitrogenPressure.toFixed(1) : "0.0";
+            dom.totalPVal.textContent = state.totalPressure.toFixed(1);
+
+            // 密度バッジの更新（10L時を100%とした相対密度イメージ）
+            if (dom.densityBadge) {
+                if (state.hasWater && !state.hasNitrogen) {
+                    const h2oRelDensity = Math.round((state.waterPressure / SAT_PRESSURE_KPA) * 100);
+                    dom.densityBadge.textContent = `H₂O密:${h2oRelDensity}%`;
+                } else if (!state.hasWater && state.hasNitrogen) {
+                    const n2RelDensity = Math.round((CRITICAL_VOL / V) * 100);
+                    dom.densityBadge.textContent = `N₂密:${n2RelDensity}%`;
+                } else {
+                    const h2oRelDensity = Math.round((state.waterPressure / SAT_PRESSURE_KPA) * 100);
+                    const n2RelDensity = Math.round((CRITICAL_VOL / V) * 100);
+                    dom.densityBadge.textContent = `水${h2oRelDensity}%/N₂${n2RelDensity}%`;
+                }
+            }
+
+            // モードボタンの見た目更新
+            dom.modeBtns.forEach(btn => {
+                if (btn.dataset.mode === state.mode) {
+                    btn.className = "mode-btn px-2 py-1 rounded-md bg-blue-600 text-white shadow-sm transition-all";
+                } else {
+                    btn.className = "mode-btn px-2 py-1 rounded-md text-slate-600 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-all";
+                }
+            });
+
+            // 圧力バー更新（最大スケール 10.0 ×10^3 Pa 基準で視覚化）
+            const maxBarScale = 10.0;
+            const waterPct = Math.min(100, (state.waterPressure / maxBarScale) * 100);
+            const nitroPct = Math.min(100 - waterPct, (state.nitrogenPressure / maxBarScale) * 100);
+
+            dom.waterPressureBar.style.width = `${waterPct}%`;
+            dom.waterPressureBar.textContent = (state.hasWater && waterPct > 16) ? `水 ${state.waterPressure.toFixed(1)}` : '';
+
+            dom.nitrogenPressureBar.style.width = `${nitroPct}%`;
+            dom.nitrogenPressureBar.textContent = (state.hasNitrogen && nitroPct > 16) ? `N₂ ${state.nitrogenPressure.toFixed(1)}` : '';
+
+            dom.waterBox.style.opacity = state.hasWater ? "1" : "0.4";
+            dom.nitrogenBox.style.opacity = state.hasNitrogen ? "1" : "0.4";
+
+            // スライダー下のラベル
+            if (state.mode === 'n2') {
+                dom.sliderLabels.innerHTML = `<span class="text-emerald-600 dark:text-emerald-400 w-full text-center">◀ 全領域でボイルの法則 OK（常に気体のみ） ▶</span>`;
+            } else {
+                dom.sliderLabels.innerHTML = `
+                    <span class="text-rose-600 dark:text-rose-400">◀ ボイルNG (2.5〜10L)</span>
+                    <span class="text-amber-600 dark:text-amber-400">▲ 10L境界</span>
+                    <span class="text-emerald-600 dark:text-emerald-400">ボイルOK (10〜15L) ▶</span>
+                `;
+            }
+
+            // バナー状態（N2のみ / ボイルNG / 境界 / ボイルOK）
+            if (state.mode === 'n2') {
+                dom.statusBanner.className = "px-2.5 py-2 rounded-xl border-2 transition-all duration-200 bg-emerald-50 border-emerald-400 dark:bg-emerald-950/50 dark:border-emerald-600 shrink-0";
+                dom.boyleBadge.className = "px-1.5 py-1 rounded-lg bg-emerald-600 text-white text-center shrink-0";
+                dom.boyleBadge.innerHTML = `<div class="text-[8px] leading-none">N₂のみ</div><div class="text-[11px] font-extrabold leading-tight mt-0.5">ボイル OK</div>`;
+                dom.statusTitle.className = "font-bold text-xs text-emerald-900 dark:text-emerald-200 truncate";
+                dom.statusTitle.textContent = "窒素のみ（常に気体・状態変化なし）";
+                dom.statusSub.className = "text-[10px] text-emerald-700 dark:text-emerald-300 leading-tight truncate";
+                dom.statusSub.innerHTML = "分子数が常に一定なので、全体で<b>ボイルの法則(PV=一定)</b>が成立！";
+            } else if (Math.abs(V - CRITICAL_VOL) < 0.05) {
+                dom.statusBanner.className = "px-2.5 py-2 rounded-xl border-2 transition-all duration-200 bg-amber-50 border-amber-400 dark:bg-amber-950/50 dark:border-amber-500 shrink-0";
+                dom.boyleBadge.className = "px-1.5 py-1 rounded-lg bg-amber-500 text-white text-center shrink-0";
+                dom.boyleBadge.innerHTML = `<div class="text-[8px] leading-none">水に対して</div><div class="text-[11px] font-extrabold leading-tight mt-0.5">境界点！</div>`;
+                dom.statusTitle.className = "font-bold text-xs text-amber-900 dark:text-amber-200 truncate";
+                dom.statusTitle.textContent = "ちょうど液体がすべて消えた！";
+                dom.statusSub.className = "text-[10px] text-amber-800 dark:text-amber-300 leading-tight truncate";
+                dom.statusSub.innerHTML = "ここから先(10L超)は気体だけになり、<b>ボイルの法則OK</b>！";
+            } else if (state.isLiquidPresent) {
+                dom.statusBanner.className = "px-2.5 py-2 rounded-xl border-2 transition-all duration-200 bg-rose-50 border-rose-400 dark:bg-rose-950/50 dark:border-rose-600 shrink-0";
+                dom.boyleBadge.className = "px-1.5 py-1 rounded-lg bg-rose-600 text-white text-center shrink-0";
+                dom.boyleBadge.innerHTML = `<div class="text-[8px] leading-none">水に対して</div><div class="text-[11px] font-extrabold leading-tight mt-0.5">ボイル NG</div>`;
+                dom.statusTitle.className = "font-bold text-xs text-rose-900 dark:text-rose-200 truncate";
+                dom.statusTitle.textContent = "液体あり（水が水蒸気に変化中）";
+                dom.statusSub.className = "text-[10px] text-rose-700 dark:text-rose-300 leading-tight truncate";
+                dom.statusSub.innerHTML = "水が蒸発して分子が増えるため、水蒸気圧は <b>3.6</b> で一定！";
+            } else {
+                dom.statusBanner.className = "px-2.5 py-2 rounded-xl border-2 transition-all duration-200 bg-emerald-50 border-emerald-400 dark:bg-emerald-950/50 dark:border-emerald-600 shrink-0";
+                dom.boyleBadge.className = "px-1.5 py-1 rounded-lg bg-emerald-600 text-white text-center shrink-0";
+                dom.boyleBadge.innerHTML = `<div class="text-[8px] leading-none">水に対して</div><div class="text-[11px] font-extrabold leading-tight mt-0.5">ボイル OK</div>`;
+                dom.statusTitle.className = "font-bold text-xs text-emerald-900 dark:text-emerald-200 truncate";
+                dom.statusTitle.textContent = "すべて気体（液体なし）";
+                dom.statusSub.className = "text-[10px] text-emerald-700 dark:text-emerald-300 leading-tight truncate";
+                dom.statusSub.innerHTML = state.hasNitrogen 
+                    ? "分子数が一定なので、水も窒素も<b>ボイルの法則</b>で減少！"
+                    : "分子数が一定なので、水蒸気は<b>ボイルの法則</b>で減少！";
+            }
+        }
+
+        function initParticles() {
+            waterParticles = [];
+            nitrogenParticles = [];
+            for (let i = 0; i < MAX_WATER_PARTICLES; i++) {
+                waterParticles.push({
+                    x: Math.random(),
+                    y: Math.random(),
+                    vx: (Math.random() - 0.5) * 0.028,
+                    vy: (Math.random() - 0.5) * 0.028
+                });
+            }
+            for (let i = 0; i < NITROGEN_PARTICLE_COUNT; i++) {
+                nitrogenParticles.push({
+                    x: Math.random(),
+                    y: Math.random(),
+                    vx: (Math.random() - 0.5) * 0.032,
+                    vy: (Math.random() - 0.5) * 0.032
+                });
+            }
+        }
+
+        /**
+         * シリンダー描画（圧力の押し上げ矢印＋液体/気体の強調）
+         */
+        function drawCylinder() {
+            const canvas = dom.cylinderCanvas;
+            const container = dom.cylinderContainer;
+            const dpr = window.devicePixelRatio || 1;
+            const rect = container.getBoundingClientRect();
+            
+            if (canvas.width !== rect.width * dpr || canvas.height !== rect.height * dpr) {
+                canvas.width = rect.width * dpr;
+                canvas.height = rect.height * dpr;
+            }
+            
+            const ctx = canvas.getContext('2d');
+            ctx.save();
+            ctx.scale(dpr, dpr);
+            
+            const W = rect.width;
+            const H = rect.height;
+            ctx.clearRect(0, 0, W, H);
+
+            const isDark = document.documentElement.classList.contains('dark') || window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+            const cylMarginX = Math.max(20, W * 0.17);
+            const cylWidth = W - cylMarginX * 2;
+            const cylBottomY = H - 18;
+            const cylTopY = 24;
+            const maxCylHeight = Math.max(40, cylBottomY - cylTopY);
+
+            const volRatio = state.volume / MAX_VOL;
+            const currentChamberHeight = Math.max(22, maxCylHeight * volRatio);
+            const pistonBottomY = cylBottomY - currentChamberHeight;
+
+            // 1. 液体の水（底に溜まる水＋蒸発の波紋イメージ）
+            const liquidHeight = state.isLiquidPresent 
+                ? Math.max(4, state.liquidRatio * 20) 
+                : 0;
+            const liquidTopY = cylBottomY - liquidHeight;
+
+            if (liquidHeight > 0) {
+                ctx.fillStyle = 'rgba(14, 165, 233, 0.9)';
+                ctx.fillRect(cylMarginX, liquidTopY, cylWidth, liquidHeight);
+
+                // 「液体あり」強調ラベル
+                ctx.fillStyle = '#0284c7';
+                ctx.font = 'bold 9px "Noto Sans JP", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('💧 液体(水)', W / 2, cylBottomY + 12);
+            } else {
+                ctx.fillStyle = '#10b981';
+                ctx.font = 'bold 9px "Noto Sans JP", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(state.hasWater ? '✨ 液体なし(全気体)' : '🎈 N₂気体のみ', W / 2, cylBottomY + 12);
+            }
+
+            // 2. 気体分子（水蒸気：青、窒素：オレンジ）
+            // 密度の変化を視覚化するため、体積の広がりに応じて分子の広がり・密さを表現
+            const gasTop = pistonBottomY + 4;
+            const gasBottom = liquidTopY - 3;
+            const gasHeight = Math.max(8, gasBottom - gasTop);
+
+            // 分子の見た目上の「密度感」（10L基準の相対密度で粒の濃さ・サイズを微調整）
+            const waterDensityRatio = state.hasWater ? (state.waterPressure / SAT_PRESSURE_KPA) : 0;
+            const nitroDensityRatio = state.hasNitrogen ? (CRITICAL_VOL / state.volume) : 0;
+
+            if (state.hasWater) {
+                const visibleWaterCount = Math.round(state.gasWaterRatio * MAX_WATER_PARTICLES);
+                const wRadius = Math.max(1.7, Math.min(3.3, 2.3 * Math.sqrt(Math.max(0.25, waterDensityRatio))));
+                const wAlpha = Math.max(0.35, Math.min(0.95, 0.45 + waterDensityRatio * 0.5));
+                ctx.fillStyle = `rgba(37, 99, 235, ${wAlpha.toFixed(2)})`;
+                for (let i = 0; i < visibleWaterCount; i++) {
+                    const p = waterParticles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    if (p.x < 0.04 || p.x > 0.96) p.vx *= -1;
+                    if (p.y < 0.04 || p.y > 0.96) p.vy *= -1;
+
+                    ctx.beginPath();
+                    ctx.arc(cylMarginX + p.x * cylWidth, gasTop + p.y * gasHeight, wRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            if (state.hasNitrogen) {
+                // 窒素は分子数一定なので、体積(V)が大きくなるほど空間が広がり「薄く（低密度に）」見える
+                // 視覚上も体積が増えると粒がやや小さく・淡くなるようにして密度低下を強調
+                const nRadius = Math.max(1.8, Math.min(3.6, 2.7 * Math.pow(nitroDensityRatio, 0.35)));
+                const nAlpha = Math.max(0.3, Math.min(0.95, 0.35 + Math.min(1.0, nitroDensityRatio * 0.5) * 0.6));
+                ctx.fillStyle = `rgba(245, 158, 11, ${nAlpha.toFixed(2)})`;
+                for (let i = 0; i < nitrogenParticles.length; i++) {
+                    const p = nitrogenParticles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    if (p.x < 0.04 || p.x > 0.96) p.vx *= -1;
+                    if (p.y < 0.04 || p.y > 0.96) p.vy *= -1;
+
+                    ctx.beginPath();
+                    ctx.arc(cylMarginX + p.x * cylWidth, gasTop + p.y * gasHeight, nRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            // 密度の濃淡を背景グラデーションでも直感的に表現（濃い＝高密度、薄い＝低密度）
+            const combinedDensity = Math.min(1.5, (state.hasWater ? waterDensityRatio * 0.6 : 0) + (state.hasNitrogen ? Math.min(1.2, nitroDensityRatio * 0.4) : 0));
+            if (combinedDensity > 0.05) {
+                const tintAlpha = Math.min(0.18, combinedDensity * 0.11);
+                ctx.fillStyle = state.hasWater
+                    ? `rgba(59, 130, 246, ${tintAlpha.toFixed(3)})`
+                    : `rgba(245, 158, 11, ${tintAlpha.toFixed(3)})`;
+                ctx.fillRect(cylMarginX + 1, gasTop, cylWidth - 2, gasHeight);
+            }
+
+            // 3. 圧力を視覚化する上向き矢印（全圧に比例した太さ・長さ）
+            const arrowLen = Math.min(24, Math.max(8, state.totalPressure * 2.4));
+            const arrowColor = state.isLiquidPresent ? 'rgba(225, 29, 72, 0.75)' : 'rgba(16, 185, 129, 0.8)';
+            ctx.strokeStyle = arrowColor;
+            ctx.fillStyle = arrowColor;
+            ctx.lineWidth = 2;
+            [-0.25, 0.25].forEach(offset => {
+                const ax = W / 2 + cylWidth * offset;
+                const ayStart = pistonBottomY + arrowLen + 4;
+                const ayEnd = pistonBottomY + 4;
+                if (ayStart < gasBottom) {
+                    ctx.beginPath();
+                    ctx.moveTo(ax, ayStart);
+                    ctx.lineTo(ax, ayEnd);
+                    ctx.stroke();
+                    // 矢じり
+                    ctx.beginPath();
+                    ctx.moveTo(ax, ayEnd);
+                    ctx.lineTo(ax - 3, ayEnd + 5);
+                    ctx.lineTo(ax + 3, ayEnd + 5);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+            });
+
+            // 4. シリンダー容器の背景と枠線（U字型の外枠と左右のフチを描画）
+            ctx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.65)';
+            ctx.fillRect(cylMarginX, cylTopY - 4, cylWidth, maxCylHeight + 4);
+
+            ctx.strokeStyle = isDark ? '#cbd5e1' : '#334155';
+            ctx.lineWidth = 3.5;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.beginPath();
+            ctx.moveTo(cylMarginX - 5, cylTopY - 4);
+            ctx.lineTo(cylMarginX, cylTopY - 4);
+            ctx.lineTo(cylMarginX, cylBottomY);
+            ctx.lineTo(cylMarginX + cylWidth, cylBottomY);
+            ctx.lineTo(cylMarginX + cylWidth, cylTopY - 4);
+            ctx.lineTo(cylMarginX + cylWidth + 5, cylTopY - 4);
+            ctx.stroke();
+
+            // 5. 境界体積 10L ライン（水を含むときのみ表示）
+            if (state.hasWater) {
+                const v10Y = cylBottomY - (CRITICAL_VOL / MAX_VOL) * maxCylHeight;
+                ctx.beginPath();
+                ctx.setLineDash([3, 2]);
+                ctx.moveTo(cylMarginX - 6, v10Y);
+                ctx.lineTo(cylMarginX + cylWidth + 6, v10Y);
+                ctx.strokeStyle = '#f59e0b';
+                ctx.lineWidth = 1.8;
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.fillStyle = '#d97706';
+                ctx.font = 'bold 8px Inter, sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText('10L', cylMarginX - 3, v10Y + 3);
+            }
+
+            // 6. ピストン本体
+            const pistonThickness = 13;
+            const pistonTopY = pistonBottomY - pistonThickness;
+            ctx.fillStyle = isDark ? '#64748b' : '#94a3b8';
+            ctx.fillRect(W / 2 - 3.5, 0, 7, Math.max(0, pistonTopY));
+
+            ctx.fillStyle = '#334155';
+            ctx.fillRect(cylMarginX + 1, pistonTopY, cylWidth - 2, pistonThickness);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 9px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${state.volume.toFixed(1)}L`, W / 2, pistonTopY + 10);
+
+            ctx.restore();
+        }
+
+        /**
+         * P-Vグラフ描画（ボイルNG領域・ボイルOK領域の強調背景＋水蒸気圧＆全圧カーブ）
+         */
+        function drawGraph() {
+            const canvas = dom.graphCanvas;
+            const container = dom.graphContainer;
+            const dpr = window.devicePixelRatio || 1;
+            const rect = container.getBoundingClientRect();
+
+            if (canvas.width !== rect.width * dpr || canvas.height !== rect.height * dpr) {
+                canvas.width = rect.width * dpr;
+                canvas.height = rect.height * dpr;
+            }
+
+            const ctx = canvas.getContext('2d');
+            ctx.save();
+            ctx.scale(dpr, dpr);
+
+            const W = rect.width;
+            const H = rect.height;
+            ctx.clearRect(0, 0, W, H);
+
+            const isDark = document.documentElement.classList.contains('dark') || window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+            const padLeft = 24;
+            const padRight = 10;
+            const padTop = 18;
+            const padBottom = 22;
+            const plotW = Math.max(20, W - padLeft - padRight);
+            const plotH = Math.max(20, H - padTop - padBottom);
+
+            const maxP = 10.0; // 最大 10 ×10^3 Pa まで表示
+            const toX = (v) => padLeft + (v / MAX_VOL) * plotW;
+            const toY = (p) => padTop + plotH - Math.min(1.0, Math.max(0, p / maxP)) * plotH;
+
+            const x10 = toX(CRITICAL_VOL);
+
+            // 背景エリア色分け：水がある場合は「ボイルNG / OK」、N2のみの場合は全域「ボイルOK」
+            if (state.hasWater) {
+                ctx.fillStyle = isDark ? 'rgba(225, 29, 72, 0.12)' : 'rgba(254, 226, 226, 0.65)';
+                ctx.fillRect(padLeft, padTop, x10 - padLeft, plotH);
+
+                ctx.fillStyle = isDark ? 'rgba(16, 185, 129, 0.12)' : 'rgba(209, 250, 229, 0.65)';
+                ctx.fillRect(x10, padTop, (padLeft + plotW) - x10, plotH);
+
+                ctx.font = 'bold 8px "Noto Sans JP", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = isDark ? '#fda4af' : '#be123c';
+                ctx.fillText('ボイルNG(水あり)', (padLeft + x10) / 2, padTop + 10);
+
+                ctx.fillStyle = isDark ? '#6ee7b7' : '#047857';
+                ctx.fillText('ボイルOK', (x10 + padLeft + plotW) / 2, padTop + 10);
+            } else {
+                ctx.fillStyle = isDark ? 'rgba(16, 185, 129, 0.12)' : 'rgba(209, 250, 229, 0.65)';
+                ctx.fillRect(padLeft, padTop, plotW, plotH);
+
+                ctx.font = 'bold 8px "Noto Sans JP", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = isDark ? '#6ee7b7' : '#047857';
+                ctx.fillText('全域ボイルOK (N₂のみ)', padLeft + plotW / 2, padTop + 10);
+            }
+
+            // グリッドと目盛り
+            ctx.strokeStyle = isDark ? '#334155' : '#cbd5e1';
+            ctx.lineWidth = 0.8;
+            ctx.font = '9px Inter, sans-serif';
+            ctx.fillStyle = isDark ? '#94a3b8' : '#475569';
+
+            ctx.textAlign = 'center';
+            [0, 5, 10, 15].forEach(v => {
+                const x = toX(v);
+                ctx.beginPath();
+                ctx.moveTo(x, padTop);
+                ctx.lineTo(x, padTop + plotH);
+                ctx.stroke();
+                ctx.fillText(`${v}`, x, padTop + plotH + 12);
+            });
+
+            ctx.textAlign = 'right';
+            [0, 3.6, 6.0, 9.0].forEach(p => {
+                const y = toY(p);
+                ctx.beginPath();
+                ctx.moveTo(padLeft, y);
+                ctx.lineTo(padLeft + plotW, y);
+                ctx.stroke();
+                ctx.fillText(p.toFixed(1), padLeft - 3, y + 3);
+            });
+
+            // 軸線
+            ctx.strokeStyle = isDark ? '#64748b' : '#475569';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(padLeft, padTop);
+            ctx.lineTo(padLeft, padTop + plotH);
+            ctx.lineTo(padLeft + plotW, padTop + plotH);
+            ctx.stroke();
+
+            // 10L 境界線（水を含むときのみ）
+            if (state.hasWater) {
+                ctx.beginPath();
+                ctx.setLineDash([3, 2]);
+                ctx.moveTo(x10, padTop);
+                ctx.lineTo(x10, padTop + plotH);
+                ctx.strokeStyle = '#d97706';
+                ctx.lineWidth = 1.8;
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // 水蒸気の分圧曲線（青線：10Lまで水平3.6、10Lから反比例）
+            if (state.hasWater) {
+                ctx.beginPath();
+                ctx.strokeStyle = '#2563eb';
+                ctx.lineWidth = 2;
+                for (let v = MIN_VOL; v <= MAX_VOL; v += 0.25) {
+                    const pw = v < CRITICAL_VOL ? SAT_PRESSURE_KPA : (WATER_PV_CONST / v);
+                    const x = toX(v);
+                    const y = toY(pw);
+                    if (v === MIN_VOL) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+            }
+
+            // 窒素の分圧曲線（オレンジ破線：N2のみ時は実線）
+            if (state.hasNitrogen) {
+                ctx.beginPath();
+                ctx.strokeStyle = '#f59e0b';
+                ctx.lineWidth = state.hasWater ? 1.5 : 2.5;
+                if (state.hasWater) ctx.setLineDash([3, 2]);
+                for (let v = MIN_VOL; v <= MAX_VOL; v += 0.25) {
+                    const pn = NITROGEN_PV_CONST / v;
+                    const x = toX(v);
+                    const y = toY(pn);
+                    if (v === MIN_VOL) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // 両方ありの場合、全圧曲線（太い黒/白線）も描画
+            if (state.mode === 'both') {
+                ctx.beginPath();
+                ctx.strokeStyle = isDark ? '#f8fafc' : '#0f172a';
+                ctx.lineWidth = 2.5;
+                for (let v = MIN_VOL; v <= MAX_VOL; v += 0.25) {
+                    const pw = v < CRITICAL_VOL ? SAT_PRESSURE_KPA : (WATER_PV_CONST / v);
+                    const pn = NITROGEN_PV_CONST / v;
+                    const x = toX(v);
+                    const y = toY(pw + pn);
+                    if (v === MIN_VOL) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+            }
+
+            // 現在位置マーカー（全圧）
+            const curX = toX(state.volume);
+            const curY = toY(state.totalPressure);
+            ctx.beginPath();
+            ctx.arc(curX, curY, 5, 0, Math.PI * 2);
+            ctx.fillStyle = '#ef4444';
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // 両方ありのときは水蒸気分圧の位置にも小さな青い点
+            if (state.mode === 'both') {
+                const wY = toY(state.waterPressure);
+                ctx.beginPath();
+                ctx.arc(curX, wY, 3.5, 0, Math.PI * 2);
+                ctx.fillStyle = '#2563eb';
+                ctx.fill();
+            }
+
+            ctx.restore();
+        }
+
+        function setupCylinderInteraction() {
+            let isDragging = false;
+
+            const updateVolumeFromPointer = (clientY) => {
+                const rect = dom.cylinderContainer.getBoundingClientRect();
+                const cylBottomY = rect.height - 18;
+                const cylTopY = 24;
+                const maxCylHeight = Math.max(40, cylBottomY - cylTopY);
+
+                const relY = clientY - rect.top;
+                const chamberHeight = cylBottomY - relY;
+                let newVol = (chamberHeight / maxCylHeight) * MAX_VOL;
+                newVol = Math.max(MIN_VOL, Math.min(MAX_VOL, Math.round(newVol * 2) / 2));
+                
+                if (newVol !== state.volume) {
+                    state.volume = newVol;
+                    dom.volumeSlider.value = newVol;
+                    calculatePhysics();
+                }
+            };
+
+            dom.cylinderContainer.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                updateVolumeFromPointer(e.clientY);
+            });
+            window.addEventListener('mousemove', (e) => {
+                if (isDragging) updateVolumeFromPointer(e.clientY);
+            });
+            window.addEventListener('mouseup', () => { isDragging = false; });
+
+            dom.cylinderContainer.addEventListener('touchstart', (e) => {
+                isDragging = true;
+                if (e.touches.length > 0) updateVolumeFromPointer(e.touches[0].clientY);
+            }, { passive: true });
+            
+            dom.cylinderContainer.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+                e.preventDefault();
+                if (e.touches.length > 0) updateVolumeFromPointer(e.touches[0].clientY);
+            }, { passive: false });
+
+            window.addEventListener('touchend', () => { isDragging = false; });
+        }
+
+        function setupEventListeners() {
+            dom.volumeSlider.addEventListener('input', (e) => {
+                state.volume = parseFloat(e.target.value);
+                calculatePhysics();
+            });
+
+            dom.modeBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    state.mode = btn.dataset.mode;
+                    calculatePhysics();
+                });
+            });
+
+            setupCylinderInteraction();
+        }
+
+        function animate() {
+            drawCylinder();
+            drawGraph();
+            requestAnimationFrame(animate);
+        }
+
+        window.onload = function() {
+            initParticles();
+            setupEventListeners();
+            calculatePhysics();
+            animate();
+        };
+    </script>
+</body>
+</html>
