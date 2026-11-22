@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>原核生物のタンパク質合成シミュレーター</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #0f172a;
+            color: #1e293b;
+            overscroll-behavior: none;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            touch-action: manipulation;
+        }
+        /* モバイル向けカスタムレンジスライダー（タップしやすいサイズ） */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+            height: 24px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #2563eb;
+            border: 2px solid #ffffff;
+            cursor: pointer;
+            margin-top: -6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        /* 解説パネル内の極細スクロールバー */
+        .thin-scroll::-webkit-scrollbar {
+            width: 3px;
+        }
+        .thin-scroll::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="h-[100dvh] overflow-hidden flex flex-col max-w-md mx-auto bg-slate-50 shadow-2xl select-none">
+
+    <!-- 1. 極小1行ヘッダー（タイトル＋表示切替チップ） -->
+    <header class="bg-slate-900 text-white px-3 py-2 flex items-center justify-between gap-2 shrink-0 z-10">
+        <div class="flex items-center gap-1.5 min-w-0">
+            <span class="bg-emerald-600 text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0">生物</span>
+            <h1 class="text-xs sm:text-sm font-bold truncate">原核生物のタンパク質合成</h1>
+        </div>
+        <div class="flex items-center gap-1.5 shrink-0">
+            <button id="btn-toggle-labels" class="px-2 py-1 rounded-md text-[11px] font-bold bg-blue-600 text-white border border-blue-400 transition active:scale-95">
+                名称 ON
+            </button>
+            <button id="btn-toggle-poly" class="px-2 py-1 rounded-md text-[11px] font-bold bg-amber-500 text-slate-950 border border-amber-300 transition active:scale-95">
+                鎖 ON
+            </button>
+        </div>
+    </header>
+
+    <!-- 2. メインキャンバス領域（画面中央の大部分を確保） -->
+    <main class="relative flex-1 min-h-0 bg-white overflow-hidden">
+        <canvas id="simCanvas"></canvas>
+
+        <!-- 上部オーバーレイ：現在のフェーズ（1行ステータス） -->
+        <div class="absolute top-2 left-2 right-2 pointer-events-none">
+            <div class="bg-white/90 backdrop-blur-xs border border-slate-200/90 shadow-xs rounded-lg px-2.5 py-1 flex items-center gap-1.5">
+                <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                <p id="phase-text" class="text-[11px] font-bold text-slate-800 truncate">
+                    RNAポリメラーゼがプロモーターから転写を開始中
+                </p>
+            </div>
+        </div>
+
+        <!-- 左下オーバーレイ：転写進行方向 -->
+        <div class="absolute bottom-2 left-2 pointer-events-none">
+            <div class="bg-slate-800/85 backdrop-blur-xs text-white px-2 py-1 rounded-md text-[10px] flex items-center gap-1 shadow-xs">
+                <span class="text-slate-300">転写方向:</span>
+                <span class="font-bold text-yellow-300">← 右から左</span>
+            </div>
+        </div>
+
+        <!-- 右下オーバーレイ：コンパクト凡例 -->
+        <div class="absolute bottom-2 right-2 pointer-events-none">
+            <div class="bg-white/90 backdrop-blur-xs border border-slate-200 px-2 py-1 rounded-md text-[9px] text-slate-700 flex items-center gap-2 shadow-xs">
+                <span class="flex items-center gap-0.5"><span class="w-2 h-2 rounded-full border border-slate-800 bg-white inline-block"></span>ポリメラーゼ</span>
+                <span class="flex items-center gap-0.5"><span class="w-2.5 h-1.5 rounded-full bg-slate-600 inline-block"></span>リボソーム</span>
+                <span id="legend-poly" class="flex items-center gap-0.5 text-amber-800 font-bold"><span class="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>アミノ酸鎖</span>
+            </div>
+        </div>
+    </main>
+
+    <!-- 3. 下部コントロール＆解説パネル（コンパクト凝縮） -->
+    <footer class="bg-slate-100 border-t border-slate-200 px-2.5 pt-2 pb-2.5 flex flex-col gap-2 shrink-0 z-10">
+
+        <!-- コントロールブロック（再生・リセット・スライダー・速度） -->
+        <div class="bg-white rounded-xl p-2 border border-slate-200 shadow-2xs flex flex-col gap-1.5">
+            <div class="flex items-center gap-2">
+                <!-- 再生/一時停止 -->
+                <button id="btn-play-pause" class="bg-blue-600 active:bg-blue-700 text-white font-bold py-1.5 px-2.5 rounded-lg text-xs flex items-center justify-center gap-1 min-w-[74px] shrink-0 shadow-2xs">
+                    <span id="play-icon">⏸</span>
+                    <span id="play-text">停止</span>
+                </button>
+                <!-- リセット -->
+                <button id="btn-reset" class="bg-slate-200 active:bg-slate-300 text-slate-700 font-bold py-1.5 px-2 rounded-lg text-xs shrink-0">
+                    ↺
+                </button>
+                <!-- 時間経過スライダー -->
+                <div class="flex-1 flex items-center gap-1.5 min-w-0">
+                    <input type="range" id="time-slider" min="0" max="100" value="48" class="w-full">
+                    <span id="time-val" class="text-[11px] font-mono font-bold text-slate-700 w-8 text-right shrink-0">48%</span>
+                </div>
+                <!-- 速度切替 -->
+                <div class="flex items-center bg-slate-100 rounded-lg p-0.5 shrink-0 border border-slate-200">
+                    <button class="speed-btn px-1.5 py-0.5 rounded text-[10px] font-medium text-slate-600" data-speed="0.5">0.5x</button>
+                    <button class="speed-btn px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-600 text-white" data-speed="1">1x</button>
+                    <button class="speed-btn px-1.5 py-0.5 rounded text-[10px] font-medium text-slate-600" data-speed="2">2x</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 仕組み解説タブ（横並び4ピルボタン） -->
+        <div class="grid grid-cols-4 gap-1">
+            <button onclick="toggleTopic('q1')" id="tab-q1" class="topic-tab py-1.5 px-1 rounded-lg text-[11px] font-bold bg-white text-slate-700 border border-slate-200 shadow-2xs transition truncate">
+                1.同時進行
+            </button>
+            <button onclick="toggleTopic('q2')" id="tab-q2" class="topic-tab py-1.5 px-1 rounded-lg text-[11px] font-bold bg-white text-slate-700 border border-slate-200 shadow-2xs transition truncate">
+                2.鎖の構造
+            </button>
+            <button onclick="toggleTopic('q34')" id="tab-q34" class="topic-tab py-1.5 px-1 rounded-lg text-[11px] font-bold bg-white text-slate-700 border border-slate-200 shadow-2xs transition truncate">
+                3.鎖の長さ
+            </button>
+            <button onclick="toggleTopic('q5')" id="tab-q5" class="topic-tab py-1.5 px-1 rounded-lg text-[11px] font-bold bg-white text-slate-700 border border-slate-200 shadow-2xs transition truncate">
+                4.真核生物
+            </button>
+        </div>
+
+        <!-- 解説文表示エリア（選択時のみ展開、再タップで閉じてキャンバスを広くする） -->
+        <div id="topic-drawer" class="hidden bg-white rounded-xl border border-blue-200 p-2.5 shadow-xs relative">
+            <div class="flex items-start justify-between gap-2 mb-1">
+                <h2 id="topic-title" class="text-xs font-bold text-blue-800"></h2>
+                <button onclick="closeTopic()" class="text-slate-400 hover:text-slate-600 text-xs font-bold px-1 leading-none">✕</button>
+            </div>
+            <div id="topic-body" class="text-[11px] text-slate-700 leading-relaxed max-h-24 overflow-y-auto thin-scroll space-y-1"></div>
+        </div>
+
+    </footer>
+
+    <script>
+        // DOM要素の取得
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const phaseText = document.getElementById('phase-text');
+        const btnToggleLabels = document.getElementById('btn-toggle-labels');
+        const btnTogglePoly = document.getElementById('btn-toggle-poly');
+        const legendPoly = document.getElementById('legend-poly');
+        const btnPlayPause = document.getElementById('btn-play-pause');
+        const playIcon = document.getElementById('play-icon');
+        const playText = document.getElementById('play-text');
+        const btnReset = document.getElementById('btn-reset');
+        const timeSlider = document.getElementById('time-slider');
+        const timeVal = document.getElementById('time-val');
+        const speedBtns = document.querySelectorAll('.speed-btn');
+        const topicDrawer = document.getElementById('topic-drawer');
+        const topicTitle = document.getElementById('topic-title');
+        const topicBody = document.getElementById('topic-body');
+
+        // シミュレーション状態変数
+        let simTime = 0.48; // 0.0 〜 1.0
+        let isPlaying = true;
+        let playbackSpeed = 1.0;
+        let showLabels = true;
+        let showPoly = true;
+        let activeHighlight = null;
+        let lastFrameTime = null;
+
+        // 解説データ
+        const topicContents = {
+            q1: {
+                title: '1. 転写と翻訳の「同時進行」',
+                html: '<p>原核生物には<b>核膜がない</b>ため、DNAから<b>mRNA</b>を合成（<b>転写</b>）している途中でも、伸びてきたmRNAの端からすぐに<b>リボソーム</b>が結合してタンパク質合成（<b>翻訳</b>）を始めます。</p>'
+            },
+            q2: {
+                title: '2. DNAとmRNAの構造の違い',
+                html: '<p>設計図である<b>DNA</b>は<b>二本鎖</b>のヌクレオチド鎖（太い青線）であるのに対し、コピーである<b>mRNA</b>は<b>一本鎖</b>のヌクレオチド鎖（細い赤線）でできています。</p>'
+            },
+            q34: {
+                title: '3. プロモーターからの進行と鎖の長さ',
+                html: '<p><b>RNAポリメラーゼ</b>は<b>プロモーター</b>から左へ進みながらmRNAを伸ばします。先に進んだものほどmRNAが長くなります。</p><p class="text-amber-900 bg-amber-50 p-1.5 rounded border border-amber-200 mt-1"><b>なぜDNAに近いほどポリペプチド鎖が長い？</b><br>リボソームは<b>mRNAの5\'端から結合してDNA側へ移動</b>するため、先に結合したリボソームほどDNA近くまで進み、多くのアミノ酸をつなげています。</p>'
+            },
+            q5: {
+                title: '4. 真核生物（ヒトなど）との違い',
+                html: '<p>ヒトなどの真核生物はDNAが<b>核膜</b>に包まれた「核」の中にあります。そのため<b>核内で転写・スプライシング</b>が完了したあと、mRNAが<b>核膜孔を通って細胞質基質へ出てから</b>翻訳が始まります。</p>'
+            }
+        };
+
+        // タブ切替＆キャンバスハイライト連動
+        function toggleTopic(topicId) {
+            if (activeHighlight === topicId) {
+                closeTopic();
+                return;
+            }
+            activeHighlight = topicId;
+
+            // タブのアクティブ見た目更新
+            document.querySelectorAll('.topic-tab').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
+                btn.classList.add('bg-white', 'text-slate-700', 'border-slate-200');
+            });
+            const activeTab = document.getElementById('tab-' + topicId);
+            if (activeTab) {
+                activeTab.classList.remove('bg-white', 'text-slate-700', 'border-slate-200');
+                activeTab.classList.add('bg-blue-600', 'text-white', 'border-blue-600');
+            }
+
+            // 解説ドロワー表示
+            const data = topicContents[topicId];
+            topicTitle.textContent = data.title;
+            topicBody.innerHTML = data.html;
+            topicDrawer.classList.remove('hidden');
+
+            // レイアウト高さ変化に合わせてキャンバスをリサイズ
+            resizeCanvas();
+        }
+
+        function closeTopic() {
+            activeHighlight = null;
+            document.querySelectorAll('.topic-tab').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
+                btn.classList.add('bg-white', 'text-slate-700', 'border-slate-200');
+            });
+            topicDrawer.classList.add('hidden');
+            resizeCanvas();
+        }
+        window.toggleTopic = toggleTopic;
+        window.closeTopic = closeTopic;
+
+        // キャンバスの高DPI対応リサイズ
+        function resizeCanvas() {
+            const parent = canvas.parentElement;
+            if (!parent) return;
+            const dpr = window.devicePixelRatio || 1;
+            const rect = parent.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            drawScene();
+        }
+
+        // 縦型スマホ画面に最適化したDNAのY座標計算
+        function getDnaY(x, width, height) {
+            // 上部ステータスバーを避けつつ、下方向に十分なmRNA伸長スペースを確保
+            const baseY = height * 0.23;
+            const slope = (width - x) * 0.11;
+            const wave = Math.sin(x * 0.022) * 4.5;
+            return baseY + slope + wave;
+        }
+
+        // 画面端で見切れないよう自動クランプするラベルタグ描画
+        function drawTag(context, text, x, y, textColor, bgColor, canvasWidth, canvasHeight) {
+            context.save();
+            context.font = 'bold 10px "Noto Sans JP", sans-serif';
+            const paddingX = 6;
+            const textMetrics = context.measureText(text);
+            const boxWidth = textMetrics.width + paddingX * 2;
+            const boxHeight = 18;
+
+            // 左右の画面端から最低6px余白を確保
+            const minX = boxWidth / 2 + 6;
+            const maxX = canvasWidth - boxWidth / 2 - 6;
+            const clampedX = Math.max(minX, Math.min(maxX, x));
+
+            // 上下のオーバーレイUIと重ならないようクランプ
+            const minY = 44;
+            const maxY = canvasHeight - 36;
+            const clampedY = Math.max(minY, Math.min(maxY, y));
+
+            const rx = clampedX - boxWidth / 2;
+            const ry = clampedY - boxHeight / 2;
+            const r = 5;
+
+            context.fillStyle = bgColor;
+            context.strokeStyle = textColor;
+            context.lineWidth = 1.1;
+
+            context.beginPath();
+            context.roundRect(rx, ry, boxWidth, boxHeight, r);
+            context.fill();
+            context.stroke();
+
+            context.fillStyle = textColor;
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillText(text, clampedX, clampedY + 0.5);
+            context.restore();
+        }
+
+        // メイン描画関数（縦型スマホ幅360〜430px最適化）
+        function drawScene() {
+            const width = canvas.parentElement.clientWidth;
+            const height = canvas.parentElement.clientHeight;
+            if (width === 0 || height === 0) return;
+
+            ctx.clearRect(0, 0, width, height);
+
+            // 背景グリッド（薄い方眼）
+            ctx.save();
+            ctx.strokeStyle = '#f1f5f9';
+            ctx.lineWidth = 1;
+            const gridSize = 24;
+            for (let gx = 0; gx < width; gx += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(gx, 0);
+                ctx.lineTo(gx, height);
+                ctx.stroke();
+            }
+            for (let gy = 0; gy < height; gy += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, gy);
+                ctx.lineTo(width, gy);
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            // 縦型画面用座標基準値
+            const startX = width * 0.80; // プロモーター（右側）
+            const endX = width * 0.06;   // 転写終点（左側）
+            const dnaSpan = startX - endX;
+
+            // 1. プロモーター領域のハイライト帯
+            const promoterX = startX + 10;
+            const promoterY = getDnaY(promoterX, width, height);
+            ctx.save();
+            ctx.fillStyle = activeHighlight === 'q34' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(59, 130, 246, 0.12)';
+            ctx.strokeStyle = activeHighlight === 'q34' ? '#ef4444' : '#3b82f6';
+            ctx.lineWidth = 1.4;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.roundRect(promoterX - 14, promoterY - 18, 28, 36, 6);
+            ctx.fill();
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            if (showLabels) {
+                ctx.fillStyle = activeHighlight === 'q34' ? '#dc2626' : '#1d4ed8';
+                ctx.font = 'bold 9.5px "Noto Sans JP", sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText('プロモーター', width - 8, promoterY - 24);
+            }
+            ctx.restore();
+
+            // 2. DNA鎖の描画（二本鎖をイメージした太い二重線）
+            ctx.save();
+            ctx.strokeStyle = activeHighlight === 'q2' ? '#2563eb' : '#1e3a8a';
+            ctx.lineWidth = activeHighlight === 'q2' ? 6.5 : 5;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            for (let x = startX + 26; x >= endX; x -= 4) {
+                const y = getDnaY(x, width, height);
+                if (x === startX + 26) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // 二本鎖を表現する中央破線
+            ctx.strokeStyle = '#93c5fd';
+            ctx.lineWidth = 1.3;
+            ctx.setLineDash([4, 3]);
+            ctx.beginPath();
+            for (let x = startX + 26; x >= endX; x -= 4) {
+                const y = getDnaY(x, width, height);
+                if (x === startX + 26) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            ctx.restore();
+
+            if (showLabels) {
+                const labelX = width * 0.22;
+                const labelY = getDnaY(labelX, width, height);
+                drawTag(ctx, 'DNA（二本鎖）', labelX, labelY - 22, '#1e3a8a', '#eff6ff', width, height);
+            }
+
+            // 3. 転写の進行方向矢印（上部ステータスバーの下にコンパクト配置）
+            const arrowY = 50;
+            ctx.save();
+            ctx.strokeStyle = activeHighlight === 'q34' ? '#dc2626' : '#64748b';
+            ctx.fillStyle = activeHighlight === 'q34' ? '#dc2626' : '#64748b';
+            ctx.lineWidth = 2;
+            const arrStartX = width * 0.64;
+            const arrEndX = width * 0.36;
+            ctx.beginPath();
+            ctx.moveTo(arrStartX, arrowY);
+            ctx.lineTo(arrEndX, arrowY);
+            ctx.stroke();
+            // 矢じり（左向き）
+            ctx.beginPath();
+            ctx.moveTo(arrEndX, arrowY);
+            ctx.lineTo(arrEndX + 8, arrowY - 4);
+            ctx.lineTo(arrEndX + 8, arrowY + 4);
+            ctx.closePath();
+            ctx.fill();
+
+            if (showLabels) {
+                ctx.font = 'bold 9.5px "Noto Sans JP", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('転写の進行方向', (arrStartX + arrEndX) / 2, arrowY - 6);
+            }
+            ctx.restore();
+
+            // 4. 複数のRNAポリメラーゼと、縦長画面に合わせて下方向へ伸びるmRNA ＋ リボソーム
+            const polymerases = [
+                { offset: 0.00 },
+                { offset: 0.33 },
+                { offset: 0.64 }
+            ];
+
+            // 縦長画面に合わせた最大mRNA長（高さの約56%）
+            const maxMrnaSpan = Math.min(height * 0.56, width * 0.85);
+
+            polymerases.forEach((poly, idx) => {
+                let progress = (simTime * 1.15 - poly.offset);
+                if (progress < 0) return;
+                if (progress > 0.95) progress = 0.95;
+
+                const polyX = startX - progress * (dnaSpan * 0.90);
+                const polyY = getDnaY(polyX, width, height);
+
+                const mrnaLength = progress * maxMrnaSpan;
+                const numPoints = 28;
+                const mrnaPoints = [];
+
+                // 縦型画面で見切れないよう、下方向への伸び成分を強めた曲線（dx: 0.46, dy: 0.88）
+                for (let i = 0; i <= numPoints; i++) {
+                    const t = i / numPoints;
+                    const dist = t * mrnaLength;
+                    const mx = polyX + dist * 0.46 + Math.sin(t * 5 + simTime * 8) * 3;
+                    const my = polyY + dist * 0.88 + Math.cos(t * 4) * 2.5;
+                    mrnaPoints.push({ x: mx, y: my, t: t });
+                }
+
+                // mRNAを描画（一本鎖の細い線）
+                ctx.save();
+                ctx.strokeStyle = activeHighlight === 'q2' ? '#e11d48' : '#f43f5e';
+                ctx.lineWidth = activeHighlight === 'q2' ? 3 : 2.2;
+                ctx.beginPath();
+                mrnaPoints.forEach((pt, i) => {
+                    if (i === 0) ctx.moveTo(pt.x, pt.y);
+                    else ctx.lineTo(pt.x, pt.y);
+                });
+                ctx.stroke();
+                ctx.restore();
+
+                // mRNA先端の「5'端」表示
+                if (showLabels && mrnaLength > 30) {
+                    const tip = mrnaPoints[mrnaPoints.length - 1];
+                    ctx.fillStyle = '#be123c';
+                    ctx.font = 'bold 9.5px sans-serif';
+                    ctx.textAlign = 'left';
+                    const textX = Math.min(width - 32, tip.x + 5);
+                    ctx.fillText("5'端", textX, tip.y + 4);
+                }
+
+                // 1番目のmRNAに沿って「翻訳の進行方向（先端→DNA側）」の矢印を描画
+                if (idx === 0 && mrnaLength > 95 && showLabels) {
+                    const pStart = mrnaPoints[Math.floor(numPoints * 0.85)];
+                    const pEnd = mrnaPoints[Math.floor(numPoints * 0.25)];
+                    const offsetX = 13;
+                    const offsetY = -8;
+
+                    ctx.save();
+                    ctx.strokeStyle = activeHighlight === 'q34' ? '#d97706' : '#0284c7';
+                    ctx.fillStyle = activeHighlight === 'q34' ? '#d97706' : '#0284c7';
+                    ctx.lineWidth = 1.8;
+                    ctx.setLineDash([3, 3]);
+                    ctx.beginPath();
+                    ctx.moveTo(pStart.x + offsetX, pStart.y + offsetY);
+                    ctx.lineTo(pEnd.x + offsetX, pEnd.y + offsetY);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    const angle = Math.atan2((pEnd.y - pStart.y), (pEnd.x - pStart.x));
+                    const headX = pEnd.x + offsetX;
+                    const headY = pEnd.y + offsetY;
+                    ctx.beginPath();
+                    ctx.moveTo(headX, headY);
+                    ctx.lineTo(headX - 8 * Math.cos(angle - 0.4), headY - 8 * Math.sin(angle - 0.4));
+                    ctx.lineTo(headX - 8 * Math.cos(angle + 0.4), headY - 8 * Math.sin(angle + 0.4));
+                    ctx.closePath();
+                    ctx.fill();
+
+                    ctx.font = 'bold 9px "Noto Sans JP", sans-serif';
+                    ctx.textAlign = 'left';
+                    const labelMidX = Math.min(width - 52, (pStart.x + pEnd.x) / 2 + offsetX + 4);
+                    ctx.fillText('翻訳方向', labelMidX, (pStart.y + pEnd.y) / 2 + offsetY);
+                    ctx.restore();
+                }
+
+                // リボソームの配置と描画
+                const riboInterval = 30;
+                const numRibosomes = Math.floor(mrnaLength / riboInterval);
+
+                for (let r = 0; r < numRibosomes; r++) {
+                    const bindLength = (r + 0.6) * riboInterval;
+                    const traveledDist = mrnaLength - bindLength;
+                    if (traveledDist < 0) continue;
+
+                    const tPos = Math.max(0.08, 1.0 - (traveledDist / mrnaLength));
+                    const ptIdx = Math.min(mrnaPoints.length - 1, Math.floor(tPos * numPoints));
+                    const rPt = mrnaPoints[ptIdx];
+
+                    const aminoCount = Math.max(1, Math.floor(traveledDist / 11));
+
+                    // ポリペプチド鎖の描画（アミノ酸のビーズ鎖）
+                    if (showPoly) {
+                        const polyLen = aminoCount * 4.8;
+                        ctx.save();
+                        ctx.strokeStyle = '#d97706';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(rPt.x, rPt.y);
+
+                        const beadPositions = [];
+                        for (let p = 1; p <= aminoCount; p++) {
+                            const ptRatio = p / aminoCount;
+                            // 左下方向へ垂れ下がるように配置して他のmRNAと重なりにくくする
+                            const px = rPt.x - ptRatio * (polyLen * 0.55) + Math.sin(p * 1.6 + simTime * 6) * 2;
+                            const py = rPt.y + ptRatio * (polyLen * 0.85);
+                            ctx.lineTo(px, py);
+                            beadPositions.push({ x: px, y: py, idx: p });
+                        }
+                        ctx.stroke();
+
+                        const colors = ['#f59e0b', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6'];
+                        beadPositions.forEach((bead) => {
+                            ctx.fillStyle = colors[bead.idx % colors.length];
+                            ctx.beginPath();
+                            ctx.arc(bead.x, bead.y, 2.3, 0, Math.PI * 2);
+                            ctx.fill();
+                        });
+                        ctx.restore();
+                    }
+
+                    // リボソーム本体
+                    const isFirstRibo = (idx === 0 && r === 0);
+                    ctx.save();
+                    ctx.translate(rPt.x, rPt.y);
+                    ctx.rotate(Math.PI / 3);
+                    ctx.fillStyle = (activeHighlight === 'q34' && isFirstRibo) ? '#d97706' : (activeHighlight === 'q1' ? '#2563eb' : '#475569');
+                    ctx.strokeStyle = '#1e293b';
+                    ctx.lineWidth = isFirstRibo ? 1.8 : 1.3;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 7, 5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                // RNAポリメラーゼ本体の描画
+                ctx.save();
+                ctx.fillStyle = '#ffffff';
+                ctx.strokeStyle = activeHighlight === 'q1' ? '#2563eb' : '#0f172a';
+                ctx.lineWidth = 2.2;
+                ctx.beginPath();
+                ctx.arc(polyX, polyY, 6.8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+
+                // 各複合体のラベル表示（縦型スマホでも重ならない配置）
+                if (showLabels) {
+                    if (idx === 0 && mrnaLength > 75) {
+                        const midPt = mrnaPoints[Math.floor(numPoints * 0.72)];
+                        drawTag(ctx, 'mRNA（一本鎖）', midPt.x - 42, midPt.y + 24, '#be123c', '#fff1f2', width, height);
+                    }
+                    if (idx === 0 && showPoly && mrnaLength > 115) {
+                        const topPt = mrnaPoints[Math.floor(numPoints * 0.25)];
+                        drawTag(ctx, 'ポリペプチド鎖', topPt.x - 52, topPt.y + 52, '#b45309', '#fffbeb', width, height);
+                    }
+                    if (idx === 1) {
+                        drawTag(ctx, 'RNAポリメラーゼ', polyX, polyY - 20, '#0f172a', '#ffffff', width, height);
+                    }
+                }
+            });
+
+            // 上部1行ステータスバーのテキスト更新
+            if (simTime < 0.1) {
+                phaseText.textContent = 'プロモーターからDNAの転写が開始';
+            } else if (simTime < 0.45) {
+                phaseText.textContent = '伸びたmRNAにリボソームが結合し翻訳開始';
+            } else if (simTime < 0.8) {
+                phaseText.textContent = '転写と翻訳が同時進行し効率よく合成中';
+            } else {
+                phaseText.textContent = '先行リボソームほどDNA近くで長い鎖を合成中';
+            }
+        }
+
+        // アニメーションループ
+        function animate(timestamp) {
+            if (!lastFrameTime) lastFrameTime = timestamp;
+            const delta = (timestamp - lastFrameTime) / 1000;
+            lastFrameTime = timestamp;
+
+            if (isPlaying) {
+                simTime += delta * 0.08 * playbackSpeed;
+                if (simTime > 1.0) {
+                    simTime = 0.0;
+                }
+                const pct = Math.round(simTime * 100);
+                timeSlider.value = pct;
+                timeVal.textContent = pct + '%';
+            }
+
+            drawScene();
+            requestAnimationFrame(animate);
+        }
+
+        // イベントリスナー設定
+        btnPlayPause.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            playIcon.textContent = isPlaying ? '⏸' : '▶';
+            playText.textContent = isPlaying ? '停止' : '再生';
+        });
+
+        btnReset.addEventListener('click', () => {
+            simTime = 0.0;
+            timeSlider.value = 0;
+            timeVal.textContent = '0%';
+            drawScene();
+        });
+
+        timeSlider.addEventListener('input', (e) => {
+            simTime = parseInt(e.target.value, 10) / 100;
+            timeVal.textContent = e.target.value + '%';
+            drawScene();
+        });
+
+        // 名称表示トグルチップ
+        btnToggleLabels.addEventListener('click', () => {
+            showLabels = !showLabels;
+            if (showLabels) {
+                btnToggleLabels.textContent = '名称 ON';
+                btnToggleLabels.className = 'px-2 py-1 rounded-md text-[11px] font-bold bg-blue-600 text-white border border-blue-400 transition active:scale-95';
+            } else {
+                btnToggleLabels.textContent = '名称 OFF';
+                btnToggleLabels.className = 'px-2 py-1 rounded-md text-[11px] font-bold bg-slate-700 text-slate-300 border border-slate-600 transition active:scale-95';
+            }
+            drawScene();
+        });
+
+        // ポリペプチド鎖表示トグルチップ
+        btnTogglePoly.addEventListener('click', () => {
+            showPoly = !showPoly;
+            legendPoly.style.opacity = showPoly ? '1' : '0.35';
+            if (showPoly) {
+                btnTogglePoly.textContent = '鎖 ON';
+                btnTogglePoly.className = 'px-2 py-1 rounded-md text-[11px] font-bold bg-amber-500 text-slate-950 border border-amber-300 transition active:scale-95';
+            } else {
+                btnTogglePoly.textContent = '鎖 OFF';
+                btnTogglePoly.className = 'px-2 py-1 rounded-md text-[11px] font-bold bg-slate-700 text-slate-300 border border-slate-600 transition active:scale-95';
+            }
+            drawScene();
+        });
+
+        // 再生速度切替
+        speedBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                playbackSpeed = parseFloat(btn.dataset.speed);
+                speedBtns.forEach(b => {
+                    b.classList.remove('bg-blue-600', 'text-white', 'font-bold');
+                    b.classList.add('text-slate-600', 'font-medium');
+                });
+                btn.classList.remove('text-slate-600', 'font-medium');
+                btn.classList.add('bg-blue-600', 'text-white', 'font-bold');
+            });
+        });
+
+        window.addEventListener('resize', resizeCanvas);
+
+        window.onload = function () {
+            resizeCanvas();
+            requestAnimationFrame(animate);
+        };
+    </script>
+</body>
+</html>
